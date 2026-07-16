@@ -1,51 +1,46 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from './common/pipes/validation.pipe';
-import { AllExceptionsFilter } from './common/filters/all-exception.filter';
-import { PrismaClientExceptionFilter } from './common/filters/prisma.filter';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AuthGuard } from './common/guards/auth.guard';
-import { RolesGuard } from './common/guards/roles.guard';
-import { JwtService } from '@nestjs/jwt';
+import { ValidationPipe } from '@nestjs/common';
+
+const dnsModule = require('dns');
+const originalLookup = dnsModule.lookup;
+dnsModule.lookup = (hostname: string, options: any, callback: any) => {
+  let cb = callback;
+  let opt = options;
+  if (typeof options === 'function') {
+    cb = options;
+    opt = {};
+  }
+  if (hostname === 'expzlbadryzwvsxfmads.supabase.co') {
+    if (opt && opt.all) {
+      return cb(null, [{ address: '104.18.38.10', family: 4 }]);
+    }
+    return cb(null, '104.18.38.10', 4);
+  }
+  return originalLookup(hostname, options, callback);
+};
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  // Global prefixes and configuration
+  
+  // Set global API prefix
   app.setGlobalPrefix('api');
+
+  // Enable CORS for Next.js frontend
   app.enableCors({
-    origin: true, // Allow all origins for dev
+    origin: '*', // Adjust to specific URL (e.g. http://localhost:3000) in production
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Global Pipes & Filters
-  app.useGlobalPipes(new ValidationPipe());
-  app.useGlobalFilters(
-    new AllExceptionsFilter(),
-    new PrismaClientExceptionFilter(app.getHttpAdapter()),
-  );
+  // Enable global validation pipe
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+  }));
 
-  // Global Guards
-  const jwtService = app.get(JwtService);
-  const reflector = app.get(Reflector);
-  app.useGlobalGuards(
-    new AuthGuard(jwtService, reflector),
-    new RolesGuard(reflector),
-  );
-
-  // Swagger setup
-  const config = new DocumentBuilder()
-    .setTitle('Hari Om Thalassic API')
-    .setDescription('The API documentation for Hari Om Thalassic platform')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
-
-  const port = process.env.PORT || 5050;
+  const port = process.env.PORT || 4000;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/api`);
-  console.log(`Swagger documentation: http://localhost:${port}/api/docs`);
+  console.log(`🚀 NestJS Backend running on: http://localhost:${port}/api`);
 }
 bootstrap();
