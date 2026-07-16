@@ -91,7 +91,7 @@ export class SeafarerController {
     @Body('expiryDate') expiryDate: string,
     @UploadedFile() file: any,
   ) {
-    return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate);
+    return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file?.originalname);
   }
 
   @Delete('documents/:id')

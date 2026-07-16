@@ -292,14 +292,14 @@ export class SeafarerService {
     }));
   }
 
-  async uploadDocument(userId: string, type: string, expiryDate?: string) {
+  async uploadDocument(userId: string, type: string, expiryDate?: string, fileName?: string) {
     const { data, error } = await this.db
       .from('Document')
       .insert({
         id: randomUUID(),
         userId,
         type,
-        name: type,
+        name: fileName || type,
         url: `/uploads/documents/${type}-${userId}.pdf`,
         status: 'Pending',
         expiryDate: expiryDate ?? null,
