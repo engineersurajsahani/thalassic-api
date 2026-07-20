@@ -11,10 +11,10 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
-const supabase_module_1 = require("./supabase/supabase.module");
-const master_module_1 = require("./master/master.module");
-const auth_module_1 = require("./auth/auth.module");
-const seafarer_module_1 = require("./seafarer/seafarer.module");
+const supabase_module_1 = require("./modules/supabase/supabase.module");
+const master_module_1 = require("./modules/master/master.module");
+const auth_module_1 = require("./modules/auth/auth.module");
+const seafarer_module_1 = require("./modules/seafarer/seafarer.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
