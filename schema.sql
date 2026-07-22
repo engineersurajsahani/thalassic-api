@@ -131,3 +131,60 @@ VALUES
 ('a0000000-0000-0000-0000-000000000002', (SELECT id FROM public.courses WHERE code='AFF' LIMIT 1), now() - INTERVAL '2 days', '₹7,200', 'Completed'),
 ('a0000000-0000-0000-0000-000000000003', (SELECT id FROM public.courses WHERE code='MEDICARE' LIMIT 1), now() - INTERVAL '3 days', '₹25,000', 'Processing')
 ON CONFLICT DO NOTHING;
+
+-- 13. Create AGENT METADATA Table
+CREATE TABLE IF NOT EXISTS public.agent_metadata (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    referral_code VARCHAR(100) UNIQUE, -- Will be set by the agent during onboarding
+    qr_code TEXT,                      -- Generated after referral code creation
+    onboarding_status VARCHAR(50) DEFAULT 'Invited' NOT NULL,
+    general_commission NUMERIC(5,2) DEFAULT 5.00 NOT NULL,
+    course_commissions JSONB DEFAULT '{}'::jsonb NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 14. Create REFERRAL LEADS Table
+CREATE TABLE IF NOT EXISTS public.referral_leads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
+    city VARCHAR(100),
+    course_id UUID REFERENCES public."Course"(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'New' NOT NULL,
+    remarks TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    expiry_at TIMESTAMP WITH TIME ZONE DEFAULT (timezone('utc'::text, now()) + INTERVAL '45 days') NOT NULL
+);
+
+-- 15. Create COMMISSIONS Table
+CREATE TABLE IF NOT EXISTS public.commissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    purchase_id UUID REFERENCES public."Enrollment"(id) ON DELETE CASCADE NOT NULL,
+    seafarer_name VARCHAR(255) NOT NULL,
+    course_name VARCHAR(255) NOT NULL,
+    course_fee NUMERIC(10,2) NOT NULL,
+    commission_rate NUMERIC(5,2) NOT NULL,
+    commission_amount NUMERIC(10,2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    settled_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 16. Create AUDIT LOGS Table
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
+    user_name VARCHAR(255),
+    action VARCHAR(255) NOT NULL,
+    module VARCHAR(255) NOT NULL,
+    entity_id VARCHAR(255),
+    details TEXT,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+

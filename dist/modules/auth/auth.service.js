@@ -53,6 +53,9 @@ const ROLE_MAP = {
     seafarer: 'SEAFARER',
     'company-admin': 'COMPANY_ADMIN',
     master: 'MASTER',
+    'agent-admin': 'AGENT_ADMIN',
+    agent_admin: 'AGENT_ADMIN',
+    agent: 'AGENT',
 };
 let AuthService = class AuthService {
     supabaseService;
@@ -163,12 +166,27 @@ let AuthService = class AuthService {
         if (error || !user) {
             throw new common_1.UnauthorizedException('User not found');
         }
+        let onboardingStatus = null;
+        if (user.role === 'AGENT') {
+            const { data: meta } = await supabase
+                .from('agent_metadata')
+                .select('onboarding_status')
+                .eq('user_id', user.id)
+                .single();
+            if (meta) {
+                onboardingStatus = meta.onboarding_status;
+            }
+            else {
+                onboardingStatus = 'Invited';
+            }
+        }
         return {
             id: user.id,
             name: user.name,
             email: user.email,
             role: user.role,
             phone: user.phone ?? null,
+            onboardingStatus,
         };
     }
 };

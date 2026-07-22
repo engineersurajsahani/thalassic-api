@@ -38,7 +38,7 @@ export declare class SeafarerService {
         courseId: any;
         progress: any;
     }[]>;
-    enrollInCourse(userId: string, courseId: string): Promise<any>;
+    enrollInCourse(userId: string, courseId: string, referralCode?: string): Promise<any>;
     updateCourseProgress(userId: string, courseId: string, progress: number): Promise<{
         courseId: string;
         userId: string;

@@ -34,5 +34,6 @@ export declare class AuthService {
         email: any;
         role: any;
         phone: any;
+        onboardingStatus: any;
     }>;
 }

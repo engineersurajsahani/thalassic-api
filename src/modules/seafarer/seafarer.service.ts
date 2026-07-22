@@ -211,7 +211,7 @@ export class SeafarerService {
     }));
   }
 
-  async enrollInCourse(userId: string, courseId: string) {
+  async enrollInCourse(userId: string, courseId: string, referralCode?: string) {
     const { data: course } = await this.db
       .from('Course')
       .select('id, fees, name')
@@ -245,8 +245,82 @@ export class SeafarerService {
       .single();
 
     if (error) throw new BadRequestException(error.message);
+
+    // ── Referral Attribution & Commission ─────────────────────────────────
+    console.log(`[Backend Enroll] User ${userId} enrolling in ${courseId} with referralCode: "${referralCode}"`);
+    if (referralCode && referralCode.trim().length > 0) {
+      try {
+        const code = referralCode.trim().toUpperCase();
+
+        // 1. Find the agent who owns this referral code
+        const { data: agentMeta } = await this.db
+          .from('agent_metadata')
+          .select('user_id, general_commission')
+          .eq('referral_code', code)
+          .single();
+
+        if (agentMeta) {
+          // Parse string like "₹25,000" or "25000" into numeric value
+          const parseFee = (feeStr: any): number => {
+            if (typeof feeStr === 'number') return feeStr;
+            if (!feeStr) return 0;
+            const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
+            return parseFloat(cleaned) || 0;
+          };
+
+          const commissionRate = agentMeta.general_commission ?? 5;
+          const courseFee = parseFee(course.fees);
+          const commissionAmount = (courseFee * commissionRate) / 100;
+
+          // Fetch seafarer name for denormalized display in agent dashboard
+          const { data: seafarerUser } = await this.db
+            .from('User')
+            .select('name, email, phone')
+            .eq('id', userId)
+            .single();
+
+          // 2. Create commission record (Pending — Agent Admin approves later)
+          // Table: 'commissions' (matching exact columns in Supabase)
+          const { error: commErr } = await this.db.from('commissions').insert({
+            id: randomUUID(),
+            agent_id: agentMeta.user_id,
+            purchase_id: data.id,
+            seafarer_name: seafarerUser?.name || 'Seafarer',
+            course_name: course.name || 'Course',
+            course_fee: courseFee,
+            commission_rate: commissionRate,
+            commission_amount: commissionAmount,
+            status: 'Pending',
+            created_at: new Date().toISOString(),
+          });
+
+
+          if (commErr) {
+            console.error('[Referral] Failed to insert commission:', commErr.message);
+          } else {
+            console.log(`[Referral] SUCCESS! Created commission ₹${commissionAmount} for agent ${agentMeta.user_id}`);
+          }
+
+          // 3. Mark matching referral lead as Converted
+          if (seafarerUser) {
+            await this.db
+              .from('referral_leads')
+              .update({ status: 'Converted', updated_at: new Date().toISOString() })
+              .eq('agent_id', agentMeta.user_id)
+              .in('status', ['New', 'Contacted', 'Registered'])
+              .or(`email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`);
+          }
+        }
+      } catch (commissionErr) {
+        // Commission creation failure should NOT block the enrollment itself
+        console.error('[Referral] Unexpected error in commission flow:', commissionErr?.message);
+      }
+    }
+
     return data;
   }
+
+
 
   async updateCourseProgress(userId: string, courseId: string, progress: number) {
     const dbStatus = progress >= 100 ? 'Completed' : 'Processing';

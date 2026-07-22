@@ -6,6 +6,8 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
 import { MasterModule } from './modules/master/master.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SeafarerModule } from './modules/seafarer/seafarer.module';
+import { AgentAdminModule } from './modules/agent-admin/agent-admin.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { SeafarerModule } from './modules/seafarer/seafarer.module';
     AuthModule,
     MasterModule,
     SeafarerModule,
+    AgentAdminModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
