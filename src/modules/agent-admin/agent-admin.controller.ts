@@ -85,4 +85,28 @@ export class AgentAdminController {
   getAuditLogs() {
     return this.agentAdminService.getAuditLogs();
   }
+
+  @Patch('agents/:id')
+  updateAgentDetails(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.updateAgentDetails(id, dto, adminId, adminName);
+  }
+
+  @Patch('agents/:id/verify-document')
+  verifyAgentDocument(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('docId') docId: string,
+    @Body('status') status: string,
+    @Body('remarks') remarks: string,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.verifyAgentDocument(id, docId, status, remarks, adminId, adminName);
+  }
 }

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AgentService {
@@ -645,5 +646,106 @@ export class AgentService {
     );
 
     return newTicket;
+  }
+
+  // --- 9. Invoices ---
+  async getInvoices(agentId: string) {
+    const db = this.getDb();
+    const { data, error } = await db
+      .from('commissions')
+      .select('id, seafarer_name, course_name, created_at, course_fee, status, purchase_id, commission_rate, commission_amount')
+      .eq('agent_id', agentId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new BadRequestException(error.message);
+
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      invoiceNumber: `HAC-2026-${p.purchase_id?.substring(0, 6).toUpperCase() || p.id.substring(0, 6).toUpperCase()}`,
+      invoiceType: 'HAC',
+      seafarerName: p.seafarer_name,
+      courseName: p.course_name,
+      purchaseAmount: p.course_fee,
+      purchaseDate: p.created_at,
+      invoiceStatus: p.status === 'Cancelled' ? 'Cancelled' : 'Paid',
+      commissionRate: p.commission_rate,
+      commissionAmount: p.commission_amount
+    }));
+  }
+
+  // --- 10. Notifications ---
+  async getNotifications(agentId: string) {
+    const db = this.getDb();
+    const { data, error } = await db
+      .from('Notification')
+      .select('*')
+      .eq('userId', agentId)
+      .order('createdAt', { ascending: false });
+
+    if (error) throw new BadRequestException(error.message);
+    return data || [];
+  }
+
+  async markNotificationRead(agentId: string, notificationId: string) {
+    const db = this.getDb();
+    const { error } = await db
+      .from('Notification')
+      .update({ isRead: true })
+      .eq('id', notificationId)
+      .eq('userId', agentId);
+
+    if (error) throw new BadRequestException(error.message);
+    return { success: true };
+  }
+
+  async deleteNotification(agentId: string, notificationId: string) {
+    const db = this.getDb();
+    const { error } = await db
+      .from('Notification')
+      .delete()
+      .eq('id', notificationId)
+      .eq('userId', agentId);
+
+    if (error) throw new BadRequestException(error.message);
+    return { success: true };
+  }
+
+  // --- 11. Settings (Password Change) ---
+  async changePassword(agentId: string, oldPass: string, newPass: string) {
+    const db = this.getDb();
+    const { data: user, error: userErr } = await db
+      .from('User')
+      .select('password, name')
+      .eq('id', agentId)
+      .single();
+
+    if (userErr || !user) throw new NotFoundException('User account not found.');
+
+    const isMatch = await bcrypt.compare(oldPass, user.password);
+    if (!isMatch) {
+      throw new BadRequestException('Incorrect current password.');
+    }
+
+    const hashedNew = await bcrypt.hash(newPass, 10);
+    const { error } = await db
+      .from('User')
+      .update({
+        password: hashedNew,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', agentId);
+
+    if (error) throw new BadRequestException(error.message);
+
+    await this.logAction(
+      agentId,
+      user.name || 'Agent',
+      'CHANGE_PASSWORD',
+      'Settings',
+      agentId,
+      'Changed account password securely'
+    );
+
+    return { success: true };
   }
 }

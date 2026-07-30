@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { AgentService } from './agent.service';
 import { AuthGuard } from '../auth/auth.guard';
 
@@ -112,5 +112,35 @@ export class AgentController {
   createSupportTicket(@Req() req: any, @Body() dto: any) {
     this.checkRole(req);
     return this.agentService.createSupportTicket(req.user.id, dto);
+  }
+
+  @Get('invoices')
+  getInvoices(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getInvoices(req.user.id);
+  }
+
+  @Get('notifications')
+  getNotifications(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getNotifications(req.user.id);
+  }
+
+  @Patch('notifications/:id/read')
+  markNotificationRead(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.markNotificationRead(req.user.id, id);
+  }
+
+  @Delete('notifications/:id')
+  deleteNotification(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.deleteNotification(req.user.id, id);
+  }
+
+  @Put('settings/password')
+  changePassword(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.changePassword(req.user.id, dto.oldPassword, dto.newPassword);
   }
 }

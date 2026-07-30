@@ -409,10 +409,16 @@ export class AgentAdminService {
       }
     ];
 
+    const { data: documents } = await db
+      .from('Document')
+      .select('*')
+      .eq('userId', agentId);
+
     return {
       agentId,
       status: meta.onboarding_status,
       checklist,
+      documents: documents || [],
     };
   }
 
@@ -493,7 +499,7 @@ export class AgentAdminService {
     // 1. Agent Performance
     const { data: agents } = await db.from('User').select('id, name').eq('role', 'AGENT');
     const { data: comms } = await db.from('commissions').select('agent_id, commission_amount, course_fee');
-    const { data: leads } = await db.from('referral_leads').select('agent_id, status');
+    const { data: leads } = await db.from('referral_leads').select('agent_id, status, city');
 
     const performance = (agents || []).map((agent: any) => {
       const agentComms = (comms || []).filter((c: any) => c.agent_id === agent.id);
@@ -520,6 +526,17 @@ export class AgentAdminService {
     const convertedLeadsCount = (leads || []).filter((l: any) => l.status === 'Converted').length;
     const globalConversionRate = totalLeadsCount > 0 ? `${((convertedLeadsCount / totalLeadsCount) * 100).toFixed(1)}%` : '0%';
 
+    // 3. Region Stats
+    const regions: Record<string, number> = {};
+    (leads || []).forEach((l: any) => {
+      const city = l.city || 'Unknown';
+      regions[city] = (regions[city] || 0) + 1;
+    });
+    const regionStats = Object.entries(regions).map(([region, value]) => ({
+      name: region,
+      value
+    }));
+
     return {
       agentPerformance: performance,
       conversionSummary: {
@@ -527,6 +544,7 @@ export class AgentAdminService {
         convertedLeads: convertedLeadsCount,
         globalConversionRate,
       },
+      regionStats,
     };
   }
 
@@ -541,5 +559,95 @@ export class AgentAdminService {
     if (error) throw new BadRequestException(error.message);
 
     return data;
+  }
+
+  // --- 8. Edit Agent & Document Verification ---
+  async updateAgentDetails(agentId: string, dto: any, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const { name, email, phone, agencyName, officeAddress } = dto;
+
+    const { data: agent } = await db.from('User').select('name, email, phone').eq('id', agentId).single();
+    if (!agent) throw new NotFoundException('Agent not found');
+
+    const { error: userErr } = await db
+      .from('User')
+      .update({
+        name: name ?? agent.name,
+        email: email ?? agent.email,
+        phone: phone ?? agent.phone,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', agentId);
+
+    if (userErr) throw new BadRequestException(userErr.message);
+
+    const { error: metaErr } = await db
+      .from('agent_metadata')
+      .update({
+        agency_name: agencyName ?? null,
+        office_address: officeAddress ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', agentId);
+
+    if (metaErr) throw new BadRequestException(metaErr.message);
+
+    await this.logAction(
+      adminId,
+      adminName,
+      'UPDATE_AGENT_DETAILS',
+      'Agent Management',
+      agentId,
+      `Updated profile details for agent ${name || agent.name} (${email || agent.email})`,
+    );
+
+    return { id: agentId, name, email, phone, agencyName, officeAddress };
+  }
+
+  async verifyAgentDocument(
+    agentId: string,
+    docId: string,
+    status: string,
+    remarks: string,
+    adminId: string,
+    adminName: string,
+  ) {
+    const db = this.getDb();
+    
+    const { data: doc, error } = await db
+      .from('Document')
+      .update({
+        status,
+        name: remarks ? `${status} - Remarks: ${remarks}` : status,
+      })
+      .eq('id', docId)
+      .eq('userId', agentId)
+      .select()
+      .single();
+
+    if (error) throw new BadRequestException(error.message);
+
+    const notifId = randomUUID();
+    await db.from('Notification').insert({
+      id: notifId,
+      userId: agentId,
+      title: status === 'Verified' ? 'Document Verified' : 'Document Rejected',
+      message: status === 'Verified' 
+        ? `Your uploaded document of type "${doc.type}" has been successfully verified by the admin.` 
+        : `Your uploaded document of type "${doc.type}" was rejected. Reason: ${remarks || 'Please re-upload.'}`,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    await this.logAction(
+      adminId,
+      adminName,
+      'VERIFY_AGENT_DOCUMENT',
+      'Agent Management',
+      agentId,
+      `Document "${doc.type}" of agent has been marked as ${status} by admin (Remarks: ${remarks || 'None'})`,
+    );
+
+    return { docId, status, remarks };
   }
 }
