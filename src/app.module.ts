@@ -6,6 +6,7 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
 import { MasterModule } from './modules/master/master.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SeafarerModule } from './modules/seafarer/seafarer.module';
+import { CompanyModule } from './modules/company/company.module';
 
 @Module({
   imports: [
@@ -14,8 +15,9 @@ import { SeafarerModule } from './modules/seafarer/seafarer.module';
     AuthModule,
     MasterModule,
     SeafarerModule,
+    CompanyModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

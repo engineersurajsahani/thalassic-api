@@ -131,3 +131,77 @@ VALUES
 ('a0000000-0000-0000-0000-000000000002', (SELECT id FROM public.courses WHERE code='AFF' LIMIT 1), now() - INTERVAL '2 days', '₹7,200', 'Completed'),
 ('a0000000-0000-0000-0000-000000000003', (SELECT id FROM public.courses WHERE code='MEDICARE' LIMIT 1), now() - INTERVAL '3 days', '₹25,000', 'Processing')
 ON CONFLICT DO NOTHING;
+
+-- 13. Create COMPANIES Table
+CREATE TABLE IF NOT EXISTS public.companies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    rpsl VARCHAR(255) UNIQUE,
+    address TEXT,
+    contact_email VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 14. Create COMPANY ADMINS Table (linking admin to company)
+CREATE TABLE IF NOT EXISTS public.company_admins (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
+    UNIQUE(user_id, company_id)
+);
+
+-- 15. Create COMPANY CREW Table (linking seafarers to company)
+CREATE TABLE IF NOT EXISTS public.company_crew (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    status VARCHAR(50) DEFAULT 'Active',
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(company_id, user_id)
+);
+
+-- 16. Create DOCUMENTS Table
+CREATE TABLE IF NOT EXISTS public.documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    type VARCHAR(100),
+    name VARCHAR(255),
+    url VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'Pending',
+    remarks TEXT,
+    expiry_date DATE,
+    upload_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 17. Create PAYMENTS Table
+CREATE TABLE IF NOT EXISTS public.payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    amount VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending',
+    receipt_url VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 18. Create INVOICES Table
+CREATE TABLE IF NOT EXISTS public.invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
+    amount VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Unpaid',
+    pdf_url VARCHAR(255),
+    email_sent BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 19. Create AUDIT LOGS Table
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action VARCHAR(255) NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    company_id UUID REFERENCES public.companies(id) ON DELETE SET NULL,
+    details TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);

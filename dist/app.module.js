@@ -15,6 +15,7 @@ const supabase_module_1 = require("./modules/supabase/supabase.module");
 const master_module_1 = require("./modules/master/master.module");
 const auth_module_1 = require("./modules/auth/auth.module");
 const seafarer_module_1 = require("./modules/seafarer/seafarer.module");
+const company_module_1 = require("./modules/company/company.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,6 +27,7 @@ exports.AppModule = AppModule = __decorate([
             auth_module_1.AuthModule,
             master_module_1.MasterModule,
             seafarer_module_1.SeafarerModule,
+            company_module_1.CompanyModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
