@@ -1208,6 +1208,7 @@ export class AgentAdminService {
   }
 
   async resolveConflict(seafarerEmail: string, approvedAgentId: string, remarks: string, adminId: string, adminName: string) {
+    console.log('resolveConflict CALLED WITH:', { seafarerEmail, approvedAgentId, remarks, adminId, adminName });
     const db = this.getDb();
     const nowIso = new Date().toISOString();
     const cleanEmail = (seafarerEmail || '').trim();
@@ -1244,16 +1245,16 @@ export class AgentAdminService {
         const isApproved = lead.agent_id === approvedAgentId;
         const leadStatus = isApproved ? 'New' : 'Cancelled';
 
-        await db
+        const updateRes = await db
           .from('referral_leads')
           .update({
             status: leadStatus,
             remarks: isApproved
               ? `Conflict resolved by Admin: Approved. Remarks: ${remarks}`
-              : `Conflict resolved by Admin: Assigned to another referring agent.`,
-            updated_at: nowIso
+              : `Conflict resolved by Admin: Assigned to another referring agent.`
           })
           .eq('id', lead.id);
+        console.log('UPDATE LEAD RESULT:', { id: lead.id, leadStatus, error: updateRes.error, status: updateRes.status });
 
         // Notify agent
         const notifyTitle = isApproved ? 'Conflicting Referral Lead Approved!' : 'Conflicting Referral Lead Assigned to Another Agent';
@@ -1291,8 +1292,7 @@ export class AgentAdminService {
           await db
             .from('referral_leads')
             .update({
-              status: 'Converted',
-              updated_at: nowIso
+              status: 'Converted'
             })
             .eq('agent_id', approvedAgentId)
             .ilike('email', cleanEmail);

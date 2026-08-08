@@ -145,7 +145,49 @@ CREATE TABLE IF NOT EXISTS public.agent_metadata (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 14. Create REFERRAL LEADS Table
+-- 14. Create COMPANIES Table
+CREATE TABLE IF NOT EXISTS public.companies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    rpsl VARCHAR(255) UNIQUE,
+    address TEXT,
+    contact_email VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 15. Create COMPANY ADMINS Table (linking admin to company)
+CREATE TABLE IF NOT EXISTS public.company_admins (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
+    UNIQUE(user_id, company_id)
+);
+
+-- 16. Create COMPANY CREW Table (linking seafarers to company)
+CREATE TABLE IF NOT EXISTS public.company_crew (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    status VARCHAR(50) DEFAULT 'Active',
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(company_id, user_id)
+);
+
+-- 17. Create DOCUMENTS Table
+CREATE TABLE IF NOT EXISTS public.documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE,
+    type VARCHAR(100),
+    name VARCHAR(255),
+    url VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'Pending',
+    remarks TEXT,
+    expiry_date DATE,
+    upload_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 18. Create REFERRAL LEADS Table
 CREATE TABLE IF NOT EXISTS public.referral_leads (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
@@ -160,7 +202,7 @@ CREATE TABLE IF NOT EXISTS public.referral_leads (
     expiry_at TIMESTAMP WITH TIME ZONE DEFAULT (timezone('utc'::text, now()) + INTERVAL '45 days') NOT NULL
 );
 
--- 15. Create COMMISSIONS Table
+-- 19. Create COMMISSIONS Table
 CREATE TABLE IF NOT EXISTS public.commissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
@@ -180,7 +222,7 @@ CREATE TABLE IF NOT EXISTS public.commissions (
     settled_at TIMESTAMP WITH TIME ZONE
 );
 
--- 16. Create COMMISSION STATUS HISTORY Table
+-- 20. Create COMMISSION STATUS HISTORY Table
 CREATE TABLE IF NOT EXISTS public.commission_status_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     commission_id UUID REFERENCES public.commissions(id) ON DELETE CASCADE NOT NULL,
@@ -192,33 +234,48 @@ CREATE TABLE IF NOT EXISTS public.commission_status_history (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 17. Create INVOICES Table (Immutable Customer & Course Snapshot)
+-- 21. Create INVOICES Table (Combined Agent & Company Columns)
 CREATE TABLE IF NOT EXISTS public.invoices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    invoice_number VARCHAR(100) UNIQUE NOT NULL, -- e.g. HOC-2026-000001 or HAC-2026-000001
-    invoice_type VARCHAR(10) NOT NULL, -- 'HOC' or 'HAC'
-    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
-    purchase_id UUID REFERENCES public."Enrollment"(id) ON DELETE CASCADE NOT NULL,
+    invoice_number VARCHAR(100) UNIQUE,                          -- Nullable for Company Invoices
+    invoice_type VARCHAR(10),                                   -- 'HOC' or 'HAC' (Nullable for Company Invoices)
+    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE, -- Nullable for Company Invoices
+    purchase_id UUID REFERENCES public."Enrollment"(id) ON DELETE CASCADE, -- Nullable for Company Invoices
     agent_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
     commission_snapshot_id UUID REFERENCES public.commissions(id) ON DELETE SET NULL,
-    customer_name VARCHAR(255) NOT NULL,
-    customer_email VARCHAR(255) NOT NULL,
-    customer_phone VARCHAR(50) NOT NULL,
+    customer_name VARCHAR(255),
+    customer_email VARCHAR(255),
+    customer_phone VARCHAR(50),
     agent_name VARCHAR(255),
     agent_referral_code VARCHAR(100),
-    course_name VARCHAR(255) NOT NULL,
-    course_fee NUMERIC(10,2) NOT NULL,
-    discount NUMERIC(10,2) DEFAULT 0.00 NOT NULL,
-    final_amount NUMERIC(10,2) NOT NULL,
-    payment_gateway VARCHAR(100) DEFAULT 'razorpay' NOT NULL,
-    transaction_id VARCHAR(100) UNIQUE NOT NULL, -- Idempotency protection against duplicate webhooks
-    payment_method VARCHAR(50) DEFAULT 'Online UPI/Card' NOT NULL,
-    payment_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    course_name VARCHAR(255),
+    course_fee NUMERIC(10,2),
+    discount NUMERIC(10,2) DEFAULT 0.00,
+    final_amount NUMERIC(10,2),
+    payment_gateway VARCHAR(100) DEFAULT 'razorpay',
+    transaction_id VARCHAR(100) UNIQUE,
+    payment_method VARCHAR(50) DEFAULT 'Online UPI/Card',
+    payment_date TIMESTAMP WITH TIME ZONE,
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE, -- Company specific
+    amount VARCHAR(50),                                                -- Company specific amount string
+    pdf_url VARCHAR(255),                                              -- Company specific pdf
+    email_sent BOOLEAN DEFAULT FALSE,                                  -- Company specific email status
     status VARCHAR(50) DEFAULT 'Paid' NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 18. Create SETTLEMENTS Table
+-- 22. Create PAYMENTS Table
+CREATE TABLE IF NOT EXISTS public.payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE,
+    amount VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending',
+    receipt_url VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 23. Create SETTLEMENTS Table
 CREATE TABLE IF NOT EXISTS public.settlements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     settlement_number VARCHAR(100) UNIQUE NOT NULL, -- e.g. SET-2026-000001
@@ -230,17 +287,16 @@ CREATE TABLE IF NOT EXISTS public.settlements (
     paid_at TIMESTAMP WITH TIME ZONE
 );
 
--- 19. Create AUDIT LOGS Table
+-- 24. Create AUDIT LOGS Table (Merged Columns)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
     user_name VARCHAR(255),
     action VARCHAR(255) NOT NULL,
-    module VARCHAR(255) NOT NULL,
+    module VARCHAR(255) DEFAULT 'General' NOT NULL,
     entity_id VARCHAR(255),
+    company_id UUID REFERENCES public.companies(id) ON DELETE SET NULL,
     details TEXT,
     ip_address VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-
-

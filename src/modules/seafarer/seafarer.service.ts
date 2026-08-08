@@ -409,7 +409,7 @@ export class SeafarerService {
         if (matchingLeadId) {
           await this.db
             .from('referral_leads')
-            .update({ status: 'Converted', updated_at: new Date().toISOString() })
+            .update({ status: 'Converted' })
             .eq('id', matchingLeadId);
         }
         console.log(`[Referral] Attributed commission ${createdCommissionId} to agent ${targetAgentId} for course ${course.name}`);

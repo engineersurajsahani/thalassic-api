@@ -380,8 +380,7 @@ export class AgentService {
         .from('referral_leads')
         .update({
           status: 'Under Review',
-          remarks: `Conflict detected: Registered by another agent. Under manual review.`,
-          updated_at: nowIso
+          remarks: `Conflict detected: Registered by another agent. Under manual review.`
         })
         .neq('agent_id', agentId)
         .or(`email.eq.${data.email},phone.eq.${data.phone}`)
