@@ -23,7 +23,7 @@ export class SupabaseService implements OnModuleInit {
   async onModuleInit() {
     try {
       const supabase = this.client;
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       const hashedPassword = await bcrypt.hash('password123', 10);
       const now = new Date();
 

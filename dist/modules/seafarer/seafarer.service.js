@@ -13,10 +13,13 @@ exports.SeafarerService = void 0;
 const common_1 = require("@nestjs/common");
 const crypto_1 = require("crypto");
 const supabase_service_1 = require("../supabase/supabase.service");
+const invoices_service_1 = require("../invoices/invoices.service");
 let SeafarerService = class SeafarerService {
     supabaseService;
-    constructor(supabaseService) {
+    invoicesService;
+    constructor(supabaseService, invoicesService) {
         this.supabaseService = supabaseService;
+        this.invoicesService = invoicesService;
     }
     get db() {
         return this.supabaseService.getClient();
@@ -214,62 +217,250 @@ let SeafarerService = class SeafarerService {
         if (error)
             throw new common_1.BadRequestException(error.message);
         console.log(`[Backend Enroll] User ${userId} enrolling in ${courseId} with referralCode: "${referralCode}"`);
-        if (referralCode && referralCode.trim().length > 0) {
-            try {
+        try {
+            let targetAgentId = '';
+            let targetCommissionRate = 5.0;
+            let commissionSource = 'General Commission';
+            let matchingLeadId = '';
+            let isConflict = false;
+            let conflictingAgents = [];
+            let targetAgentReferralCode = '';
+            const { data: seafarerUser } = await this.db
+                .from('User')
+                .select('name, email, phone')
+                .eq('id', userId)
+                .single();
+            if (referralCode && referralCode.trim().length > 0) {
                 const code = referralCode.trim().toUpperCase();
                 const { data: agentMeta } = await this.db
                     .from('agent_metadata')
-                    .select('user_id, general_commission')
+                    .select('user_id, general_commission, course_commissions, referral_code')
                     .eq('referral_code', code)
-                    .single();
-                if (agentMeta) {
-                    const parseFee = (feeStr) => {
-                        if (typeof feeStr === 'number')
-                            return feeStr;
-                        if (!feeStr)
-                            return 0;
-                        const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
-                        return parseFloat(cleaned) || 0;
-                    };
-                    const commissionRate = agentMeta.general_commission ?? 5;
-                    const courseFee = parseFee(course.fees);
-                    const commissionAmount = (courseFee * commissionRate) / 100;
-                    const { data: seafarerUser } = await this.db
-                        .from('User')
-                        .select('name, email, phone')
-                        .eq('id', userId)
-                        .single();
-                    const { error: commErr } = await this.db.from('commissions').insert({
-                        id: (0, crypto_1.randomUUID)(),
-                        agent_id: agentMeta.user_id,
+                    .maybeSingle();
+                if (!agentMeta) {
+                    throw new common_1.BadRequestException('Invalid Referral Code Error');
+                }
+                targetAgentId = agentMeta.user_id;
+                targetAgentReferralCode = agentMeta.referral_code || code;
+                const courseOverrides = agentMeta.course_commissions || {};
+                if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+                    targetCommissionRate = Number(courseOverrides[courseId]);
+                    commissionSource = 'Course Override';
+                }
+                else {
+                    targetCommissionRate = Number(agentMeta.general_commission) || 5.0;
+                    commissionSource = 'General Commission';
+                }
+            }
+            else if (seafarerUser) {
+                const nowIso = new Date().toISOString();
+                const { data: activeLeads } = await this.db
+                    .from('referral_leads')
+                    .select('id, agent_id, status, created_at')
+                    .in('status', ['New', 'Contacted', 'Registered', 'Pending', 'Under Review'])
+                    .gt('expiry_at', nowIso)
+                    .or(`email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`);
+                if (activeLeads && activeLeads.length > 0) {
+                    const uniqueAgentsMap = new Map();
+                    for (const lead of activeLeads) {
+                        uniqueAgentsMap.set(lead.agent_id, lead);
+                    }
+                    if (uniqueAgentsMap.size === 1) {
+                        const matchedLead = activeLeads[0];
+                        targetAgentId = matchedLead.agent_id;
+                        matchingLeadId = matchedLead.id;
+                        const { data: agentMeta } = await this.db
+                            .from('agent_metadata')
+                            .select('general_commission, course_commissions, referral_code')
+                            .eq('user_id', targetAgentId)
+                            .maybeSingle();
+                        targetAgentReferralCode = agentMeta?.referral_code || 'MATCHED_LEAD';
+                        const courseOverrides = agentMeta?.course_commissions || {};
+                        if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+                            targetCommissionRate = Number(courseOverrides[courseId]);
+                            commissionSource = 'Course Override';
+                        }
+                        else {
+                            targetCommissionRate = Number(agentMeta?.general_commission) || 5.0;
+                            commissionSource = 'General Commission';
+                        }
+                    }
+                    else if (uniqueAgentsMap.size > 1) {
+                        isConflict = true;
+                        conflictingAgents = Array.from(uniqueAgentsMap.values());
+                    }
+                }
+            }
+            const parseFee = (feeStr) => {
+                if (typeof feeStr === 'number')
+                    return feeStr;
+                if (!feeStr)
+                    return 0;
+                const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
+                return parseFloat(cleaned) || 0;
+            };
+            const courseFee = parseFee(course.fees);
+            let createdCommissionId;
+            if (targetAgentId) {
+                const commissionAmount = (courseFee * targetCommissionRate) / 100;
+                createdCommissionId = (0, crypto_1.randomUUID)();
+                const commObj = {
+                    id: createdCommissionId,
+                    agent_id: targetAgentId,
+                    purchase_id: data.id,
+                    seafarer_name: seafarerUser?.name || 'Seafarer',
+                    course_name: course.name || 'Course',
+                    course_fee: courseFee,
+                    commission_rate: targetCommissionRate,
+                    commission_amount: commissionAmount,
+                    commission_source: commissionSource,
+                    commission_version: 'v1.0',
+                    remarks: `Attributed via ${commissionSource} (${targetCommissionRate}%)`,
+                    status: 'Pending',
+                    created_at: new Date().toISOString(),
+                };
+                const { error: commErr } = await this.db.from('commissions').insert(commObj);
+                if (commErr && (commErr.code === 'PGRST204' || commErr.message?.includes('column'))) {
+                    const stdCommObj = {
+                        id: createdCommissionId,
+                        agent_id: targetAgentId,
                         purchase_id: data.id,
                         seafarer_name: seafarerUser?.name || 'Seafarer',
                         course_name: course.name || 'Course',
                         course_fee: courseFee,
-                        commission_rate: commissionRate,
+                        commission_rate: targetCommissionRate,
                         commission_amount: commissionAmount,
                         status: 'Pending',
                         created_at: new Date().toISOString(),
+                    };
+                    const { error: retryErr } = await this.db.from('commissions').insert(stdCommObj);
+                    if (retryErr)
+                        console.error('[Referral] Standard commission insert error:', retryErr.message);
+                }
+                else if (commErr) {
+                    console.error('[Referral] Commission insert error:', commErr.message);
+                }
+                try {
+                    await this.db.from('commission_status_history').insert({
+                        id: (0, crypto_1.randomUUID)(),
+                        commission_id: createdCommissionId,
+                        old_status: 'None',
+                        new_status: 'Pending',
+                        reason: 'Initial commission snapshot generated upon course checkout',
+                        changed_by_user_id: userId,
+                        changed_by_user_name: seafarerUser?.name || 'Seafarer',
+                        created_at: new Date().toISOString(),
                     });
-                    if (commErr) {
-                        console.error('[Referral] Failed to insert commission:', commErr.message);
+                }
+                catch (e) {
+                    console.warn('[Referral] History insert warning:', e);
+                }
+                if (matchingLeadId) {
+                    await this.db
+                        .from('referral_leads')
+                        .update({ status: 'Converted', updated_at: new Date().toISOString() })
+                        .eq('id', matchingLeadId);
+                }
+                console.log(`[Referral] Attributed commission ${createdCommissionId} to agent ${targetAgentId} for course ${course.name}`);
+            }
+            else if (isConflict) {
+                for (const lead of conflictingAgents) {
+                    const { data: agentMeta } = await this.db
+                        .from('agent_metadata')
+                        .select('general_commission, course_commissions')
+                        .eq('user_id', lead.agent_id)
+                        .maybeSingle();
+                    const courseOverrides = agentMeta?.course_commissions || {};
+                    let rate = agentMeta?.general_commission ?? 5.0;
+                    let source = 'General Commission';
+                    if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+                        rate = Number(courseOverrides[courseId]);
+                        source = 'Course Override';
                     }
-                    else {
-                        console.log(`[Referral] SUCCESS! Created commission ₹${commissionAmount} for agent ${agentMeta.user_id}`);
+                    const commissionAmount = (courseFee * rate) / 100;
+                    const commId = (0, crypto_1.randomUUID)();
+                    const commObjConflict = {
+                        id: commId,
+                        agent_id: lead.agent_id,
+                        purchase_id: data.id,
+                        seafarer_name: seafarerUser?.name || 'Seafarer',
+                        course_name: course.name || 'Course',
+                        course_fee: courseFee,
+                        commission_rate: rate,
+                        commission_amount: commissionAmount,
+                        commission_source: source,
+                        commission_version: 'v1.0',
+                        remarks: 'Frozen under manual conflict review',
+                        status: 'Under Review',
+                        created_at: new Date().toISOString(),
+                    };
+                    const { error: commErr } = await this.db.from('commissions').insert(commObjConflict);
+                    if (commErr && (commErr.code === 'PGRST204' || commErr.message?.includes('column'))) {
+                        await this.db.from('commissions').insert({
+                            id: commId,
+                            agent_id: lead.agent_id,
+                            purchase_id: data.id,
+                            seafarer_name: seafarerUser?.name || 'Seafarer',
+                            course_name: course.name || 'Course',
+                            course_fee: courseFee,
+                            commission_rate: rate,
+                            commission_amount: commissionAmount,
+                            status: 'Under Review',
+                            created_at: new Date().toISOString(),
+                        });
                     }
-                    if (seafarerUser) {
-                        await this.db
-                            .from('referral_leads')
-                            .update({ status: 'Converted', updated_at: new Date().toISOString() })
-                            .eq('agent_id', agentMeta.user_id)
-                            .in('status', ['New', 'Contacted', 'Registered'])
-                            .or(`email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`);
+                    try {
+                        await this.db.from('commission_status_history').insert({
+                            id: (0, crypto_1.randomUUID)(),
+                            commission_id: commId,
+                            old_status: 'None',
+                            new_status: 'Under Review',
+                            reason: 'Conflicting referral leads detected. Placed under manual review.',
+                            changed_by_user_id: userId,
+                            changed_by_user_name: seafarerUser?.name || 'Seafarer',
+                            created_at: new Date().toISOString(),
+                        });
+                    }
+                    catch (e) {
+                        console.warn('[Referral] History insert warning:', e);
                     }
                 }
             }
-            catch (commissionErr) {
-                console.error('[Referral] Unexpected error in commission flow:', commissionErr?.message);
+            const transactionId = `TXN-${data.id.substring(0, 8).toUpperCase()}`;
+            let agentNameForInvoice;
+            if (targetAgentId) {
+                const { data: agUser } = await this.db
+                    .from('User')
+                    .select('name')
+                    .eq('id', targetAgentId)
+                    .maybeSingle();
+                agentNameForInvoice = agUser?.name;
             }
+            await this.invoicesService.generateInvoice({
+                userId,
+                purchaseId: data.id,
+                agentId: targetAgentId || undefined,
+                commissionSnapshotId: createdCommissionId,
+                customerName: seafarerUser?.name || 'Seafarer',
+                customerEmail: seafarerUser?.email || '',
+                customerPhone: seafarerUser?.phone || '',
+                agentName: agentNameForInvoice,
+                agentReferralCode: targetAgentReferralCode || undefined,
+                courseName: course.name || 'Course',
+                courseFee: courseFee,
+                discount: 0,
+                finalAmount: courseFee,
+                transactionId,
+                paymentGateway: 'razorpay_production_mode',
+                paymentMethod: 'Online UPI/Card',
+                paymentDate: new Date().toISOString(),
+            });
+        }
+        catch (err) {
+            if (err instanceof common_1.BadRequestException) {
+                throw err;
+            }
+            console.error('[Referral] Unexpected error in commission & invoice flow:', err?.message);
         }
         return data;
     }
@@ -461,6 +652,7 @@ let SeafarerService = class SeafarerService {
 exports.SeafarerService = SeafarerService;
 exports.SeafarerService = SeafarerService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [supabase_service_1.SupabaseService])
+    __metadata("design:paramtypes", [supabase_service_1.SupabaseService,
+        invoices_service_1.InvoicesService])
 ], SeafarerService);
 //# sourceMappingURL=seafarer.service.js.map

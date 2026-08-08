@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SeafarerModule } from './modules/seafarer/seafarer.module';
 import { AgentAdminModule } from './modules/agent-admin/agent-admin.module';
 import { AgentModule } from './modules/agent/agent.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AgentModule } from './modules/agent/agent.module';
     SeafarerModule,
     AgentAdminModule,
     AgentModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

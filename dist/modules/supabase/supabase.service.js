@@ -32,7 +32,7 @@ let SupabaseService = class SupabaseService {
     async onModuleInit() {
         try {
             const supabase = this.client;
-            const bcrypt = require('bcrypt');
+            const bcrypt = require('bcryptjs');
             const hashedPassword = await bcrypt.hash('password123', 10);
             const now = new Date();
             const { data: existingAgent, error: agentCheckError } = await supabase

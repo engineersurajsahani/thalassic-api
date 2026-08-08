@@ -1,7 +1,9 @@
 import { SupabaseService } from '../supabase/supabase.service';
+import { InvoicesService } from '../invoices/invoices.service';
 export declare class SeafarerService {
     private supabaseService;
-    constructor(supabaseService: SupabaseService);
+    private invoicesService;
+    constructor(supabaseService: SupabaseService, invoicesService: InvoicesService);
     private get db();
     getDashboard(userId: string): Promise<{
         profileCompletion: number;

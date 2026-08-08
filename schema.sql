@@ -170,12 +170,67 @@ CREATE TABLE IF NOT EXISTS public.commissions (
     course_fee NUMERIC(10,2) NOT NULL,
     commission_rate NUMERIC(5,2) NOT NULL,
     commission_amount NUMERIC(10,2) NOT NULL,
+    commission_source VARCHAR(100) DEFAULT 'General Commission' NOT NULL,
+    commission_version VARCHAR(50) DEFAULT 'v1.0' NOT NULL,
+    remarks TEXT,
+    rejection_reason TEXT,
+    settlement_id UUID,
     status VARCHAR(50) DEFAULT 'Pending' NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     settled_at TIMESTAMP WITH TIME ZONE
 );
 
--- 16. Create AUDIT LOGS Table
+-- 16. Create COMMISSION STATUS HISTORY Table
+CREATE TABLE IF NOT EXISTS public.commission_status_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    commission_id UUID REFERENCES public.commissions(id) ON DELETE CASCADE NOT NULL,
+    old_status VARCHAR(50) NOT NULL,
+    new_status VARCHAR(50) NOT NULL,
+    reason TEXT,
+    changed_by_user_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
+    changed_by_user_name VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 17. Create INVOICES Table (Immutable Customer & Course Snapshot)
+CREATE TABLE IF NOT EXISTS public.invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number VARCHAR(100) UNIQUE NOT NULL, -- e.g. HOC-2026-000001 or HAC-2026-000001
+    invoice_type VARCHAR(10) NOT NULL, -- 'HOC' or 'HAC'
+    user_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    purchase_id UUID REFERENCES public."Enrollment"(id) ON DELETE CASCADE NOT NULL,
+    agent_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
+    commission_snapshot_id UUID REFERENCES public.commissions(id) ON DELETE SET NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    customer_email VARCHAR(255) NOT NULL,
+    customer_phone VARCHAR(50) NOT NULL,
+    agent_name VARCHAR(255),
+    agent_referral_code VARCHAR(100),
+    course_name VARCHAR(255) NOT NULL,
+    course_fee NUMERIC(10,2) NOT NULL,
+    discount NUMERIC(10,2) DEFAULT 0.00 NOT NULL,
+    final_amount NUMERIC(10,2) NOT NULL,
+    payment_gateway VARCHAR(100) DEFAULT 'razorpay' NOT NULL,
+    transaction_id VARCHAR(100) UNIQUE NOT NULL, -- Idempotency protection against duplicate webhooks
+    payment_method VARCHAR(50) DEFAULT 'Online UPI/Card' NOT NULL,
+    payment_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Paid' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 18. Create SETTLEMENTS Table
+CREATE TABLE IF NOT EXISTS public.settlements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    settlement_number VARCHAR(100) UNIQUE NOT NULL, -- e.g. SET-2026-000001
+    agent_id UUID REFERENCES public."User"(id) ON DELETE CASCADE NOT NULL,
+    hac_invoice_number VARCHAR(100),
+    total_amount NUMERIC(10,2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Pending' NOT NULL, -- 'Pending', 'Approved', 'Paid'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    paid_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 19. Create AUDIT LOGS Table
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
@@ -187,4 +242,5 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     ip_address VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
 

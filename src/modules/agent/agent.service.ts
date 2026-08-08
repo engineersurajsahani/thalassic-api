@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AgentService {
@@ -127,6 +127,12 @@ export class AgentService {
 
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+    const { data: meta } = await db
+      .from('agent_metadata')
+      .select('referral_code')
+      .eq('user_id', agentId)
+      .maybeSingle();
+
     return {
       stats: {
         totalLeads: totalLeads || 0,
@@ -138,6 +144,7 @@ export class AgentService {
         paidCommission,
       },
       recentActivities: activities.slice(0, 5),
+      referralCode: meta?.referral_code || 'PENDING'
     };
   }
 
@@ -174,26 +181,38 @@ export class AgentService {
   async onboard(agentId: string, data: any) {
     const db = this.getDb();
 
-    // 1. Validate Referral Code Uniqueness
-    const refCodeClean = data.referralCode?.trim().toUpperCase();
-    if (!refCodeClean) {
-      throw new BadRequestException('Referral code is required.');
-    }
-
-    const { data: duplicate } = await db
-      .from('agent_metadata')
-      .select('user_id')
-      .eq('referral_code', refCodeClean)
-      .single();
-
-    if (duplicate && duplicate.user_id !== agentId) {
-      throw new ConflictException('Referral code is already taken. Please choose a unique one.');
-    }
-
-    // 2. Fetch current record to enforce immutability at the service layer
+    // 1. Fetch current record to enforce immutability at the service layer
     const currentMeta = await this.getMetadata(agentId);
-    if (currentMeta.referral_code && currentMeta.referral_code !== refCodeClean) {
-      throw new BadRequestException('Referral code is already set and cannot be modified.');
+    let refCodeClean = currentMeta.referral_code;
+
+    if (!refCodeClean) {
+      // Auto-generate a unique permanent referral code (e.g. KISH25 or OCEAN25)
+      const baseName = (data.name || 'AGENT').trim().toUpperCase().replace(/[^A-Z]/g, '');
+      const base = baseName.length >= 3 ? baseName.slice(0, 5) : 'OCEAN';
+      
+      let isUnique = false;
+      let attempts = 0;
+      while (!isUnique && attempts < 10) {
+        const suffix = Math.floor(10 + Math.random() * 90); // 2-digit suffix
+        const candidate = `${base}${suffix}`;
+        
+        const { data: dup } = await db
+          .from('agent_metadata')
+          .select('user_id')
+          .eq('referral_code', candidate)
+          .maybeSingle();
+
+        if (!dup) {
+          refCodeClean = candidate;
+          isUnique = true;
+        }
+        attempts++;
+      }
+
+      if (!isUnique) {
+        // Fallback to 4-digit random suffix to guarantee absolute uniqueness
+        refCodeClean = `${base}${Math.floor(1000 + Math.random() * 9000)}`;
+      }
     }
 
     // 3. Update agent_metadata
@@ -302,23 +321,36 @@ export class AgentService {
 
   async createLead(agentId: string, data: any) {
     const db = this.getDb();
+    const nowIso = new Date().toISOString();
 
-    // Check alternate duplicate lead email/phone under active status (45 days)
-    const { data: duplicate } = await db
+    // 1. Check if the current agent already has an active lead for this email/phone
+    const { data: ownDuplicate } = await db
       .from('referral_leads')
       .select('id')
       .eq('agent_id', agentId)
       .or(`email.eq.${data.email},phone.eq.${data.phone}`)
-      .gt('expiry_at', new Date().toISOString())
-      .in('status', ['New', 'Contacted', 'Registered'])
+      .gt('expiry_at', nowIso)
+      .in('status', ['New', 'Contacted', 'Registered', 'Under Review'])
       .limit(1);
 
-    if (duplicate && duplicate.length > 0) {
-      throw new BadRequestException('An active referral lead with this email or mobile number already exists.');
+    if (ownDuplicate && ownDuplicate.length > 0) {
+      throw new BadRequestException('You have already registered an active lead with this email or mobile number.');
     }
 
+    // 2. Check if another agent has registered an active lead for this email/phone
+    const { data: otherLeads } = await db
+      .from('referral_leads')
+      .select('id, agent_id, status')
+      .neq('agent_id', agentId)
+      .or(`email.eq.${data.email},phone.eq.${data.phone}`)
+      .gt('expiry_at', nowIso)
+      .in('status', ['New', 'Contacted', 'Registered', 'Under Review']);
+
+    const isConflict = otherLeads && otherLeads.length > 0;
+    const leadStatus = isConflict ? 'Under Review' : 'New';
+
     const leadId = randomUUID();
-    const createdAt = new Date().toISOString();
+    const createdAt = nowIso;
     const expiryAt = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: newLead, error } = await db
@@ -331,8 +363,8 @@ export class AgentService {
         phone: data.phone,
         city: data.city || null,
         course_id: data.courseId || null,
-        status: 'New',
-        remarks: data.remarks || null,
+        status: leadStatus,
+        remarks: isConflict ? 'Conflict detected: Registered by multiple agents. Under manual review.' : (data.remarks || null),
         created_at: createdAt,
         expiry_at: expiryAt
       })
@@ -340,6 +372,45 @@ export class AgentService {
       .single();
 
     if (error) throw new BadRequestException(error.message);
+
+    // 3. If conflict exists, freeze existing leads and notify Admin
+    if (isConflict) {
+      // Update all other matching leads to 'Under Review'
+      await db
+        .from('referral_leads')
+        .update({
+          status: 'Under Review',
+          remarks: `Conflict detected: Registered by another agent. Under manual review.`,
+          updated_at: nowIso
+        })
+        .neq('agent_id', agentId)
+        .or(`email.eq.${data.email},phone.eq.${data.phone}`)
+        .gt('expiry_at', nowIso)
+        .in('status', ['New', 'Contacted', 'Registered']);
+
+      // Notify the agent admin
+      const { data: admins } = await db.from('User').select('id').eq('role', 'agent_admin');
+      for (const admin of (admins || [])) {
+        await db.from('Notification').insert({
+          id: randomUUID(),
+          userId: admin.id,
+          title: 'Referral Lead Conflict Detected',
+          message: `Multiple agents have registered the same lead: ${data.name || 'Seafarer'} (${data.email}). Please resolve this conflict in the Manual Review panel.`,
+          isRead: false,
+          createdAt: nowIso
+        });
+      }
+
+      // Log conflict in audit_logs
+      await this.logAction(
+        agentId,
+        'System',
+        'REFERRAL_CONFLICT',
+        'Referral Leads',
+        leadId,
+        `Referral conflict triggered for seafarer ${data.name} (${data.email})`
+      );
+    }
 
     const { data: userRec } = await db.from('User').select('name').eq('id', agentId).single();
     await this.logAction(
@@ -359,6 +430,11 @@ export class AgentService {
     
     // Ownership check (throws if not owned)
     const currentLead = await this.getLeadById(agentId, leadId);
+
+    // PRD 8.4 Business Rule: Agents may edit only Pending / New Leads. Expired or Converted leads are read-only.
+    if (currentLead.status !== 'Pending' && currentLead.status !== 'New') {
+      throw new BadRequestException('PRD 8.4 Violation: Agents may edit only Pending leads. Expired or Converted leads are read-only.');
+    }
 
     // Only allow updating specific fields
     const { error } = await db

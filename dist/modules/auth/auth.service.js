@@ -46,7 +46,7 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const jwt_1 = require("@nestjs/jwt");
-const bcrypt = __importStar(require("bcrypt"));
+const bcrypt = __importStar(require("bcryptjs"));
 const crypto_1 = require("crypto");
 const supabase_service_1 = require("../supabase/supabase.service");
 const ROLE_MAP = {
@@ -81,6 +81,20 @@ let AuthService = class AuthService {
         if (!isPasswordValid) {
             throw new common_1.BadRequestException('Invalid email or password');
         }
+        let onboardingStatus = null;
+        if (user.role?.toUpperCase() === 'AGENT') {
+            const { data: meta } = await supabase
+                .from('agent_metadata')
+                .select('onboarding_status')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (meta) {
+                onboardingStatus = meta.onboarding_status;
+            }
+            else {
+                onboardingStatus = 'Invited';
+            }
+        }
         const payload = {
             sub: user.id,
             email: user.email,
@@ -98,6 +112,7 @@ let AuthService = class AuthService {
                 email: user.email,
                 role: user.role,
                 phone: user.phone ?? null,
+                onboardingStatus,
             },
         };
     }
@@ -167,12 +182,12 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('User not found');
         }
         let onboardingStatus = null;
-        if (user.role === 'AGENT') {
+        if (user.role?.toUpperCase() === 'AGENT') {
             const { data: meta } = await supabase
                 .from('agent_metadata')
                 .select('onboarding_status')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
             if (meta) {
                 onboardingStatus = meta.onboarding_status;
             }

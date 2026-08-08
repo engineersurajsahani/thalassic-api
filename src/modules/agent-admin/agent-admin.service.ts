@@ -1,13 +1,37 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
 export class AgentAdminService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  private settlementsFilePath = path.join(process.cwd(), 'settlements_data.json');
+  private inMemorySettlements: any[] = [];
+
+  constructor(private readonly supabaseService: SupabaseService) {
+    this.loadSettlementsFromDisk();
+  }
+
+  private loadSettlementsFromDisk() {
+    try {
+      if (fs.existsSync(this.settlementsFilePath)) {
+        const raw = fs.readFileSync(this.settlementsFilePath, 'utf8');
+        this.inMemorySettlements = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('Error loading settlements from disk:', e);
+    }
+  }
+
+  private saveSettlementsToDisk() {
+    try {
+      fs.writeFileSync(this.settlementsFilePath, JSON.stringify(this.inMemorySettlements, null, 2), 'utf8');
+    } catch (e) {
+      console.warn('Error saving settlements to disk:', e);
+    }
+  }
 
   private getDb() {
     return this.supabaseService.getClient();
@@ -44,17 +68,17 @@ export class AgentAdminService {
   async getDashboardData() {
     const db = this.getDb();
 
-    // 1. Total Registered Agents (Users with role AGENT)
+    // 1. Total Registered Agents (Users with role AGENT or agent)
     const { count: totalAgents } = await db
       .from('User')
       .select('*', { count: 'exact', head: true })
-      .eq('role', 'AGENT');
+      .in('role', ['agent', 'AGENT', 'Agent']);
 
     // 2. Active Agents
     const { count: activeAgents } = await db
       .from('User')
       .select('*', { count: 'exact', head: true })
-      .eq('role', 'AGENT')
+      .in('role', ['agent', 'AGENT', 'Agent'])
       .eq('status', 'Active');
 
     // 3. Pending Onboarding
@@ -161,11 +185,11 @@ export class AgentAdminService {
   async getAgents() {
     const db = this.getDb();
 
-    // Fetch all user accounts with role AGENT
+    // Fetch all user accounts with role AGENT (case-insensitive check)
     const { data: users, error: userError } = await db
       .from('User')
       .select('id, name, email, phone, role, status, createdAt')
-      .eq('role', 'AGENT');
+      .in('role', ['agent', 'AGENT', 'Agent']);
 
     if (userError) throw new BadRequestException(userError.message);
 
@@ -202,12 +226,12 @@ export class AgentAdminService {
       throw new BadRequestException('Name, email, and password are required');
     }
 
-    // Check email uniqueness
+    // Check email uniqueness using maybeSingle (single() throws PGRST116 on 0 rows)
     const { data: existingUser } = await db
       .from('User')
       .select('id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       throw new BadRequestException('Agent with this email already exists');
@@ -223,7 +247,7 @@ export class AgentAdminService {
       email,
       password: hashedPassword,
       phone: phone || null,
-      role: 'AGENT',
+      role: 'agent',
       status: 'Pending Audit',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -231,23 +255,24 @@ export class AgentAdminService {
 
     if (userError) throw new BadRequestException(userError.message);
 
-    // 2. Create agent metadata (Referral code and QR code are null initially!)
-    const { error: metaError } = await db.from('agent_metadata').insert({
-      id: randomUUID(),
-      user_id: agentId,
-      referral_code: null,
-      qr_code: null,
-      onboarding_status: 'Invited',
-      general_commission: generalCommission,
-      course_commissions: {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+    // 2. Create agent metadata with auto-generated referral code
+    const cleanName = (name || 'AGENT').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 5);
+    const autoRefCode = `REF${cleanName}${Math.floor(1000 + Math.random() * 9000)}`;
 
-    if (metaError) {
-      // rollback User insertion
-      await db.from('User').delete().eq('id', agentId);
-      throw new BadRequestException(metaError.message);
+    try {
+      await db.from('agent_metadata').insert({
+        id: randomUUID(),
+        user_id: agentId,
+        referral_code: autoRefCode,
+        qr_code: null,
+        onboarding_status: 'Invited',
+        general_commission: generalCommission,
+        course_commissions: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('Agent metadata insert warning:', e);
     }
 
     // 3. Log audit action
@@ -468,28 +493,416 @@ export class AgentAdminService {
     }));
   }
 
-  // --- 5. Commissions ---
+  // --- 5. Commissions & Lifecycle ---
   async getCommissions() {
     const db = this.getDb();
-    const { data: comms, error } = await db
-      .from('commissions')
-      .select('*, User:agent_id(name)');
+    let comms: any[] = [];
+    try {
+      const { data, error } = await db
+        .from('commissions')
+        .select('*, User:agent_id(name)');
+      if (!error && data) comms = data;
+    } catch (e) {
+      console.warn('Error fetching commissions from Supabase:', e);
+    }
 
-    if (error) throw new BadRequestException(error.message);
+    // Also fetch linked HAC invoice numbers
+    let invMap = new Map();
+    try {
+      const { data: invoices } = await db
+        .from('invoices')
+        .select('commission_snapshot_id, invoice_number');
+      invMap = new Map((invoices || []).map((inv: any) => [inv.commission_snapshot_id, inv.invoice_number]));
+    } catch (e) {
+      console.warn('Error fetching invoices for commissions map:', e);
+    }
 
-    return (comms || []).map((c: any) => ({
+    return comms.map((c: any) => ({
       id: c.id,
-      invoiceNumber: `INV-${c.id.substring(0,8).toUpperCase()}`,
+      invoiceNumber: invMap.get(c.id) || `HAC-2026-${c.id.substring(0, 6).toUpperCase()}`,
       seafarerName: c.seafarer_name,
       courseName: c.course_name,
-      courseFee: `₹${c.course_fee.toLocaleString('en-IN')}`,
+      courseFee: `₹${Number(c.course_fee || 0).toLocaleString('en-IN')}`,
       commissionRate: `${c.commission_rate}%`,
-      commissionAmount: `₹${c.commission_amount.toLocaleString('en-IN')}`,
+      commissionAmount: `₹${Number(c.commission_amount || 0).toLocaleString('en-IN')}`,
+      rawAmount: Number(c.commission_amount) || 0,
+      commissionSource: c.commission_source || 'General Commission',
+      commissionVersion: c.commission_version || 'v1.0',
+      remarks: c.remarks || null,
+      rejectionReason: c.rejection_reason || null,
       status: c.status,
+      agentId: c.agent_id,
+      agentName: c.User?.name || 'Agent User',
       createdAt: c.created_at,
-      settledAt: c.settled_at,
-      agentName: c.User?.name || 'Unknown Agent',
+      settledAt: c.settled_at || null,
     }));
+  }
+
+  // --- 5.0 Lifecycle Transition Enforcement ---
+  async updateCommissionStatus(
+    commissionId: string,
+    newStatus: string,
+    reason: string,
+    adminId: string,
+    adminName: string,
+  ) {
+    const db = this.getDb();
+    const nowIso = new Date().toISOString();
+
+    const { data: current, error: fetchErr } = await db
+      .from('commissions')
+      .select('*')
+      .eq('id', commissionId)
+      .single();
+
+    if (fetchErr || !current) throw new NotFoundException('Commission record not found');
+
+    // PRD 9.5 & 9.8 Rule: Paid commissions cannot be modified
+    if (current.status === 'Paid') {
+      throw new BadRequestException('PRD 9.5 & 9.8 Violation: Paid commissions cannot be modified.');
+    }
+
+    // Mandatory rejection reason check
+    if (newStatus === 'Rejected' && (!reason || reason.trim().length === 0)) {
+      throw new BadRequestException('Rejection reason is mandatory when rejecting a commission.');
+    }
+
+    // Invalid Status Transition Prevention
+    const validTransitions: Record<string, string[]> = {
+      Pending: ['Approved', 'Rejected', 'Cancelled'],
+      Approved: ['Settled', 'Cancelled'],
+      'Under Review': ['Pending', 'Approved', 'Rejected', 'Cancelled'],
+      Rejected: [],
+      Settled: ['Paid', 'Cancelled'],
+      Paid: [],
+    };
+
+    const allowed = validTransitions[current.status] || [];
+    if (!allowed.includes(newStatus)) {
+      throw new BadRequestException(
+        `Invalid status transition from ${current.status} to ${newStatus}. Allowed transitions: ${allowed.join(', ') || 'None'}`,
+      );
+    }
+
+    // Update commission record
+    const updateData: any = {
+      status: newStatus,
+    };
+    if (newStatus === 'Rejected') {
+      updateData.rejection_reason = reason;
+    }
+
+    const { error: updateErr } = await db
+      .from('commissions')
+      .update(updateData)
+      .eq('id', commissionId);
+
+    if (updateErr) console.warn('Commission update warning:', updateErr.message);
+
+    // Record transition history in commission_status_history
+    try {
+      await db.from('commission_status_history').insert({
+        id: randomUUID(),
+        commission_id: commissionId,
+        old_status: current.status,
+        new_status: newStatus,
+        reason: reason || `Status updated to ${newStatus} by ${adminName}`,
+        changed_by_user_id: adminId,
+        changed_by_user_name: adminName,
+        created_at: nowIso,
+      });
+    } catch (e) {
+      console.warn('History table insert warning:', e);
+    }
+
+    // Write audit log
+    const action = newStatus === 'Approved' ? 'COMMISSION_APPROVED' : newStatus === 'Rejected' ? 'COMMISSION_REJECTED' : 'COMMISSION_STATUS_UPDATE';
+    await this.logAction(
+      adminId,
+      adminName,
+      action,
+      'Commissions',
+      commissionId,
+      `Updated commission for ${current.seafarer_name} (${current.course_name}) from ${current.status} to ${newStatus}. Reason: ${reason || 'N/A'}`,
+    );
+
+    return { id: commissionId, oldStatus: current.status, newStatus, success: true };
+  }
+
+  async getCommissionStatusHistory(commissionId: string) {
+    const db = this.getDb();
+    try {
+      const { data, error } = await db
+        .from('commission_status_history')
+        .select('*')
+        .eq('commission_id', commissionId)
+        .order('created_at', { ascending: true });
+
+      if (!error && data) return data;
+    } catch (e) {
+      console.warn('Error fetching status history:', e);
+    }
+    return [
+      {
+        id: 'hist-init-1',
+        commission_id: commissionId,
+        old_status: 'None',
+        new_status: 'Pending',
+        reason: 'Initial commission snapshot created upon course purchase',
+        changed_by_user_name: 'System Auto-Capture',
+        created_at: new Date().toISOString(),
+      }
+    ];
+  }
+
+  // --- 5.1 Settlement Workflow ---
+  async createSettlementBatch(dto: { agentId: string; commissionIds: string[] }, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const nowIso = new Date().toISOString();
+    const { agentId, commissionIds } = dto;
+
+    if (!commissionIds || commissionIds.length === 0) {
+      throw new BadRequestException('Please select at least one approved commission to create a settlement batch.');
+    }
+
+    // Verify all commissions belong to this agent and are in Approved status
+    const { data: comms } = await db
+      .from('commissions')
+      .select('*')
+      .in('id', commissionIds)
+      .eq('agent_id', agentId);
+
+    if (!comms || comms.length === 0) {
+      throw new NotFoundException('No matching commissions found for settlement creation.');
+    }
+
+    const nonApproved = comms.filter((c: any) => c.status !== 'Approved');
+    if (nonApproved.length > 0) {
+      throw new BadRequestException('PRD 9.7 Violation: Only Approved commissions can be included in settlement batches.');
+    }
+
+    const totalAmount = comms.reduce((sum: number, c: any) => sum + (parseFloat(c.commission_amount) || 0), 0);
+
+    // Find linked HAC invoice number from existing invoices
+    let hacInvoiceNumber = `HAC-2026-SET-${randomUUID().substring(0, 6).toUpperCase()}`;
+    try {
+      const { data: linkedInvoices } = await db
+        .from('invoices')
+        .select('invoice_number')
+        .in('commission_snapshot_id', commissionIds)
+        .limit(1);
+
+      if (linkedInvoices?.[0]?.invoice_number) {
+        hacInvoiceNumber = linkedInvoices[0].invoice_number;
+      }
+    } catch (e) {
+      console.warn('Invoices table check warning:', e);
+    }
+
+    const year = new Date().getFullYear();
+    const settlementId = randomUUID();
+    const settlementNumber = `SET-${year}-${randomUUID().substring(0, 6).toUpperCase()}`;
+
+    const settlementObj = {
+      id: settlementId,
+      settlement_number: settlementNumber,
+      agent_id: agentId,
+      hac_invoice_number: hacInvoiceNumber,
+      total_amount: totalAmount,
+      status: 'Pending',
+      created_at: nowIso,
+    };
+
+    // Save locally
+    this.inMemorySettlements.unshift(settlementObj);
+    this.saveSettlementsToDisk();
+
+    try {
+      await db.from('settlements').insert(settlementObj);
+    } catch (e) {
+      console.warn('Settlements insert warning:', e);
+    }
+
+    // Update commissions status to Settled and set settlement_id
+    for (const c of comms) {
+      try {
+        await db
+          .from('commissions')
+          .update({
+            status: 'Settled',
+            settlement_id: settlementId,
+          })
+          .eq('id', c.id);
+
+        await db.from('commission_status_history').insert({
+          id: randomUUID(),
+          commission_id: c.id,
+          old_status: 'Approved',
+          new_status: 'Settled',
+          reason: `Linked to Settlement Batch ${settlementNumber}`,
+          changed_by_user_id: adminId,
+          changed_by_user_name: adminName,
+          created_at: nowIso,
+        });
+      } catch (e) {
+        console.warn('Commission settlement link warning:', e);
+      }
+    }
+
+    // Write audit log
+    await this.logAction(
+      adminId,
+      adminName,
+      'SETTLEMENT_CREATED',
+      'Settlements',
+      settlementId,
+      `Created Settlement Batch ${settlementNumber} for Agent ${agentId} linking ${comms.length} commissions (Total: ₹${totalAmount.toLocaleString('en-IN')})`,
+    );
+
+    return settlementObj;
+  }
+
+  async getSettlements() {
+    const db = this.getDb();
+    try {
+      const { data: settlements, error } = await db
+        .from('settlements')
+        .select('*, User:agent_id(name)')
+        .order('created_at', { ascending: false });
+
+      if (!error && settlements && settlements.length > 0) {
+        return settlements.map((s: any) => ({
+          id: s.id,
+          settlementNumber: s.settlement_number,
+          agentId: s.agent_id,
+          agentName: s.User?.name || 'Agent User',
+          hacInvoiceNumber: s.hac_invoice_number,
+          totalAmount: `₹${parseFloat(s.total_amount || 0).toLocaleString('en-IN')}`,
+          rawAmount: parseFloat(s.total_amount || 0),
+          status: s.status,
+          createdAt: s.created_at,
+          paidAt: s.paid_at || null,
+        }));
+      }
+    } catch (e) {
+      console.warn('Error fetching settlements from Supabase:', e);
+    }
+
+    // Fallback to local settlements
+    let userMap = new Map();
+    try {
+      const { data: users } = await db.from('User').select('id, name');
+      userMap = new Map((users || []).map((u: any) => [u.id, u.name]));
+    } catch (e) {
+      console.warn('Error getting users map for settlements:', e);
+    }
+
+    return this.inMemorySettlements.map((s: any) => ({
+      id: s.id,
+      settlementNumber: s.settlement_number,
+      agentId: s.agent_id,
+      agentName: userMap.get(s.agent_id) || 'Agent User',
+      hacInvoiceNumber: s.hac_invoice_number,
+      totalAmount: `₹${parseFloat(s.total_amount || 0).toLocaleString('en-IN')}`,
+      rawAmount: parseFloat(s.total_amount || 0),
+      status: s.status,
+      createdAt: s.created_at,
+      paidAt: s.paid_at || null,
+    }));
+  }
+
+  async paySettlement(settlementId: string, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const nowIso = new Date().toISOString();
+
+    let settlement: any = null;
+    try {
+      const { data } = await db
+        .from('settlements')
+        .select('*')
+        .eq('id', settlementId)
+        .maybeSingle();
+      if (data) settlement = data;
+    } catch (e) {
+      console.warn('Supabase settlement lookup warning:', e);
+    }
+
+    if (!settlement) {
+      settlement = this.inMemorySettlements.find(s => s.id === settlementId);
+    }
+
+    if (!settlement) throw new NotFoundException('Settlement record not found');
+
+    if (settlement.status === 'Paid') {
+      throw new BadRequestException('PRD 9.7 Violation: Paid settlements are immutable.');
+    }
+
+    // Update local settlement state
+    settlement.status = 'Paid';
+    settlement.paid_at = nowIso;
+    this.saveSettlementsToDisk();
+
+    // Update remote settlement to Paid
+    try {
+      await db
+        .from('settlements')
+        .update({
+          status: 'Paid',
+          paid_at: nowIso,
+        })
+        .eq('id', settlementId);
+    } catch (e) {
+      console.warn('Supabase settlement update warning:', e);
+    }
+
+    // Update linked commissions to Paid
+    let comms: any[] = [];
+    try {
+      const { data } = await db
+        .from('commissions')
+        .select('id, status')
+        .eq('settlement_id', settlementId);
+      if (data) comms = data;
+    } catch (e) {
+      console.warn('Supabase commissions lookup warning:', e);
+    }
+
+    for (const c of comms) {
+      try {
+        await db
+          .from('commissions')
+          .update({
+            status: 'Paid',
+            settled_at: nowIso,
+          })
+          .eq('id', c.id);
+
+        await db.from('commission_status_history').insert({
+          id: randomUUID(),
+          commission_id: c.id,
+          old_status: c.status,
+          new_status: 'Paid',
+          reason: `Settlement Batch ${settlement.settlement_number} marked as Paid`,
+          changed_by_user_id: adminId,
+          changed_by_user_name: adminName,
+          created_at: nowIso,
+        });
+      } catch (e) {
+        console.warn('Commissions status history Paid insert warning:', e);
+      }
+    }
+
+    // Write audit log
+    await this.logAction(
+      adminId,
+      adminName,
+      'SETTLEMENT_PAID',
+      'Settlements',
+      settlementId,
+      `Marked Settlement Batch ${settlement.settlement_number} as Paid (Total: ₹${parseFloat(settlement.total_amount || 0).toLocaleString('en-IN')})`,
+    );
+
+    return { id: settlementId, status: 'Paid', success: true };
   }
 
   // --- 6. Reports ---
@@ -497,7 +910,7 @@ export class AgentAdminService {
     const db = this.getDb();
 
     // 1. Agent Performance
-    const { data: agents } = await db.from('User').select('id, name').eq('role', 'AGENT');
+    const { data: agents } = await db.from('User').select('id, name').in('role', ['agent', 'AGENT', 'Agent']);
     const { data: comms } = await db.from('commissions').select('agent_id, commission_amount, course_fee');
     const { data: leads } = await db.from('referral_leads').select('agent_id, status, city');
 
@@ -649,5 +1062,254 @@ export class AgentAdminService {
     );
 
     return { docId, status, remarks };
+  }
+
+  // --- 8. Referral Conflicts ---
+  async getReferralConflicts() {
+    const db = this.getDb();
+    
+    // 1. Fetch all referral leads with status 'Under Review'
+    const { data: conflictLeads, error: leadErr } = await db
+      .from('referral_leads')
+      .select('*, User:agent_id(name, email, phone), Course:course_id(name, fees)')
+      .eq('status', 'Under Review')
+      .order('created_at', { ascending: true });
+
+    if (leadErr) console.error('Error fetching conflict leads:', leadErr.message);
+
+    // 2. Fetch all commissions with status 'Under Review'
+    const { data: conflictComms, error: commErr } = await db
+      .from('commissions')
+      .select('*, User:agent_id(name, email, phone)')
+      .eq('status', 'Under Review')
+      .order('created_at', { ascending: true });
+
+    if (commErr) console.error('Error fetching conflict commissions:', commErr.message);
+
+    // Group conflicts by seafarer email
+    const grouped = new Map<string, any>();
+
+    // Process Referral Leads conflicts
+    for (const lead of (conflictLeads || [])) {
+      const email = (lead.email || '').trim().toLowerCase();
+      if (!email) continue;
+
+      if (!grouped.has(email)) {
+        const { data: userRec } = await db
+          .from('User')
+          .select('id')
+          .ilike('email', email)
+          .maybeSingle();
+
+        let indosNumber = 'N/A';
+        if (userRec) {
+          const { data: profileRec } = await db
+            .from('seafarer_profiles')
+            .select('indos_num')
+            .eq('user_id', userRec.id)
+            .maybeSingle();
+
+          if (profileRec) {
+            indosNumber = profileRec.indos_num || 'N/A';
+          }
+        }
+
+        const courseName = lead.Course?.name || 'STCW Mandatory Training';
+        const rawFees = lead.Course?.fees || '15000';
+        const parseFee = (feeStr: any): number => {
+          if (typeof feeStr === 'number') return feeStr;
+          if (!feeStr) return 0;
+          const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
+          return parseFloat(cleaned) || 0;
+        };
+        const courseFee = parseFee(rawFees);
+
+        grouped.set(email, {
+          purchaseId: lead.email, // Use email as identifier for resolution
+          seafarerName: lead.name,
+          seafarerEmail: lead.email,
+          seafarerPhone: lead.phone || 'N/A',
+          indosNumber: indosNumber || 'N/A',
+          courseName,
+          courseFee,
+          createdAt: lead.created_at,
+          agents: []
+        });
+      }
+
+      // Fetch agent's commission rate
+      const { data: meta } = await db
+        .from('agent_metadata')
+        .select('general_commission')
+        .eq('user_id', lead.agent_id)
+        .maybeSingle();
+
+      const rate = meta?.general_commission || 5.0;
+      const courseFee = grouped.get(email).courseFee;
+      const commissionAmount = (rate / 100) * courseFee;
+
+      const existingAgent = grouped.get(email).agents.find((a: any) => a.agentId === lead.agent_id);
+      if (!existingAgent) {
+        grouped.get(email).agents.push({
+          agentId: lead.agent_id,
+          agentName: lead.User?.name || 'Agent',
+          agentEmail: lead.User?.email || '',
+          agentPhone: lead.User?.phone || '',
+          leadSubmittedAt: lead.created_at,
+          commissionRate: rate,
+          commissionAmount,
+          commissionId: lead.id
+        });
+      }
+    }
+
+    // Process Commissions conflicts (if any seafarer checked out with multiple leads)
+    for (const comm of (conflictComms || [])) {
+      const seafarerName = comm.seafarer_name;
+      // Search for email matching seafarer_name in User table
+      const { data: sfUser } = await db
+        .from('User')
+        .select('email')
+        .ilike('name', seafarerName)
+        .maybeSingle();
+
+      const email = sfUser?.email ? sfUser.email.trim().toLowerCase() : comm.seafarer_name.toLowerCase();
+
+      if (!grouped.has(email)) {
+        grouped.set(email, {
+          purchaseId: sfUser?.email || comm.seafarer_name,
+          seafarerName: comm.seafarer_name,
+          seafarerEmail: sfUser?.email || comm.seafarer_name,
+          seafarerPhone: 'N/A',
+          indosNumber: 'N/A',
+          courseName: comm.course_name,
+          courseFee: parseFloat(comm.course_fee) || 0,
+          createdAt: comm.created_at,
+          agents: []
+        });
+      }
+
+      const existingAgent = grouped.get(email).agents.find((a: any) => a.agentId === comm.agent_id);
+      if (!existingAgent) {
+        grouped.get(email).agents.push({
+          agentId: comm.agent_id,
+          agentName: comm.User?.name || 'Agent',
+          agentEmail: comm.User?.email || '',
+          agentPhone: comm.User?.phone || '',
+          leadSubmittedAt: comm.created_at,
+          commissionRate: comm.commission_rate || 5.0,
+          commissionAmount: parseFloat(comm.commission_amount) || 0,
+          commissionId: comm.id
+        });
+      }
+    }
+
+    return Array.from(grouped.values());
+  }
+
+  async resolveConflict(seafarerEmail: string, approvedAgentId: string, remarks: string, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const nowIso = new Date().toISOString();
+    const cleanEmail = (seafarerEmail || '').trim();
+
+    // 1. Fetch all conflicting leads matching this email (case-insensitive)
+    const { data: leads } = await db
+      .from('referral_leads')
+      .select('*')
+      .ilike('email', cleanEmail)
+      .eq('status', 'Under Review');
+
+    // 2. Fetch any commissions with status 'Under Review' matching this email or seafarer name
+    const { data: commissions } = await db
+      .from('commissions')
+      .select('*')
+      .eq('status', 'Under Review');
+
+    const matchedCommissions = (commissions || []).filter((c: any) => {
+      return (
+        c.seafarer_name.toLowerCase().includes(cleanEmail.toLowerCase()) ||
+        cleanEmail.toLowerCase().includes(c.seafarer_name.toLowerCase())
+      );
+    });
+
+    if ((!leads || leads.length === 0) && (!matchedCommissions || matchedCommissions.length === 0)) {
+      throw new NotFoundException('No active conflicting leads or commissions found for this seafarer.');
+    }
+
+    const seafarerName = leads?.[0]?.name || matchedCommissions?.[0]?.seafarer_name || cleanEmail;
+
+    // 3. Resolve lead statuses in referral_leads table
+    if (leads && leads.length > 0) {
+      for (const lead of leads) {
+        const isApproved = lead.agent_id === approvedAgentId;
+        const leadStatus = isApproved ? 'New' : 'Cancelled';
+
+        await db
+          .from('referral_leads')
+          .update({
+            status: leadStatus,
+            remarks: isApproved
+              ? `Conflict resolved by Admin: Approved. Remarks: ${remarks}`
+              : `Conflict resolved by Admin: Assigned to another referring agent.`,
+            updated_at: nowIso
+          })
+          .eq('id', lead.id);
+
+        // Notify agent
+        const notifyTitle = isApproved ? 'Conflicting Referral Lead Approved!' : 'Conflicting Referral Lead Assigned to Another Agent';
+        const notifyMsg = isApproved
+          ? `Your conflicting referral lead for ${seafarerName} has been approved by Admin. You now have active referral attribution!`
+          : `Your conflicting referral lead for ${seafarerName} was assigned to another referring agent by Admin.`;
+
+        await db.from('Notification').insert({
+          id: randomUUID(),
+          userId: lead.agent_id,
+          title: notifyTitle,
+          message: notifyMsg,
+          isRead: false,
+          createdAt: nowIso
+        });
+      }
+    }
+
+    // 4. Resolve commission statuses in commissions table
+    if (matchedCommissions && matchedCommissions.length > 0) {
+      for (const comm of matchedCommissions) {
+        const isApproved = comm.agent_id === approvedAgentId;
+        const newStatus = isApproved ? 'Pending' : 'Cancelled';
+
+        await db
+          .from('commissions')
+          .update({
+            status: newStatus,
+            settled_at: isApproved ? null : nowIso
+          })
+          .eq('id', comm.id);
+
+        if (isApproved) {
+          // If approved, update lead to Converted if seafarer already completed purchase
+          await db
+            .from('referral_leads')
+            .update({
+              status: 'Converted',
+              updated_at: nowIso
+            })
+            .eq('agent_id', approvedAgentId)
+            .ilike('email', cleanEmail);
+        }
+      }
+    }
+
+    // 5. Log admin action to audit_logs
+    await this.logAction(
+      adminId,
+      adminName,
+      'RESOLVE_REFERRAL_CONFLICT',
+      'Referrals',
+      cleanEmail,
+      `Resolved referral lead dispute for seafarer ${seafarerName} (${cleanEmail}) in favor of agent ${approvedAgentId}. Remarks: ${remarks}`
+    );
+
+    return { success: true, message: 'Referral conflict resolved successfully.' };
   }
 }

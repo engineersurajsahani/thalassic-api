@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
@@ -45,6 +45,21 @@ export class AuthService {
       throw new BadRequestException('Invalid email or password');
     }
 
+    // Retrieve onboarding status for agent users
+    let onboardingStatus = null;
+    if (user.role?.toUpperCase() === 'AGENT') {
+      const { data: meta } = await supabase
+        .from('agent_metadata')
+        .select('onboarding_status')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (meta) {
+        onboardingStatus = meta.onboarding_status;
+      } else {
+        onboardingStatus = 'Invited';
+      }
+    }
+
     // Generate JWT token
     const payload = {
       sub: user.id,
@@ -65,6 +80,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         phone: user.phone ?? null,
+        onboardingStatus,
       },
     };
   }
@@ -154,12 +170,12 @@ export class AuthService {
     }
 
     let onboardingStatus = null;
-    if (user.role === 'AGENT') {
+    if (user.role?.toUpperCase() === 'AGENT') {
       const { data: meta } = await supabase
         .from('agent_metadata')
         .select('onboarding_status')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       if (meta) {
         onboardingStatus = meta.onboarding_status;
       } else {

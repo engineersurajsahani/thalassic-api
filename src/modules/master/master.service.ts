@@ -228,7 +228,7 @@ export class MasterService {
 
   async createUser(dto: any) {
     const { randomUUID } = require('crypto');
-    const bcrypt = require('bcrypt');
+    const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(dto.password || 'password123', 10);
 
     const roleSlug = (dto.role || 'seafarer').toLowerCase();
@@ -399,7 +399,7 @@ export class MasterService {
       updateData.name = dto.name;
     }
     if (dto.password) {
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       updateData.password = await bcrypt.hash(dto.password, 10);
     }
     if (Object.keys(updateData).length === 0) return { success: true };

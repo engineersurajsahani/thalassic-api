@@ -109,4 +109,58 @@ export class AgentAdminController {
     const adminName = req.user?.name || 'Agent Admin';
     return this.agentAdminService.verifyAgentDocument(id, docId, status, remarks, adminId, adminName);
   }
+
+  @Get('referral-conflicts')
+  getReferralConflicts() {
+    return this.agentAdminService.getReferralConflicts();
+  }
+
+  @Post('resolve-conflict')
+  resolveConflict(
+    @Req() req: any,
+    @Body('purchaseId') purchaseId: string,
+    @Body('approvedAgentId') approvedAgentId: string,
+    @Body('remarks') remarks: string,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.resolveConflict(purchaseId, approvedAgentId, remarks, adminId, adminName);
+  }
+
+  // --- Commission Lifecycle & Settlement Endpoints ---
+  @Patch('commissions/:id/status')
+  updateCommissionStatus(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Body('reason') reason: string,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.updateCommissionStatus(id, status, reason, adminId, adminName);
+  }
+
+  @Get('commissions/:id/history')
+  getCommissionStatusHistory(@Param('id') id: string) {
+    return this.agentAdminService.getCommissionStatusHistory(id);
+  }
+
+  @Post('settlements')
+  createSettlementBatch(@Req() req: any, @Body() dto: any) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.createSettlementBatch(dto, adminId, adminName);
+  }
+
+  @Get('settlements')
+  getSettlements() {
+    return this.agentAdminService.getSettlements();
+  }
+
+  @Patch('settlements/:id/pay')
+  paySettlement(@Req() req: any, @Param('id') id: string) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.paySettlement(id, adminId, adminName);
+  }
 }

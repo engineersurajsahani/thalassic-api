@@ -17,6 +17,7 @@ const auth_module_1 = require("./modules/auth/auth.module");
 const seafarer_module_1 = require("./modules/seafarer/seafarer.module");
 const agent_admin_module_1 = require("./modules/agent-admin/agent-admin.module");
 const agent_module_1 = require("./modules/agent/agent.module");
+const invoices_module_1 = require("./modules/invoices/invoices.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -30,6 +31,7 @@ exports.AppModule = AppModule = __decorate([
             seafarer_module_1.SeafarerModule,
             agent_admin_module_1.AgentAdminModule,
             agent_module_1.AgentModule,
+            invoices_module_1.InvoicesModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
+import { InvoicesService } from '../invoices/invoices.service';
 
 @Injectable()
 export class SeafarerService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(
+    private supabaseService: SupabaseService,
+    private invoicesService: InvoicesService,
+  ) {}
 
   private get db() {
     return this.supabaseService.getClient();
@@ -246,75 +250,274 @@ export class SeafarerService {
 
     if (error) throw new BadRequestException(error.message);
 
-    // ── Referral Attribution & Commission ─────────────────────────────────
+    // ── Referral Attribution, Commission Snapshot & Invoice Generation ─────
     console.log(`[Backend Enroll] User ${userId} enrolling in ${courseId} with referralCode: "${referralCode}"`);
-    if (referralCode && referralCode.trim().length > 0) {
-      try {
-        const code = referralCode.trim().toUpperCase();
+    try {
+      let targetAgentId = '';
+      let targetCommissionRate = 5.0;
+      let commissionSource = 'General Commission';
+      let matchingLeadId = '';
+      let isConflict = false;
+      let conflictingAgents: any[] = [];
+      let targetAgentReferralCode = '';
 
-        // 1. Find the agent who owns this referral code
+      // Fetch seafarer user for display & matching
+      const { data: seafarerUser } = await this.db
+        .from('User')
+        .select('name, email, phone')
+        .eq('id', userId)
+        .single();
+
+      // Case A: Referral Code is entered manually
+      if (referralCode && referralCode.trim().length > 0) {
+        const code = referralCode.trim().toUpperCase();
         const { data: agentMeta } = await this.db
           .from('agent_metadata')
-          .select('user_id, general_commission')
+          .select('user_id, general_commission, course_commissions, referral_code')
           .eq('referral_code', code)
-          .single();
+          .maybeSingle();
 
-        if (agentMeta) {
-          // Parse string like "₹25,000" or "25000" into numeric value
-          const parseFee = (feeStr: any): number => {
-            if (typeof feeStr === 'number') return feeStr;
-            if (!feeStr) return 0;
-            const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
-            return parseFloat(cleaned) || 0;
-          };
+        if (!agentMeta) {
+          throw new BadRequestException('Invalid Referral Code Error');
+        }
+        targetAgentId = agentMeta.user_id;
+        targetAgentReferralCode = agentMeta.referral_code || code;
 
-          const commissionRate = agentMeta.general_commission ?? 5;
-          const courseFee = parseFee(course.fees);
-          const commissionAmount = (courseFee * commissionRate) / 100;
+        // PRD 9.2 Priority 1: Course-specific Commission Override
+        const courseOverrides = agentMeta.course_commissions || {};
+        if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+          targetCommissionRate = Number(courseOverrides[courseId]);
+          commissionSource = 'Course Override';
+        } else {
+          targetCommissionRate = Number(agentMeta.general_commission) || 5.0;
+          commissionSource = 'General Commission';
+        }
+      } 
+      // Case B: Referral Code left blank -> Auto-match with Referral Leads
+      else if (seafarerUser) {
+        const nowIso = new Date().toISOString();
+        const { data: activeLeads } = await this.db
+          .from('referral_leads')
+          .select('id, agent_id, status, created_at')
+          .in('status', ['New', 'Contacted', 'Registered', 'Pending', 'Under Review'])
+          .gt('expiry_at', nowIso)
+          .or(`email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`);
 
-          // Fetch seafarer name for denormalized display in agent dashboard
-          const { data: seafarerUser } = await this.db
-            .from('User')
-            .select('name, email, phone')
-            .eq('id', userId)
-            .single();
+        if (activeLeads && activeLeads.length > 0) {
+          const uniqueAgentsMap = new Map();
+          for (const lead of activeLeads) {
+            uniqueAgentsMap.set(lead.agent_id, lead);
+          }
 
-          // 2. Create commission record (Pending — Agent Admin approves later)
-          // Table: 'commissions' (matching exact columns in Supabase)
-          const { error: commErr } = await this.db.from('commissions').insert({
-            id: randomUUID(),
-            agent_id: agentMeta.user_id,
+          if (uniqueAgentsMap.size === 1) {
+            const matchedLead = activeLeads[0];
+            targetAgentId = matchedLead.agent_id;
+            matchingLeadId = matchedLead.id;
+
+            const { data: agentMeta } = await this.db
+              .from('agent_metadata')
+              .select('general_commission, course_commissions, referral_code')
+              .eq('user_id', targetAgentId)
+              .maybeSingle();
+
+            targetAgentReferralCode = agentMeta?.referral_code || 'MATCHED_LEAD';
+
+            const courseOverrides = agentMeta?.course_commissions || {};
+            if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+              targetCommissionRate = Number(courseOverrides[courseId]);
+              commissionSource = 'Course Override';
+            } else {
+              targetCommissionRate = Number(agentMeta?.general_commission) || 5.0;
+              commissionSource = 'General Commission';
+            }
+          } else if (uniqueAgentsMap.size > 1) {
+            isConflict = true;
+            conflictingAgents = Array.from(uniqueAgentsMap.values());
+          }
+        }
+      }
+
+      // Parse string like "₹25,000" or "25000" into numeric value
+      const parseFee = (feeStr: any): number => {
+        if (typeof feeStr === 'number') return feeStr;
+        if (!feeStr) return 0;
+        const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
+        return parseFloat(cleaned) || 0;
+      };
+      const courseFee = parseFee(course.fees);
+      let createdCommissionId: string | undefined;
+
+      // Create commission snapshot record based on matches
+      if (targetAgentId) {
+        const commissionAmount = (courseFee * targetCommissionRate) / 100;
+        createdCommissionId = randomUUID();
+
+        const commObj = {
+          id: createdCommissionId,
+          agent_id: targetAgentId,
+          purchase_id: data.id,
+          seafarer_name: seafarerUser?.name || 'Seafarer',
+          course_name: course.name || 'Course',
+          course_fee: courseFee,
+          commission_rate: targetCommissionRate,
+          commission_amount: commissionAmount,
+          commission_source: commissionSource,
+          commission_version: 'v1.0',
+          remarks: `Attributed via ${commissionSource} (${targetCommissionRate}%)`,
+          status: 'Pending',
+          created_at: new Date().toISOString(),
+        };
+
+        const { error: commErr } = await this.db.from('commissions').insert(commObj);
+
+        if (commErr && (commErr.code === 'PGRST204' || commErr.message?.includes('column'))) {
+          // Retry with legacy standard columns if new columns don't exist yet in DB schema
+          const stdCommObj = {
+            id: createdCommissionId,
+            agent_id: targetAgentId,
             purchase_id: data.id,
             seafarer_name: seafarerUser?.name || 'Seafarer',
             course_name: course.name || 'Course',
             course_fee: courseFee,
-            commission_rate: commissionRate,
+            commission_rate: targetCommissionRate,
             commission_amount: commissionAmount,
             status: 'Pending',
             created_at: new Date().toISOString(),
+          };
+          const { error: retryErr } = await this.db.from('commissions').insert(stdCommObj);
+          if (retryErr) console.error('[Referral] Standard commission insert error:', retryErr.message);
+        } else if (commErr) {
+          console.error('[Referral] Commission insert error:', commErr.message);
+        }
+
+        // Record initial status history transition silently
+        try {
+          await this.db.from('commission_status_history').insert({
+            id: randomUUID(),
+            commission_id: createdCommissionId,
+            old_status: 'None',
+            new_status: 'Pending',
+            reason: 'Initial commission snapshot generated upon course checkout',
+            changed_by_user_id: userId,
+            changed_by_user_name: seafarerUser?.name || 'Seafarer',
+            created_at: new Date().toISOString(),
           });
+        } catch (e) {
+          console.warn('[Referral] History insert warning:', e);
+        }
 
+        if (matchingLeadId) {
+          await this.db
+            .from('referral_leads')
+            .update({ status: 'Converted', updated_at: new Date().toISOString() })
+            .eq('id', matchingLeadId);
+        }
+        console.log(`[Referral] Attributed commission ${createdCommissionId} to agent ${targetAgentId} for course ${course.name}`);
+      } else if (isConflict) {
+        for (const lead of conflictingAgents) {
+          const { data: agentMeta } = await this.db
+            .from('agent_metadata')
+            .select('general_commission, course_commissions')
+            .eq('user_id', lead.agent_id)
+            .maybeSingle();
 
-          if (commErr) {
-            console.error('[Referral] Failed to insert commission:', commErr.message);
-          } else {
-            console.log(`[Referral] SUCCESS! Created commission ₹${commissionAmount} for agent ${agentMeta.user_id}`);
+          const courseOverrides = agentMeta?.course_commissions || {};
+          let rate = agentMeta?.general_commission ?? 5.0;
+          let source = 'General Commission';
+          if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+            rate = Number(courseOverrides[courseId]);
+            source = 'Course Override';
           }
 
-          // 3. Mark matching referral lead as Converted
-          if (seafarerUser) {
-            await this.db
-              .from('referral_leads')
-              .update({ status: 'Converted', updated_at: new Date().toISOString() })
-              .eq('agent_id', agentMeta.user_id)
-              .in('status', ['New', 'Contacted', 'Registered'])
-              .or(`email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`);
+          const commissionAmount = (courseFee * rate) / 100;
+          const commId = randomUUID();
+
+          const commObjConflict = {
+            id: commId,
+            agent_id: lead.agent_id,
+            purchase_id: data.id,
+            seafarer_name: seafarerUser?.name || 'Seafarer',
+            course_name: course.name || 'Course',
+            course_fee: courseFee,
+            commission_rate: rate,
+            commission_amount: commissionAmount,
+            commission_source: source,
+            commission_version: 'v1.0',
+            remarks: 'Frozen under manual conflict review',
+            status: 'Under Review',
+            created_at: new Date().toISOString(),
+          };
+
+          const { error: commErr } = await this.db.from('commissions').insert(commObjConflict);
+          if (commErr && (commErr.code === 'PGRST204' || commErr.message?.includes('column'))) {
+            await this.db.from('commissions').insert({
+              id: commId,
+              agent_id: lead.agent_id,
+              purchase_id: data.id,
+              seafarer_name: seafarerUser?.name || 'Seafarer',
+              course_name: course.name || 'Course',
+              course_fee: courseFee,
+              commission_rate: rate,
+              commission_amount: commissionAmount,
+              status: 'Under Review',
+              created_at: new Date().toISOString(),
+            });
+          }
+
+          try {
+            await this.db.from('commission_status_history').insert({
+              id: randomUUID(),
+              commission_id: commId,
+              old_status: 'None',
+              new_status: 'Under Review',
+              reason: 'Conflicting referral leads detected. Placed under manual review.',
+              changed_by_user_id: userId,
+              changed_by_user_name: seafarerUser?.name || 'Seafarer',
+              created_at: new Date().toISOString(),
+            });
+          } catch (e) {
+            console.warn('[Referral] History insert warning:', e);
           }
         }
-      } catch (commissionErr) {
-        // Commission creation failure should NOT block the enrollment itself
-        console.error('[Referral] Unexpected error in commission flow:', commissionErr?.message);
       }
+
+      // ── Automatic Invoice Generation (PRD 10.3) ───────────────────────────
+      const transactionId = `TXN-${data.id.substring(0, 8).toUpperCase()}`;
+      let agentNameForInvoice: string | undefined;
+
+      if (targetAgentId) {
+        const { data: agUser } = await this.db
+          .from('User')
+          .select('name')
+          .eq('id', targetAgentId)
+          .maybeSingle();
+        agentNameForInvoice = agUser?.name;
+      }
+
+      await this.invoicesService.generateInvoice({
+        userId,
+        purchaseId: data.id,
+        agentId: targetAgentId || undefined,
+        commissionSnapshotId: createdCommissionId,
+        customerName: seafarerUser?.name || 'Seafarer',
+        customerEmail: seafarerUser?.email || '',
+        customerPhone: seafarerUser?.phone || '',
+        agentName: agentNameForInvoice,
+        agentReferralCode: targetAgentReferralCode || undefined,
+        courseName: course.name || 'Course',
+        courseFee: courseFee,
+        discount: 0,
+        finalAmount: courseFee,
+        transactionId,
+        paymentGateway: 'razorpay_production_mode',
+        paymentMethod: 'Online UPI/Card',
+        paymentDate: new Date().toISOString(),
+      });
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw err; // Bubble up validation errors
+      }
+      console.error('[Referral] Unexpected error in commission & invoice flow:', err?.message);
     }
 
     return data;
