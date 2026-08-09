@@ -13,12 +13,13 @@ const seafarer_controller_1 = require("./seafarer.controller");
 const seafarer_service_1 = require("./seafarer.service");
 const supabase_module_1 = require("../supabase/supabase.module");
 const auth_module_1 = require("../auth/auth.module");
+const invoices_module_1 = require("../invoices/invoices.module");
 let SeafarerModule = class SeafarerModule {
 };
 exports.SeafarerModule = SeafarerModule;
 exports.SeafarerModule = SeafarerModule = __decorate([
     (0, common_1.Module)({
-        imports: [supabase_module_1.SupabaseModule, auth_module_1.AuthModule, platform_express_1.MulterModule.register()],
+        imports: [supabase_module_1.SupabaseModule, auth_module_1.AuthModule, invoices_module_1.InvoicesModule, platform_express_1.MulterModule.register()],
         controllers: [seafarer_controller_1.SeafarerController],
         providers: [seafarer_service_1.SeafarerService],
     })

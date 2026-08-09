@@ -47,8 +47,8 @@ let SeafarerController = class SeafarerController {
     getMyEnrollments(req) {
         return this.seafarerService.getMyEnrollments(this.uid(req));
     }
-    enrollInCourse(req, courseId) {
-        return this.seafarerService.enrollInCourse(this.uid(req), courseId);
+    enrollInCourse(req, courseId, referralCode) {
+        return this.seafarerService.enrollInCourse(this.uid(req), courseId, referralCode);
     }
     updateProgress(req, courseId, progress) {
         return this.seafarerService.updateCourseProgress(this.uid(req), courseId, progress);
@@ -132,8 +132,9 @@ __decorate([
     (0, common_1.Post)('courses/:id/enroll'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)('referralCode')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], SeafarerController.prototype, "enrollInCourse", null);
 __decorate([

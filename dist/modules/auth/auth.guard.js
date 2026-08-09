@@ -56,7 +56,7 @@ let AuthGuard = class AuthGuard {
             throw new common_1.UnauthorizedException('Invalid or expired authentication session');
         }
         const { data: dbUser, error: dbError } = await supabase
-            .from('users')
+            .from('User')
             .select('id, email, name, role, status')
             .eq('email', user.email)
             .single();

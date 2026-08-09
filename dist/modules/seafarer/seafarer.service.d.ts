@@ -1,7 +1,9 @@
 import { SupabaseService } from '../supabase/supabase.service';
+import { InvoicesService } from '../invoices/invoices.service';
 export declare class SeafarerService {
     private supabaseService;
-    constructor(supabaseService: SupabaseService);
+    private invoicesService;
+    constructor(supabaseService: SupabaseService, invoicesService: InvoicesService);
     private get db();
     getDashboard(userId: string): Promise<{
         profileCompletion: number;
@@ -38,7 +40,7 @@ export declare class SeafarerService {
         courseId: any;
         progress: any;
     }[]>;
-    enrollInCourse(userId: string, courseId: string): Promise<any>;
+    enrollInCourse(userId: string, courseId: string, referralCode?: string): Promise<any>;
     updateCourseProgress(userId: string, courseId: string, progress: number): Promise<{
         courseId: string;
         userId: string;

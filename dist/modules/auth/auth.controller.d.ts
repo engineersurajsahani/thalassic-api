@@ -13,6 +13,7 @@ export declare class AuthController {
             email: any;
             role: any;
             phone: any;
+            onboardingStatus: any;
         };
     }>;
     register(registerDto: RegisterDto): Promise<{
@@ -31,6 +32,7 @@ export declare class AuthController {
         email: any;
         role: any;
         phone: any;
+        onboardingStatus: any;
     }>;
     logout(): {
         message: string;

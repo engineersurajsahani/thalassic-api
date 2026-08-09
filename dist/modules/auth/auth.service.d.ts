@@ -16,6 +16,7 @@ export declare class AuthService {
             email: any;
             role: any;
             phone: any;
+            onboardingStatus: any;
         };
     }>;
     register(registerDto: RegisterDto): Promise<{
@@ -34,5 +35,6 @@ export declare class AuthService {
         email: any;
         role: any;
         phone: any;
+        onboardingStatus: any;
     }>;
 }

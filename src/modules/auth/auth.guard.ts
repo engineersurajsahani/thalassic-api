@@ -54,9 +54,9 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired authentication session');
     }
 
-    // Fetch custom user profile info (role, status) from our PostgreSQL users table
+    // Fetch custom user profile info (role, status) from our PostgreSQL User table
     const { data: dbUser, error: dbError } = await supabase
-      .from('users')
+      .from('User')
       .select('id, email, name, role, status')
       .eq('email', user.email)
       .single();

@@ -64,8 +64,12 @@ export class SeafarerController {
   }
 
   @Post('courses/:id/enroll')
-  enrollInCourse(@Req() req: Request, @Param('id') courseId: string) {
-    return this.seafarerService.enrollInCourse(this.uid(req), courseId);
+  enrollInCourse(
+    @Req() req: Request,
+    @Param('id') courseId: string,
+    @Body('referralCode') referralCode?: string,
+  ) {
+    return this.seafarerService.enrollInCourse(this.uid(req), courseId, referralCode);
   }
 
   @Put('courses/:id/progress')
