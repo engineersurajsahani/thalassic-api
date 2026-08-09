@@ -163,4 +163,31 @@ export class AgentAdminController {
     const adminName = req.user?.name || 'Agent Admin';
     return this.agentAdminService.paySettlement(id, adminId, adminName);
   }
+
+  @Get('tickets')
+  getTickets() {
+    return this.agentAdminService.getTickets();
+  }
+
+  @Post('tickets/:id/reply')
+  addTicketReply(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('message') message: string,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.addTicketReply(id, message, adminId, adminName);
+  }
+
+  @Patch('tickets/:id/status')
+  updateTicketStatus(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.updateTicketStatus(id, status, adminId, adminName);
+  }
 }

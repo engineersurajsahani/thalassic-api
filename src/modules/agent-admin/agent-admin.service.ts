@@ -942,7 +942,14 @@ export class AgentAdminService {
     // 3. Region Stats
     const regions: Record<string, number> = {};
     (leads || []).forEach((l: any) => {
-      const city = l.city || 'Unknown';
+      let city = (l.city || '').trim();
+      if (!city) {
+        city = 'Unknown';
+      } else {
+        city = city.split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      }
       regions[city] = (regions[city] || 0) + 1;
     });
     const regionStats = Object.entries(regions).map(([region, value]) => ({
@@ -1311,5 +1318,80 @@ export class AgentAdminService {
     );
 
     return { success: true, message: 'Referral conflict resolved successfully.' };
+  }
+
+  async getTickets() {
+    const db = this.getDb();
+    const { data, error } = await db
+      .from('SupportTicket')
+      .select('*, User:userId(name, email, role)')
+      .order('createdAt', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return data || [];
+  }
+
+  async addTicketReply(ticketId: string, message: string, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const { data: ticket, error: fetchErr } = await db
+      .from('SupportTicket')
+      .select('*')
+      .eq('id', ticketId)
+      .single();
+    if (fetchErr || !ticket) throw new NotFoundException('Ticket not found');
+
+    const replies = JSON.parse(ticket.replies || '[]');
+    replies.push({
+      id: randomUUID(),
+      senderName: adminName,
+      senderRole: 'agent_admin',
+      message,
+      createdAt: new Date().toISOString()
+    });
+
+    const { error: updateErr } = await db
+      .from('SupportTicket')
+      .update({
+        replies: JSON.stringify(replies),
+        updatedAt: new Date().toISOString(),
+        status: 'replied'
+      })
+      .eq('id', ticketId);
+
+    if (updateErr) throw new BadRequestException(updateErr.message);
+
+    await this.logAction(
+      adminId,
+      adminName,
+      'REPLY_SUPPORT_TICKET',
+      'Support Tickets',
+      ticketId,
+      `Replied to support ticket: "${ticket.subject}"`
+    );
+
+    return { success: true };
+  }
+
+  async updateTicketStatus(ticketId: string, status: string, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const { error } = await db
+      .from('SupportTicket')
+      .update({
+        status,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+
+    if (error) throw new BadRequestException(error.message);
+
+    await this.logAction(
+      adminId,
+      adminName,
+      'UPDATE_TICKET_STATUS',
+      'Support Tickets',
+      ticketId,
+      `Updated support ticket status to ${status}`
+    );
+
+    return { success: true };
   }
 }
