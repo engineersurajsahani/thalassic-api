@@ -95,7 +95,14 @@ export class SeafarerController {
     @Body('expiryDate') expiryDate: string,
     @UploadedFile() file: any,
   ) {
-    return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file?.originalname);
+    // Pass the full file object so the service can access buffer, mimetype, and originalname
+    return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file);
+  }
+
+  @Get('documents/:id/download')
+  downloadDocument(@Req() req: Request, @Param('id') docId: string) {
+    const user = (req as any).user;
+    return this.seafarerService.downloadDocument(this.uid(req), docId, user?.role);
   }
 
   @Delete('documents/:id')
@@ -153,4 +160,11 @@ export class SeafarerController {
   ) {
     return this.seafarerService.addReply(this.uid(req), ticketId, message);
   }
+
+  // ── Referrals ──────────────────────────────
+  @Get('referrals')
+  getReferrals(@Req() req: Request) {
+    return this.seafarerService.getReferrals(this.uid(req));
+  }
 }
+

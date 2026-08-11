@@ -23,7 +23,7 @@ export class AuthService {
     private supabaseService: SupabaseService,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
