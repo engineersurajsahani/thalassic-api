@@ -57,7 +57,11 @@ let SeafarerController = class SeafarerController {
         return this.seafarerService.getDocuments(this.uid(req));
     }
     uploadDocument(req, type, expiryDate, file) {
-        return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file?.originalname);
+        return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file);
+    }
+    downloadDocument(req, docId) {
+        const user = req.user;
+        return this.seafarerService.downloadDocument(this.uid(req), docId, user?.role);
     }
     deleteDocument(req, docId) {
         return this.seafarerService.deleteDocument(this.uid(req), docId);
@@ -85,6 +89,9 @@ let SeafarerController = class SeafarerController {
     }
     addReply(req, ticketId, message) {
         return this.seafarerService.addReply(this.uid(req), ticketId, message);
+    }
+    getReferrals(req) {
+        return this.seafarerService.getReferrals(this.uid(req));
     }
 };
 exports.SeafarerController = SeafarerController;
@@ -165,6 +172,14 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SeafarerController.prototype, "uploadDocument", null);
 __decorate([
+    (0, common_1.Get)('documents/:id/download'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], SeafarerController.prototype, "downloadDocument", null);
+__decorate([
     (0, common_1.Delete)('documents/:id'),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Param)('id')),
@@ -235,6 +250,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", void 0)
 ], SeafarerController.prototype, "addReply", null);
+__decorate([
+    (0, common_1.Get)('referrals'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], SeafarerController.prototype, "getReferrals", null);
 exports.SeafarerController = SeafarerController = __decorate([
     (0, common_1.Controller)(),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),

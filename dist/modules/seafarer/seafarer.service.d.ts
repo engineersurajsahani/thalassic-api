@@ -55,8 +55,13 @@ export declare class SeafarerService {
         status: any;
         expiryDate: any;
         uploadedAt: any;
+        url: any;
     }[]>;
-    uploadDocument(userId: string, type: string, expiryDate?: string, fileName?: string): Promise<any>;
+    uploadDocument(userId: string, type: string, expiryDate?: string, file?: any): Promise<any>;
+    downloadDocument(userId: string, docId: string, role?: string): Promise<{
+        signedUrl: string;
+        fileName: any;
+    }>;
     deleteDocument(userId: string, docId: string): Promise<{
         id: string;
         deleted: boolean;
@@ -116,20 +121,37 @@ export declare class SeafarerService {
         id: string;
         deleted: boolean;
     }>;
-    getTickets(userId: string): Promise<never[]>;
-    getTicketById(userId: string, ticketId: string): Promise<null>;
+    private inMemoryTickets;
+    getTickets(userId: string): Promise<any[]>;
+    getTicketById(userId: string, ticketId: string): Promise<any>;
     createTicket(userId: string, subject: string, description: string): Promise<{
         id: string;
         userId: string;
         subject: string;
         description: string;
         status: string;
+        priority: string;
         createdAt: string;
+        replies: never[];
     }>;
     addReply(userId: string, ticketId: string, message: string): Promise<{
-        ticketId: string;
+        id: string;
+        sender: string;
         message: string;
-        from: string;
-        createdAt: string;
+        timestamp: string;
+    }>;
+    getReferrals(userId: string): Promise<{
+        referralCode: string;
+        totalReferrals: number;
+        successfulRegistrations: number;
+        earnedCredits: number;
+        history: {
+            id: string;
+            name: string;
+            email: string;
+            registrationDate: string;
+            status: string;
+            creditsEarned: number;
+        }[];
     }>;
 }

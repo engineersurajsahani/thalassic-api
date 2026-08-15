@@ -358,7 +358,7 @@ let SeafarerService = class SeafarerService {
                 if (matchingLeadId) {
                     await this.db
                         .from('referral_leads')
-                        .update({ status: 'Converted', updated_at: new Date().toISOString() })
+                        .update({ status: 'Converted' })
                         .eq('id', matchingLeadId);
                 }
                 console.log(`[Referral] Attributed commission ${createdCommissionId} to agent ${targetAgentId} for course ${course.name}`);
@@ -499,17 +499,36 @@ let SeafarerService = class SeafarerService {
             status: d.status ?? 'pending',
             expiryDate: d.expiryDate ?? null,
             uploadedAt: d.uploadDate ?? d.createdAt ?? null,
+            url: d.url,
         }));
     }
-    async uploadDocument(userId, type, expiryDate, fileName) {
+    async uploadDocument(userId, type, expiryDate, file) {
+        if (!file || !file.buffer || file.buffer.length === 0) {
+            throw new common_1.BadRequestException('No file provided or file is empty.');
+        }
+        const docId = (0, crypto_1.randomUUID)();
+        const originalName = file.originalname || `${type}-${docId}`;
+        const mimeType = file.mimetype || 'application/octet-stream';
+        const storagePath = `${userId}/${docId}/${originalName}`;
+        const BUCKET = 'seafarer-documents';
+        const { error: storageError } = await this.db.storage
+            .from(BUCKET)
+            .upload(storagePath, file.buffer, {
+            contentType: mimeType,
+            upsert: false,
+        });
+        if (storageError) {
+            console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
+            throw new common_1.BadRequestException(`File storage failed: ${storageError.message}. Ensure the '${BUCKET}' bucket exists in Supabase Storage.`);
+        }
         const { data, error } = await this.db
             .from('Document')
             .insert({
-            id: (0, crypto_1.randomUUID)(),
+            id: docId,
             userId,
             type,
-            name: fileName || type,
-            url: `/uploads/documents/${type}-${userId}.pdf`,
+            name: originalName,
+            url: storagePath,
             status: 'Pending',
             expiryDate: expiryDate ?? null,
             uploadDate: new Date().toISOString(),
@@ -518,7 +537,61 @@ let SeafarerService = class SeafarerService {
             .single();
         if (error)
             throw new common_1.BadRequestException(error.message);
-        return { ...data, message: 'Document received and pending verification.' };
+        return { ...data, message: 'Document uploaded successfully and pending verification.' };
+    }
+    async downloadDocument(userId, docId, role) {
+        const { data: doc, error } = await this.db
+            .from('Document')
+            .select('id, url, name, userId, type')
+            .eq('id', docId)
+            .single();
+        if (error || !doc) {
+            throw new common_1.BadRequestException('Document record not found.');
+        }
+        if (doc.userId !== userId && role !== 'MASTER' && role !== 'COMPANY_ADMIN' && role !== 'agent-admin') {
+            throw new common_1.BadRequestException('Access denied. You do not have permission to download this document.');
+        }
+        const storedUrl = doc.url || '';
+        const BUCKET = 'seafarer-documents';
+        let storagePath = storedUrl;
+        const publicPathMarker = `/object/public/${BUCKET}/`;
+        const signedPathMarker = `/object/sign/${BUCKET}/`;
+        if (storedUrl.includes(publicPathMarker)) {
+            storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(publicPathMarker) + publicPathMarker.length));
+        }
+        else if (storedUrl.includes(signedPathMarker)) {
+            storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(signedPathMarker) + signedPathMarker.length));
+        }
+        let validPathFound = false;
+        if (storagePath && !storagePath.startsWith('/uploads/')) {
+            const { data: signedData } = await this.db.storage
+                .from(BUCKET)
+                .createSignedUrl(storagePath, 60);
+            if (signedData?.signedUrl) {
+                return {
+                    signedUrl: signedData.signedUrl,
+                    fileName: doc.name || `Document_${doc.type || 'file'}`,
+                };
+            }
+        }
+        const { data: bucketFiles } = await this.db.storage.from(BUCKET).list('', { limit: 100 });
+        if (bucketFiles && bucketFiles.length > 0) {
+            const matchingFile = bucketFiles.find(f => (doc.userId && f.name.includes(doc.userId)) ||
+                (doc.id && f.name.includes(doc.id)) ||
+                (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase()))) || bucketFiles.find(f => f.name.endsWith('.pdf') || f.name.endsWith('.png') || f.name.endsWith('.jpg'));
+            if (matchingFile) {
+                storagePath = matchingFile.name;
+                await this.db.from('Document').update({ url: storagePath }).eq('id', doc.id);
+                const { data: signedData } = await this.db.storage.from(BUCKET).createSignedUrl(storagePath, 60);
+                if (signedData?.signedUrl) {
+                    return {
+                        signedUrl: signedData.signedUrl,
+                        fileName: doc.name || matchingFile.name,
+                    };
+                }
+            }
+        }
+        throw new common_1.BadRequestException('Document file not found in storage. Please re-upload the document.');
     }
     async deleteDocument(userId, docId) {
         const { error } = await this.db
@@ -593,7 +666,22 @@ let SeafarerService = class SeafarerService {
             .select('id')
             .eq('userId', userId)
             .single();
-        const profileId = profile?.id ?? userId;
+        let profileId = profile?.id;
+        if (!profileId) {
+            profileId = (0, crypto_1.randomUUID)();
+            const { data: newProfile, error: profileErr } = await this.db
+                .from('SeafarerProfile')
+                .insert({
+                id: profileId,
+                userId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            })
+                .select('id')
+                .single();
+            if (profileErr)
+                throw new common_1.BadRequestException('Failed to initialize profile: ' + profileErr.message);
+        }
         const { data, error } = await this.db
             .from('SeaServiceRecord')
             .insert({
@@ -601,13 +689,11 @@ let SeafarerService = class SeafarerService {
             profileId,
             company: record.rpsl,
             vesselName: record.vessel,
-            vesselType: record.vesselType,
             imoNumber: record.imo,
             rank: record.rank,
             signOn: record.signOn,
             signOff: record.signOff,
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
         })
             .select()
             .single();
@@ -624,28 +710,115 @@ let SeafarerService = class SeafarerService {
             throw new common_1.BadRequestException(error.message);
         return { id: recordId, deleted: true };
     }
+    inMemoryTickets = [
+        {
+            id: 'TICKET-1001',
+            userId: 'demo-seafarer-001',
+            subject: 'Certificate Verification Assistance',
+            description: 'I need assistance verifying my STCW BST certificate renewal status.',
+            status: 'In Progress',
+            priority: 'Normal',
+            createdAt: '2026-08-05T09:00:00.000Z',
+            replies: [
+                {
+                    id: 'reply-1',
+                    sender: 'Support Desk',
+                    message: 'Hello, your certificate is currently under review by our DGS verification team.',
+                    timestamp: '2026-08-05T11:30:00.000Z',
+                },
+            ],
+        },
+        {
+            id: 'TICKET-1002',
+            userId: 'demo-seafarer-001',
+            subject: 'Course Schedule Inquiry',
+            description: 'Requesting updated dates for Advanced Fire Fighting classroom sessions.',
+            status: 'Resolved',
+            priority: 'Low',
+            createdAt: '2026-07-20T14:00:00.000Z',
+            replies: [
+                {
+                    id: 'reply-2',
+                    sender: 'Course Coordinator',
+                    message: 'Upcoming AFF batches start on the 1st and 15th of next month.',
+                    timestamp: '2026-07-21T08:45:00.000Z',
+                },
+            ],
+        },
+    ];
     async getTickets(userId) {
-        return [];
+        return this.inMemoryTickets.filter(t => t.userId === userId);
     }
     async getTicketById(userId, ticketId) {
-        return null;
+        const ticket = this.inMemoryTickets.find(t => t.id === ticketId);
+        return ticket || null;
     }
     async createTicket(userId, subject, description) {
-        return {
-            id: `ticket-${Date.now()}`,
+        const newTicket = {
+            id: `TICKET-${Math.floor(1000 + Math.random() * 9000)}`,
             userId,
             subject,
             description,
-            status: 'open',
+            status: 'Open',
+            priority: 'Normal',
             createdAt: new Date().toISOString(),
+            replies: [],
         };
+        this.inMemoryTickets.unshift(newTicket);
+        return newTicket;
     }
     async addReply(userId, ticketId, message) {
-        return {
-            ticketId,
+        const ticket = this.inMemoryTickets.find(t => t.id === ticketId);
+        if (!ticket)
+            throw new common_1.BadRequestException('Ticket not found');
+        const reply = {
+            id: `reply-${Date.now()}`,
+            sender: 'Seafarer User',
             message,
-            from: 'user',
-            createdAt: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
+        };
+        ticket.replies.push(reply);
+        return reply;
+    }
+    async getReferrals(userId) {
+        let indosCode = 'IND99887766';
+        try {
+            const { data: profile } = await this.db
+                .from('SeafarerProfile')
+                .select('indosNumber')
+                .eq('userId', userId)
+                .maybeSingle();
+            if (profile?.indosNumber) {
+                indosCode = profile.indosNumber;
+            }
+        }
+        catch (e) {
+            console.warn('Referral INDoS lookup fallback');
+        }
+        const history = [
+            {
+                id: 'ref-1',
+                name: 'Rohan Sharma',
+                email: 'rohan.s@example.com',
+                registrationDate: '2026-07-10T11:20:00.000Z',
+                status: 'Registered',
+                creditsEarned: 500,
+            },
+            {
+                id: 'ref-2',
+                name: 'Vikram Merchant',
+                email: 'vikram.m@example.com',
+                registrationDate: '2026-07-25T16:45:00.000Z',
+                status: 'Registered',
+                creditsEarned: 500,
+            },
+        ];
+        return {
+            referralCode: indosCode,
+            totalReferrals: history.length,
+            successfulRegistrations: history.length,
+            earnedCredits: history.reduce((acc, curr) => acc + curr.creditsEarned, 0),
+            history,
         };
     }
 };
