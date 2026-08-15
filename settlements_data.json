@@ -1,5 +1,65 @@
 [
   {
+    "id": "5cc04574-2884-4e06-9502-eb9f5e2c5ddd",
+    "settlement_number": "SET-2026-001E66",
+    "partner_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "agent_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "purchase_ids": [
+      "96fe41b1-8457-4148-abe9-0e538fcbab30"
+    ],
+    "total_amount": 9500,
+    "utr_reference": "UTR-HDFC-998877",
+    "payment_method": "Bank Transfer (NEFT/RTGS)",
+    "payment_date": "2026-08-15",
+    "remarks": "",
+    "status": "Completed",
+    "rejection_reason": null,
+    "created_at": "2026-08-15T13:04:01.381Z",
+    "paid_at": "2026-08-15T13:05:29.790Z",
+    "verified_by": "Agent Admin",
+    "verified_at": "2026-08-15T13:05:29.790Z"
+  },
+  {
+    "id": "5580501c-b1a7-412a-9341-53418c987ec5",
+    "settlement_number": "SET-2026-FAC45E",
+    "partner_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "agent_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "purchase_ids": [
+      "8a3b7850-097f-4473-9f61-f24e55f807ca"
+    ],
+    "total_amount": 10000,
+    "utr_reference": "UTR-HDFC-37313053",
+    "payment_method": "Bank Transfer (NEFT/RTGS)",
+    "payment_date": "2026-08-15T12:43:45.808Z",
+    "remarks": "Batch offline course fee remittance for BST module.",
+    "status": "Completed",
+    "rejection_reason": null,
+    "created_at": "2026-08-15T12:43:45.808Z",
+    "paid_at": "2026-08-15T12:43:52.846Z",
+    "verified_by": "Agent Admin",
+    "verified_at": "2026-08-15T12:43:52.846Z"
+  },
+  {
+    "id": "98619777-fd68-4d72-ad12-9a340cf29efe",
+    "settlement_number": "SET-2026-B594F8",
+    "partner_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "agent_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "purchase_ids": [
+      "079116e9-d0b7-4d30-956b-c1b2c3f18ee3"
+    ],
+    "total_amount": 10000,
+    "utr_reference": "UTR-HDFC-97424152",
+    "payment_method": "Bank Transfer (NEFT/RTGS)",
+    "payment_date": "2026-08-15T12:40:22.716Z",
+    "remarks": "Batch offline course fee remittance for BST module.",
+    "status": "Completed",
+    "rejection_reason": null,
+    "created_at": "2026-08-15T12:40:22.716Z",
+    "paid_at": "2026-08-15T12:40:29.765Z",
+    "verified_by": "Agent Admin",
+    "verified_at": "2026-08-15T12:40:29.765Z"
+  },
+  {
     "id": "2738fd75-0045-4223-8450-d15f3a4543e8",
     "settlement_number": "SET-2026-C1EEC7",
     "agent_id": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",

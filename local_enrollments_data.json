@@ -1,0 +1,48 @@
+[
+  {
+    "id": "4b753bbe-dc63-4bd2-b58d-95728311d6db",
+    "userId": "a0000000-0000-0000-0000-000000000002",
+    "courseId": "c-003",
+    "course": {
+      "id": "c-003",
+      "name": "Oil and Chemical Tanker Cargo Operations",
+      "code": "OCTCO",
+      "category": "basic",
+      "duration": "6 Days",
+      "fees": "₹6,000",
+      "description": "Physical workshop and simulator training for tanker cargo operations."
+    },
+    "status": "active",
+    "progress": 60,
+    "startDate": "2026-08-15T14:02:17.127Z",
+    "createdAt": "2026-08-15T14:02:17.127Z",
+    "updatedAt": "2026-08-15T14:05:56.776Z"
+  },
+  {
+    "id": "620a3877-3afd-40a2-be19-422e1a071836",
+    "userId": "a0000000-0000-0000-0000-000000000002",
+    "courseId": "c-002",
+    "course": {
+      "id": "c-002",
+      "name": "Advanced Fire Fighting",
+      "code": "AFF",
+      "category": "advanced",
+      "duration": "5 Days",
+      "fees": "₹7,200",
+      "description": "Advanced in-person practical training in organization and control of shipboard firefighting operations."
+    },
+    "status": "active",
+    "progress": 0,
+    "startDate": "2026-08-15T13:59:49.958Z",
+    "createdAt": "2026-08-15T13:59:49.958Z",
+    "updatedAt": "2026-08-15T13:59:49.958Z"
+  },
+  {
+    "id": "enr-a0000000-0000-0000-0000-000000000002-c-001",
+    "userId": "a0000000-0000-0000-0000-000000000002",
+    "courseId": "c-001",
+    "progress": 100,
+    "status": "completed",
+    "updatedAt": "2026-08-15T13:47:39.376Z"
+  }
+]

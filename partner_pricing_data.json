@@ -1,0 +1,62 @@
+[
+  {
+    "id": "price-001",
+    "partnerId": "*",
+    "courseId": "*",
+    "courseCode": "BST",
+    "courseName": "Basic Safety Training",
+    "standardFee": 12000,
+    "hariOmPayableAmount": 10000,
+    "status": "Active"
+  },
+  {
+    "id": "price-002",
+    "partnerId": "*",
+    "courseId": "*",
+    "courseCode": "AFF",
+    "courseName": "Advanced Fire Fighting",
+    "standardFee": 7200,
+    "hariOmPayableAmount": 6000,
+    "status": "Active"
+  },
+  {
+    "id": "price-003",
+    "partnerId": "*",
+    "courseId": "*",
+    "courseCode": "OCTCO",
+    "courseName": "Oil and Chemical Tanker Cargo Operations",
+    "standardFee": 6000,
+    "hariOmPayableAmount": 5000,
+    "status": "Active"
+  },
+  {
+    "id": "price-004",
+    "partnerId": "*",
+    "courseId": "*",
+    "courseCode": "MEDICARE",
+    "courseName": "Medical Care on Board Ships",
+    "standardFee": 25000,
+    "hariOmPayableAmount": 21000,
+    "status": "Active"
+  },
+  {
+    "id": "price-005",
+    "partnerId": "*",
+    "courseId": "*",
+    "courseCode": "RPST",
+    "courseName": "Refresher PST",
+    "standardFee": 3500,
+    "hariOmPayableAmount": 3000,
+    "status": "Active"
+  },
+  {
+    "id": "price-95eaa01f",
+    "partnerId": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "courseId": "*",
+    "courseCode": "BST",
+    "courseName": "Basic Safety Training",
+    "standardFee": 12000,
+    "hariOmPayableAmount": 9500,
+    "status": "Active"
+  }
+]

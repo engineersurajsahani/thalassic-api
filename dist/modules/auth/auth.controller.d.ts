@@ -19,11 +19,11 @@ export declare class AuthController {
     register(registerDto: RegisterDto): Promise<{
         token: string;
         user: {
-            id: any;
-            name: any;
-            email: any;
-            role: any;
-            phone: any;
+            id: `${string}-${string}-${string}-${string}-${string}`;
+            name: string;
+            email: string;
+            role: string;
+            phone: string | null;
         };
     }>;
     profile(req: Request): Promise<{

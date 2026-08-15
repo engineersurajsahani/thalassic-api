@@ -1,0 +1,62 @@
+[
+  {
+    "id": "0382850d-dad9-4712-ac9b-7d88358c7363",
+    "name": "Arjun Nambiar",
+    "email": "arjun.1786797230635@merchantnavy.in",
+    "phone": "+91 98765 44332",
+    "dob": "",
+    "nationality": "Indian",
+    "address": "",
+    "indosNumber": "IND-AUTO-35887",
+    "passportNumber": "Z8899112",
+    "cdcNumber": "MUM-991122",
+    "fatherName": "",
+    "status": "Active",
+    "createdAt": "2026-08-15T12:34:04.767Z"
+  },
+  {
+    "id": "414394b6-57be-433c-9265-9039b420cc79",
+    "name": "Arjun Nambiar",
+    "email": "arjun.1786797439615@merchantnavy.in",
+    "phone": "+91 98765 57453",
+    "dob": "",
+    "nationality": "Indian",
+    "address": "",
+    "indosNumber": "IND-AUTO-94282",
+    "passportNumber": "Z94282",
+    "cdcNumber": "MUM-94282",
+    "fatherName": "",
+    "status": "Active",
+    "createdAt": "2026-08-15T12:37:33.742Z"
+  },
+  {
+    "id": "f3695bcc-cbb0-4d18-bb7c-229d580e86a9",
+    "name": "Arjun Nambiar",
+    "email": "arjun.1786797566308@merchantnavy.in",
+    "phone": "+91 98765 29599",
+    "dob": "",
+    "nationality": "Indian",
+    "address": "",
+    "indosNumber": "IND-AUTO-41816",
+    "passportNumber": "Z41816",
+    "cdcNumber": "MUM-41816",
+    "fatherName": "",
+    "status": "Active",
+    "createdAt": "2026-08-15T12:39:40.451Z"
+  },
+  {
+    "id": "f553dc5b-79bc-456c-8025-1638a23f4c7a",
+    "name": "Arjun Nambiar",
+    "email": "arjun.1786797769521@merchantnavy.in",
+    "phone": "+91 98765 85727",
+    "dob": "",
+    "nationality": "Indian",
+    "address": "",
+    "indosNumber": "IND-AUTO-55679",
+    "passportNumber": "Z55679",
+    "cdcNumber": "MUM-55679",
+    "fatherName": "",
+    "status": "Active",
+    "createdAt": "2026-08-15T12:43:03.657Z"
+  }
+]

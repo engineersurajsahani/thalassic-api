@@ -1,7 +1,7 @@
-# compiled output
+# Compiled output
 /dist
-/node_modules
 /build
+/node_modules
 
 # Logs
 logs
@@ -11,15 +11,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# OS
+# OS Files
 .DS_Store
 Thumbs.db
 
-# Tests
+# Tests & Coverage
 /coverage
 /.nyc_output
 
-# IDEs
+# IDEs & Editor configs
 .vscode/
 .idea/
 *.suo
@@ -28,10 +28,11 @@ Thumbs.db
 *.sln
 *.sw?
 
-# Environment variable files
+# Environment Variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env.*
+!.env.example

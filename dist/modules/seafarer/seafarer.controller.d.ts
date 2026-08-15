@@ -11,7 +11,7 @@ export declare class SeafarerController {
                 name: any;
                 code: any;
                 progress: number;
-            } | null;
+            };
             completedCount: number;
         };
         certificates: {
@@ -22,7 +22,14 @@ export declare class SeafarerController {
         };
         notifications: never[];
     }>;
-    getNotifications(req: Request): Promise<any[]>;
+    getNotifications(req: Request): Promise<{
+        id: string;
+        title: string;
+        message: string;
+        isRead: boolean;
+        read: boolean;
+        createdAt: string;
+    }[]>;
     markRead(id: string): Promise<{
         id: string;
         read: boolean;
@@ -33,19 +40,37 @@ export declare class SeafarerController {
     getAllCourses(): Promise<any[]>;
     getMyEnrollments(req: Request): Promise<{
         id: any;
-        status: string;
+        status: any;
         purchaseDate: any;
         course: any;
         courseId: any;
         progress: any;
     }[]>;
-    enrollInCourse(req: Request, courseId: string, referralCode?: string): Promise<any>;
+    enrollInCourse(req: Request, courseId: string, referralCode?: string): Promise<{
+        id: `${string}-${string}-${string}-${string}-${string}`;
+        userId: string;
+        courseId: any;
+        course: {
+            id: any;
+            name: any;
+            code: any;
+            category: any;
+            duration: any;
+            fees: any;
+            description: any;
+        };
+        status: string;
+        progress: number;
+        startDate: string;
+        createdAt: string;
+        updatedAt: string;
+    }>;
     updateProgress(req: Request, courseId: string, progress: number): Promise<{
         courseId: string;
         userId: string;
         progress: number;
+        status: string;
         updated: boolean;
-        data: any[];
     }>;
     getDocuments(req: Request): Promise<{
         id: any;
@@ -54,81 +79,62 @@ export declare class SeafarerController {
         status: any;
         expiryDate: any;
         uploadedAt: any;
+        url: any;
     }[]>;
-    uploadDocument(req: Request, type: string, expiryDate: string, file: any): Promise<any>;
+    uploadDocument(req: Request, type: string, expiryDate: string, file: any): Promise<{
+        id: `${string}-${string}-${string}-${string}-${string}`;
+        type: string;
+        label: any;
+        status: string;
+        expiryDate: string | null;
+        uploadedAt: string;
+        message: string;
+    }>;
+    downloadDocument(req: Request, docId: string): Promise<{
+        signedUrl: string;
+        fileName: string;
+    }>;
     deleteDocument(req: Request, docId: string): Promise<{
         id: string;
         deleted: boolean;
     }>;
-    getUserProfile(req: Request): Promise<{
-        profile: {
-            dob: any;
-            birthPlace: any;
-            nationality: any;
-            indosNumber: any;
-            address: any;
-            profilePicture: any;
-            seaService: {
-                id: any;
-                rpsl: any;
-                vessel: any;
-                vesselType: any;
-                imo: any;
-                rank: any;
-                signOn: any;
-                signOff: any;
-            }[];
-        };
-        id?: any;
-        name?: any;
-        email?: any;
-        phone?: any;
-        role?: any;
-    }>;
-    updateUserProfile(req: Request, details: any): Promise<{
-        profile: {
-            dob: any;
-            birthPlace: any;
-            nationality: any;
-            indosNumber: any;
-            address: any;
-            profilePicture: any;
-            seaService: {
-                id: any;
-                rpsl: any;
-                vessel: any;
-                vesselType: any;
-                imo: any;
-                rank: any;
-                signOn: any;
-                signOff: any;
-            }[];
-        };
-        id?: any;
-        name?: any;
-        email?: any;
-        phone?: any;
-        role?: any;
-    }>;
+    getUserProfile(req: Request): Promise<any>;
+    updateUserProfile(req: Request, details: any): Promise<any>;
     addSeaService(req: Request, record: any): Promise<any>;
     deleteSeaService(id: string): Promise<{
         id: string;
         deleted: boolean;
     }>;
-    getTickets(req: Request): Promise<never[]>;
-    getTicketById(req: Request, id: string): Promise<null>;
+    getTickets(req: Request): Promise<any[]>;
+    getTicketById(req: Request, id: string): Promise<any>;
     createTicket(req: Request, subject: string, description: string): Promise<{
         id: string;
         userId: string;
         subject: string;
         description: string;
         status: string;
+        priority: string;
         createdAt: string;
+        replies: never[];
     }>;
     addReply(req: Request, ticketId: string, message: string): Promise<{
-        ticketId: string;
+        id: string;
+        sender: string;
         message: string;
-        from: string;
-        createdAt: string;
+        timestamp: string;
+    }>;
+    getReferrals(req: Request): Promise<{
+        referralCode: string;
+        totalReferrals: number;
+        successfulRegistrations: number;
+        earnedCredits: number;
+        history: {
+            id: string;
+            name: string;
+            email: string;
+            registrationDate: string;
+            status: string;
+            creditsEarned: number;
+        }[];
     }>;
 }

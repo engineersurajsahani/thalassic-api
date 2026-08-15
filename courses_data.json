@@ -1,0 +1,72 @@
+[
+  {
+    "id": "c-001",
+    "code": "BST",
+    "name": "Basic Safety Training",
+    "category": "basic",
+    "duration": "12 Days",
+    "fees": "₹12,000",
+    "standardFee": 12000,
+    "description": "Mandatory physical safety training modules including Personal Survival Techniques and Firefighting.",
+    "rating": "4.9",
+    "ratingCount": 240,
+    "level": "Entry Level",
+    "status": "Active"
+  },
+  {
+    "id": "c-002",
+    "code": "AFF",
+    "name": "Advanced Fire Fighting",
+    "category": "advanced",
+    "duration": "5 Days",
+    "fees": "₹7,200",
+    "standardFee": 7200,
+    "description": "Advanced in-person practical training in organization and control of shipboard firefighting operations.",
+    "rating": "4.8",
+    "ratingCount": 180,
+    "level": "Advanced",
+    "status": "Active"
+  },
+  {
+    "id": "c-003",
+    "code": "OCTCO",
+    "name": "Oil and Chemical Tanker Cargo Operations",
+    "category": "basic",
+    "duration": "6 Days",
+    "fees": "₹6,000",
+    "standardFee": 6000,
+    "description": "Physical workshop and simulator training for tanker cargo operations.",
+    "rating": "4.7",
+    "ratingCount": 95,
+    "level": "Intermediate",
+    "status": "Active"
+  },
+  {
+    "id": "c-004",
+    "code": "MEDICARE",
+    "name": "Medical Care on Board Ships",
+    "category": "specialized",
+    "duration": "5 Days",
+    "fees": "₹25,000",
+    "standardFee": 25000,
+    "description": "In-person clinical procedures, first aid, and medical care.",
+    "rating": "4.9",
+    "ratingCount": 150,
+    "level": "Specialized",
+    "status": "Active"
+  },
+  {
+    "id": "c-005",
+    "code": "RPST",
+    "name": "Refresher PST",
+    "category": "basic",
+    "duration": "1 Day",
+    "fees": "₹3,500",
+    "standardFee": 3500,
+    "description": "Physical practical refresher training for Personal Survival Techniques.",
+    "rating": "4.8",
+    "ratingCount": 310,
+    "level": "Refresher",
+    "status": "Active"
+  }
+]

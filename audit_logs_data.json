@@ -1,0 +1,123 @@
+[
+  {
+    "id": "2c33e096-2c71-4c3f-84bd-57ec0bbc4d89",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "VERIFY_SETTLEMENT",
+    "module": "Finance & Settlements",
+    "entity_id": "5cc04574-2884-4e06-9502-eb9f5e2c5ddd",
+    "details": "Verified and Completed settlement batch SET-2026-001E66 (₹9500) with UTR: UTR-HDFC-998877",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T13:05:29.793Z"
+  },
+  {
+    "id": "97845155-77d3-4fc4-85e6-119d9f53074d",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:50:58.816Z"
+  },
+  {
+    "id": "e0550db6-6062-4d98-bec7-eb9c425e738a",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "VERIFY_SETTLEMENT",
+    "module": "Finance & Settlements",
+    "entity_id": "5580501c-b1a7-412a-9341-53418c987ec5",
+    "details": "Verified and Completed settlement batch SET-2026-FAC45E (₹10000) with UTR: UTR-HDFC-37313053",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:43:52.847Z"
+  },
+  {
+    "id": "5f66d638-8da1-4178-9a5e-c5196e4bd4b9",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:42:49.514Z"
+  },
+  {
+    "id": "acc8a565-255a-4780-b555-5442e02a65a3",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "VERIFY_SETTLEMENT",
+    "module": "Finance & Settlements",
+    "entity_id": "98619777-fd68-4d72-ad12-9a340cf29efe",
+    "details": "Verified and Completed settlement batch SET-2026-B594F8 (₹10000) with UTR: UTR-HDFC-97424152",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:40:29.766Z"
+  },
+  {
+    "id": "964dd21a-ff61-42b8-bb97-1853863c32d5",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:39:26.303Z"
+  },
+  {
+    "id": "7163dfc8-7fdb-4638-b35d-f0848eb34990",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:37:19.608Z"
+  },
+  {
+    "id": "7dbf98f5-8c34-43d3-b50b-522ed1da7194",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:36:22.331Z"
+  },
+  {
+    "id": "fa9f5d60-6a0f-4cbe-8607-6523ac1b87b2",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:33:50.627Z"
+  },
+  {
+    "id": "2631bea9-3a1a-45b1-b349-911fc11738ec",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹9500 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:30:59.169Z"
+  },
+  {
+    "id": "d2687e64-24b7-4d83-b884-81383a3f20d6",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-001",
+    "details": "Configured BST payable amount to ₹10000 for All Partners",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-15T12:14:53.049Z"
+  }
+]

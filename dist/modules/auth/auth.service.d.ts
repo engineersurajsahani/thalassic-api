@@ -8,6 +8,8 @@ export declare class AuthService {
     private jwtService;
     private configService;
     constructor(supabaseService: SupabaseService, jwtService: JwtService, configService: ConfigService);
+    private readLocalUsers;
+    private saveLocalUser;
     login(loginDto: LoginDto): Promise<{
         token: string;
         user: {
@@ -22,11 +24,11 @@ export declare class AuthService {
     register(registerDto: RegisterDto): Promise<{
         token: string;
         user: {
-            id: any;
-            name: any;
-            email: any;
-            role: any;
-            phone: any;
+            id: `${string}-${string}-${string}-${string}-${string}`;
+            name: string;
+            email: string;
+            role: string;
+            phone: string | null;
         };
     }>;
     getProfile(token: string): Promise<{

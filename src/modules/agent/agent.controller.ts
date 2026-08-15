@@ -144,3 +144,131 @@ export class AgentController {
     return this.agentService.changePassword(req.user.id, dto.oldPassword, dto.newPassword);
   }
 }
+
+@Controller('partner')
+@UseGuards(AuthGuard)
+export class PartnerController {
+  constructor(private readonly agentService: AgentService) {}
+
+  private checkRole(req: any) {
+    const role = (req.user?.role || '').toUpperCase();
+    if (role !== 'AGENT' && role !== 'PARTNER') {
+      throw new ForbiddenException('Access restricted to Authorized Hari Om Partners.');
+    }
+  }
+
+  @Get('dashboard')
+  getDashboard(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getPartnerDashboard(req.user.id);
+  }
+
+  @Get('seafarers/search')
+  searchSeafarers(@Req() req: any) {
+    this.checkRole(req);
+    const q = req.query?.q || '';
+    return this.agentService.searchSeafarers(q);
+  }
+
+  @Get('seafarers')
+  getAllSeafarers(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getAllSeafarersMaster();
+  }
+
+  @Post('seafarers')
+  createSeafarerMaster(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.createSeafarerMaster(req.user.id, dto);
+  }
+
+  @Get('seafarers/:id')
+  getSeafarerById(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.getSeafarerMasterById(id, req.user.id);
+  }
+
+  @Get('courses')
+  getCourses(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getPartnerCourses(req.user.id);
+  }
+
+  @Get('pricing/:courseId')
+  getCoursePricing(@Req() req: any, @Param('courseId') courseId: string) {
+    this.checkRole(req);
+    return this.agentService.getCoursePartnerPricing(req.user.id, courseId);
+  }
+
+  @Post('purchases')
+  createPurchase(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.createPartnerPurchase(req.user.id, dto);
+  }
+
+  @Get('purchases')
+  getPurchases(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getPartnerPurchases(req.user.id, req.query);
+  }
+
+  @Get('purchases/:id')
+  getPurchaseById(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.getPartnerPurchaseById(req.user.id, id);
+  }
+
+  @Get('financials')
+  getFinancials(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getPartnerFinancials(req.user.id);
+  }
+
+  @Post('settlements')
+  submitSettlement(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.submitPartnerSettlement(req.user.id, dto);
+  }
+
+  @Get('settlements')
+  getSettlements(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getPartnerSettlements(req.user.id);
+  }
+
+  @Get('settlements/:id')
+  getSettlementById(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.getPartnerSettlementById(req.user.id, id);
+  }
+
+  @Get('profile')
+  getProfile(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getProfile(req.user.id);
+  }
+
+  @Put('profile')
+  updateProfile(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.updateProfile(req.user.id, dto);
+  }
+
+  @Get('support')
+  getSupportTickets(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getSupportTickets(req.user.id);
+  }
+
+  @Post('support')
+  createSupportTicket(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.createSupportTicket(req.user.id, dto);
+  }
+
+  @Put('settings/password')
+  changePassword(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.changePassword(req.user.id, dto.oldPassword, dto.newPassword);
+  }
+}
