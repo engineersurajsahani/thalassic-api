@@ -54,8 +54,13 @@ export declare class SeafarerController {
         status: any;
         expiryDate: any;
         uploadedAt: any;
+        url: any;
     }[]>;
     uploadDocument(req: Request, type: string, expiryDate: string, file: any): Promise<any>;
+    downloadDocument(req: Request, docId: string): Promise<{
+        signedUrl: string;
+        fileName: any;
+    }>;
     deleteDocument(req: Request, docId: string): Promise<{
         id: string;
         deleted: boolean;
@@ -115,20 +120,36 @@ export declare class SeafarerController {
         id: string;
         deleted: boolean;
     }>;
-    getTickets(req: Request): Promise<never[]>;
-    getTicketById(req: Request, id: string): Promise<null>;
+    getTickets(req: Request): Promise<any[]>;
+    getTicketById(req: Request, id: string): Promise<any>;
     createTicket(req: Request, subject: string, description: string): Promise<{
         id: string;
         userId: string;
         subject: string;
         description: string;
         status: string;
+        priority: string;
         createdAt: string;
+        replies: never[];
     }>;
     addReply(req: Request, ticketId: string, message: string): Promise<{
-        ticketId: string;
+        id: string;
+        sender: string;
         message: string;
-        from: string;
-        createdAt: string;
+        timestamp: string;
+    }>;
+    getReferrals(req: Request): Promise<{
+        referralCode: string;
+        totalReferrals: number;
+        successfulRegistrations: number;
+        earnedCredits: number;
+        history: {
+            id: string;
+            name: string;
+            email: string;
+            registrationDate: string;
+            status: string;
+            creditsEarned: number;
+        }[];
     }>;
 }
