@@ -34,7 +34,9 @@
     "name": "Kishan (Hari Om Partner)",
     "role": "AGENT",
     "phone": "+91 98200 44556",
-    "onboardingStatus": "Active"
+    "onboardingStatus": "Active",
+    "status": "Active",
+    "updatedAt": "2026-08-16T11:25:44.435Z"
   },
   {
     "id": "a0000000-0000-0000-0000-000000000008",

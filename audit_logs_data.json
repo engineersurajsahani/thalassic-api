@@ -1,5 +1,60 @@
 [
   {
+    "id": "26947a0a-3b93-4c70-9677-591a8812e17b",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "UPDATE_STATUS",
+    "module": "Partners",
+    "entity_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "details": "Updated status to Active for Kishan (Hari Om Partner)",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-16T11:25:44.440Z"
+  },
+  {
+    "id": "7032d9ef-bbbc-4d59-9f54-7db72d082eea",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "UPDATE_STATUS",
+    "module": "Partners",
+    "entity_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "details": "Updated status to Suspended for Kishan (Hari Om Partner)",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-16T11:25:43.274Z"
+  },
+  {
+    "id": "a62a48de-b176-44eb-9095-814e49d7b764",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "UPDATE_STATUS",
+    "module": "Partners",
+    "entity_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "details": "Updated status to Active for Kishan (Hari Om Partner)",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-16T11:25:40.489Z"
+  },
+  {
+    "id": "73a14c1d-a6db-4cf7-a15f-d7bbd0c2031a",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "UPDATE_STATUS",
+    "module": "Partners",
+    "entity_id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "details": "Updated status to Suspended for Kishan (Hari Om Partner)",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-16T11:25:39.074Z"
+  },
+  {
+    "id": "464927d9-1cba-45d7-a864-eb64adfc7614",
+    "user_id": "a0000000-0000-0000-0000-000000000008",
+    "user_name": "Agent Admin",
+    "action": "CONFIGURE_PRICING",
+    "module": "Partner Pricing",
+    "entity_id": "price-95eaa01f",
+    "details": "Configured BST payable amount to ₹10000 for Partner ID 58f7dc83-cb27-4547-8264-ed433b557103",
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-16T11:03:48.905Z"
+  },
+  {
     "id": "2c33e096-2c71-4c3f-84bd-57ec0bbc4d89",
     "user_id": "a0000000-0000-0000-0000-000000000008",
     "user_name": "Agent Admin",
