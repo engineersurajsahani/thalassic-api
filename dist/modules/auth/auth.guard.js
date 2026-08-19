@@ -20,10 +20,17 @@ let AuthGuard = class AuthGuard {
     async canActivate(context) {
         const request = context.switchToHttp().getRequest();
         const authHeader = request.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            throw new common_1.UnauthorizedException('Missing or invalid Authorization header');
+        const queryToken = request.query?.token || request.query?.auth;
+        let token = '';
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
         }
-        const token = authHeader.split(' ')[1];
+        else if (typeof queryToken === 'string' && queryToken.length > 0) {
+            token = queryToken;
+        }
+        if (!token) {
+            throw new common_1.UnauthorizedException('Missing or invalid Authorization header or query token');
+        }
         if (token === 'mock-master-token') {
             request.user = {
                 id: 'a0000000-0000-0000-0000-000000000001',

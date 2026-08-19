@@ -19,6 +19,7 @@ const agent_admin_module_1 = require("./modules/agent-admin/agent-admin.module")
 const agent_module_1 = require("./modules/agent/agent.module");
 const invoices_module_1 = require("./modules/invoices/invoices.module");
 const company_module_1 = require("./modules/company/company.module");
+const finance_module_1 = require("./modules/finance/finance.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -34,6 +35,7 @@ exports.AppModule = AppModule = __decorate([
             agent_module_1.AgentModule,
             invoices_module_1.InvoicesModule,
             company_module_1.CompanyModule,
+            finance_module_1.FinanceModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -1,0 +1,273 @@
+[
+  {
+    "id": "970563e3-1700-40cc-ab30-abbd3cc9e0af",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "payments_successful",
+    "company_id": null,
+    "details": "Exported Successful Payments Report in XLSX format (11 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "payments_successful",
+      "format": "xlsx",
+      "recordCount": 11
+    },
+    "ip_address": "::1",
+    "created_at": "2026-08-19T03:48:47.232Z"
+  },
+  {
+    "id": "f5ebbe0c-b98e-4fb7-9c53-9d3ef58c6b0a",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "revenue_daily",
+    "company_id": null,
+    "details": "Exported Daily Revenue Report in CSV format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "revenue_daily",
+      "format": "csv",
+      "recordCount": 4
+    },
+    "ip_address": "::1",
+    "created_at": "2026-08-19T03:37:25.034Z"
+  },
+  {
+    "id": "84a1cffa-351d-4584-8173-ebf1c12197b6",
+    "user_id": "master-1",
+    "user_name": "Master Admin",
+    "action": "PAYMENT_RECEIVED",
+    "module": "Payments",
+    "entity_id": "TXN-TEST-999",
+    "company_id": null,
+    "details": "Received ₹15,000 for BST course",
+    "previous_value": {
+      "status": "Pending"
+    },
+    "updated_value": {
+      "status": "Successful",
+      "amount": 15000
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:34:58.687Z"
+  },
+  {
+    "id": "c62d79a0-aee5-4a62-a30b-f13740bde65d",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "settlements_history",
+    "company_id": null,
+    "details": "Exported Settlement History & Audit Ledger in PDF format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "settlements_history",
+      "format": "pdf",
+      "recordCount": 4
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:34:58.681Z"
+  },
+  {
+    "id": "692b4902-5211-409c-a421-f4262ae25271",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "invoices_summary",
+    "company_id": null,
+    "details": "Exported Platform Invoice Summary Report in XLSX format (11 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "invoices_summary",
+      "format": "xlsx",
+      "recordCount": 11
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:34:58.674Z"
+  },
+  {
+    "id": "8b59288a-d06b-420a-b7e2-34492c5bb001",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "revenue_daily",
+    "company_id": null,
+    "details": "Exported Daily Revenue Report in CSV format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "revenue_daily",
+      "format": "csv",
+      "recordCount": 4
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:34:58.655Z"
+  },
+  {
+    "id": "4cecc8da-fdab-4716-9372-085610832d1b",
+    "user_id": "master-1",
+    "user_name": "Master Admin",
+    "action": "PAYMENT_RECEIVED",
+    "module": "Payments",
+    "entity_id": "TXN-TEST-999",
+    "company_id": null,
+    "details": "Received ₹15,000 for BST course",
+    "previous_value": {
+      "status": "Pending"
+    },
+    "updated_value": {
+      "status": "Successful",
+      "amount": 15000
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:33:51.990Z"
+  },
+  {
+    "id": "0f8ebe33-598c-4bd2-a1a1-6ffc0e4b8b9e",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "settlements_history",
+    "company_id": null,
+    "details": "Exported Settlement History & Audit Ledger in PDF format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "settlements_history",
+      "format": "pdf",
+      "recordCount": 4
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:33:51.982Z"
+  },
+  {
+    "id": "d6298518-8a8a-445c-9d3b-90a5cecdeb82",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "invoices_summary",
+    "company_id": null,
+    "details": "Exported Platform Invoice Summary Report in XLSX format (11 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "invoices_summary",
+      "format": "xlsx",
+      "recordCount": 11
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:33:51.972Z"
+  },
+  {
+    "id": "fef72e0d-25a9-42bf-9f4d-c20e77c8e442",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "revenue_daily",
+    "company_id": null,
+    "details": "Exported Daily Revenue Report in CSV format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "revenue_daily",
+      "format": "csv",
+      "recordCount": 4
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-19T03:33:51.946Z"
+  },
+  {
+    "id": "df18cf42-5d2f-4888-a662-de985b04bdb5",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "INVOICE_GENERATED",
+    "module": "Invoices",
+    "entity_id": "HOC-2026-000001",
+    "details": "Generated HOC Invoice HOC-2026-000001 for Basic Safety Training (BST) (Amount: ₹12,000)",
+    "previous_value": null,
+    "updated_value": {
+      "status": "Paid",
+      "amount": 12000,
+      "invoice_type": "HOC"
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-06T03:33:51.751Z"
+  },
+  {
+    "id": "4c2f7260-6ea2-47b8-b246-015349c1a829",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "PAYMENT_RECEIVED",
+    "module": "Payments",
+    "entity_id": "TXN-HOC-1001",
+    "details": "Payment received of ₹12,000 via Razorpay for transaction TXN-HOC-1001",
+    "previous_value": {
+      "status": "Pending"
+    },
+    "updated_value": {
+      "status": "Successful",
+      "amount": 12000
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-06T03:33:51.751Z"
+  },
+  {
+    "id": "113a2bfb-6882-4396-ae01-b5b73265f42b",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "COMMISSION_APPROVED",
+    "module": "Commissions",
+    "entity_id": "f02c3029-3897-4606-aeb0-af576e103641",
+    "details": "Commission approved for agent Kishan Vishwakarma (Course: Advanced Fire Fighting, Amount: ₹1,250)",
+    "previous_value": {
+      "status": "Pending"
+    },
+    "updated_value": {
+      "status": "Approved",
+      "commission_amount": 1250
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-09T03:33:51.751Z"
+  },
+  {
+    "id": "ea011ec8-d63d-4b58-9ec9-5ec8409f3df0",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "SETTLEMENT_APPROVED",
+    "module": "Settlements",
+    "entity_id": "SET-2026-C1EEC7",
+    "details": "Created and approved settlement batch SET-2026-C1EEC7 for ₹1,250",
+    "previous_value": {
+      "status": "Draft"
+    },
+    "updated_value": {
+      "status": "Approved",
+      "total_amount": 1250
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-11T03:33:51.751Z"
+  },
+  {
+    "id": "c3000dc7-dcb8-4fe2-a6af-540df3f97792",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "SETTLEMENT_COMPLETED",
+    "module": "Settlements",
+    "entity_id": "SET-2026-C1EEC7",
+    "details": "Settlement batch SET-2026-C1EEC7 marked as paid and disbursed to agent",
+    "previous_value": {
+      "status": "Approved"
+    },
+    "updated_value": {
+      "status": "Paid",
+      "paid_at": "2026-08-19T03:33:51.754Z"
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-08-12T03:33:51.751Z"
+  }
+]

@@ -10,6 +10,7 @@ import { AgentAdminModule } from './modules/agent-admin/agent-admin.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { CompanyModule } from './modules/company/company.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CompanyModule } from './modules/company/company.module';
     AgentModule,
     InvoicesModule,
     CompanyModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
