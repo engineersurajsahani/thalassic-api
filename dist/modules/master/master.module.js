@@ -10,11 +10,14 @@ exports.MasterModule = void 0;
 const common_1 = require("@nestjs/common");
 const master_controller_1 = require("./master.controller");
 const master_service_1 = require("./master.service");
+const invoices_module_1 = require("../invoices/invoices.module");
+const agent_admin_module_1 = require("../agent-admin/agent-admin.module");
 let MasterModule = class MasterModule {
 };
 exports.MasterModule = MasterModule;
 exports.MasterModule = MasterModule = __decorate([
     (0, common_1.Module)({
+        imports: [invoices_module_1.InvoicesModule, agent_admin_module_1.AgentAdminModule],
         controllers: [master_controller_1.MasterController],
         providers: [master_service_1.MasterService],
     })

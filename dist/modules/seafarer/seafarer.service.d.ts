@@ -56,8 +56,18 @@ export declare class SeafarerService {
         expiryDate: any;
         uploadedAt: any;
         url: any;
+        passportNumber: any;
+        cdcNumber: any;
+        placeOfIssue: any;
+        issueDate: any;
+        courseName: any;
+        courseType: any;
+        durationFrom: any;
+        durationTo: any;
+        metadata: any;
     }[]>;
-    uploadDocument(userId: string, type: string, expiryDate?: string, file?: any): Promise<any>;
+    uploadDocument(userId: string, type: string, expiryDate?: string, file?: any, bodyMetadata?: any): Promise<any>;
+    updateDocument(userId: string, docId: string, bodyMetadata: any, file?: any): Promise<any>;
     downloadDocument(userId: string, docId: string, role?: string): Promise<{
         signedUrl: string;
         fileName: any;
@@ -67,12 +77,24 @@ export declare class SeafarerService {
         deleted: boolean;
     }>;
     getUserProfile(userId: string): Promise<{
+        firstName: any;
+        lastName: any;
+        email: any;
+        phone: any;
         profile: {
+            firstName: any;
+            lastName: any;
+            email: any;
+            phone: any;
+            alternatePhone: any;
             dob: any;
-            birthPlace: any;
+            placeOfBirth: any;
             nationality: any;
             indosNumber: any;
             address: any;
+            city: any;
+            state: any;
+            country: any;
             profilePicture: any;
             seaService: {
                 id: any;
@@ -87,17 +109,27 @@ export declare class SeafarerService {
         };
         id?: any;
         name?: any;
-        email?: any;
-        phone?: any;
         role?: any;
     }>;
     updateUserProfile(userId: string, details: any): Promise<{
+        firstName: any;
+        lastName: any;
+        email: any;
+        phone: any;
         profile: {
+            firstName: any;
+            lastName: any;
+            email: any;
+            phone: any;
+            alternatePhone: any;
             dob: any;
-            birthPlace: any;
+            placeOfBirth: any;
             nationality: any;
             indosNumber: any;
             address: any;
+            city: any;
+            state: any;
+            country: any;
             profilePicture: any;
             seaService: {
                 id: any;
@@ -112,8 +144,6 @@ export declare class SeafarerService {
         };
         id?: any;
         name?: any;
-        email?: any;
-        phone?: any;
         role?: any;
     }>;
     addSeaService(userId: string, record: any): Promise<any>;

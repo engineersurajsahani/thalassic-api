@@ -49,4 +49,89 @@ export declare class MasterController {
     } | {
         success: boolean;
     }>;
+    private verifyMasterRole;
+    getPayments(req: any, query: any): Promise<{
+        id: any;
+        transactionId: any;
+        orderId: any;
+        paymentGateway: any;
+        paymentMethod: any;
+        transactionDate: any;
+        paymentStatus: any;
+        seafarerName: any;
+        registrationType: string;
+        referringAgent: any;
+        courseName: any;
+        courseFee: any;
+        discountApplied: any;
+        finalAmount: any;
+        invoiceNumber: any;
+    }[]>;
+    getInvoices(req: any, query: any): Promise<any[]>;
+    getInvoicePdf(req: any, id: string): Promise<{
+        invoice: any;
+        company: {
+            name: string;
+            address: string;
+            email: any;
+            phone: any;
+            dgsAccreditationId: any;
+            gstin: string;
+        };
+        terms: string[];
+    }>;
+    resendInvoice(req: any, id: string): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    getCommissions(req: any): Promise<{
+        summary: {
+            pendingCommission: number;
+            approvedCommission: number;
+            paidCommission: number;
+            outstandingCommission: number;
+            totalCommissionExpense: number;
+        };
+        commissions: {
+            id: any;
+            invoiceNumber: any;
+            seafarerName: any;
+            courseName: any;
+            courseFee: string;
+            commissionRate: string;
+            commissionAmount: string;
+            rawAmount: number;
+            commissionSource: any;
+            commissionVersion: any;
+            remarks: any;
+            rejectionReason: any;
+            status: any;
+            agentId: any;
+            agentName: any;
+            createdAt: any;
+            settledAt: any;
+        }[];
+    }>;
+    getSettlements(req: any): Promise<{
+        id: any;
+        settlementNumber: any;
+        agentId: any;
+        agentName: any;
+        hacInvoiceNumber: any;
+        totalAmount: string;
+        rawAmount: number;
+        status: any;
+        createdAt: any;
+        paidAt: any;
+    }[]>;
+    approveSettlement(req: any, id: string): Promise<{
+        id: string;
+        status: string;
+        success: boolean;
+    }>;
+    paySettlement(req: any, id: string): Promise<{
+        id: string;
+        status: string;
+        success: boolean;
+    }>;
 }

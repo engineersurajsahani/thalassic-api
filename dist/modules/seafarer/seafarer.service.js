@@ -492,22 +492,61 @@ let SeafarerService = class SeafarerService {
             .eq('userId', userId);
         if (error)
             throw new common_1.BadRequestException(error.message);
-        return (data ?? []).map((d) => ({
-            id: d.id,
-            type: d.type,
-            label: d.name ?? d.type,
-            status: d.status ?? 'pending',
-            expiryDate: d.expiryDate ?? null,
-            uploadedAt: d.uploadDate ?? d.createdAt ?? null,
-            url: d.url,
-        }));
+        return (data ?? []).map((d) => {
+            let meta = {};
+            try {
+                if (d.remarks && d.remarks.startsWith('{')) {
+                    meta = JSON.parse(d.remarks);
+                }
+                else if (d.metadata && typeof d.metadata === 'string') {
+                    meta = JSON.parse(d.metadata);
+                }
+                else if (d.metadata && typeof d.metadata === 'object') {
+                    meta = d.metadata;
+                }
+            }
+            catch (e) {
+                meta = {};
+            }
+            return {
+                id: d.id,
+                type: d.type,
+                label: d.name ?? d.type,
+                status: d.status ?? 'pending',
+                expiryDate: d.expiryDate ?? meta.expiryDate ?? null,
+                uploadedAt: d.uploadDate ?? d.createdAt ?? null,
+                url: d.url,
+                passportNumber: meta.passportNumber ?? d.passportNumber ?? null,
+                cdcNumber: meta.cdcNumber ?? d.cdcNumber ?? null,
+                placeOfIssue: meta.placeOfIssue ?? d.placeOfIssue ?? null,
+                issueDate: meta.issueDate ?? d.issueDate ?? null,
+                courseName: meta.courseName ?? d.courseName ?? null,
+                courseType: meta.courseType ?? d.courseType ?? null,
+                durationFrom: meta.durationFrom ?? d.durationFrom ?? null,
+                durationTo: meta.durationTo ?? d.durationTo ?? null,
+                metadata: meta,
+            };
+        });
     }
-    async uploadDocument(userId, type, expiryDate, file) {
+    async uploadDocument(userId, type, expiryDate, file, bodyMetadata) {
         if (!file || !file.buffer || file.buffer.length === 0) {
             throw new common_1.BadRequestException('No file provided or file is empty.');
         }
+        const docType = (type || bodyMetadata?.type || 'other').toLowerCase();
+        if (docType === 'passport' || docType === 'cdc') {
+            const { data: existingDocs } = await this.db
+                .from('Document')
+                .select('id')
+                .eq('userId', userId)
+                .ilike('type', docType);
+            if (existingDocs && existingDocs.length > 0) {
+                for (const exDoc of existingDocs) {
+                    await this.db.from('Document').delete().eq('id', exDoc.id);
+                }
+            }
+        }
         const docId = (0, crypto_1.randomUUID)();
-        const originalName = file.originalname || `${type}-${docId}`;
+        const originalName = file.originalname || `${docType}-${docId}`;
         const mimeType = file.mimetype || 'application/octet-stream';
         const storagePath = `${userId}/${docId}/${originalName}`;
         const BUCKET = 'seafarer-documents';
@@ -515,29 +554,107 @@ let SeafarerService = class SeafarerService {
             .from(BUCKET)
             .upload(storagePath, file.buffer, {
             contentType: mimeType,
-            upsert: false,
+            upsert: true,
         });
         if (storageError) {
             console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
-            throw new common_1.BadRequestException(`File storage failed: ${storageError.message}. Ensure the '${BUCKET}' bucket exists in Supabase Storage.`);
+            throw new common_1.BadRequestException(`File storage failed: ${storageError.message}. Ensure '${BUCKET}' bucket exists in Supabase Storage.`);
         }
+        const metadataObj = {
+            passportNumber: bodyMetadata?.passportNumber,
+            cdcNumber: bodyMetadata?.cdcNumber,
+            placeOfIssue: bodyMetadata?.placeOfIssue,
+            issueDate: bodyMetadata?.issueDate,
+            expiryDate: expiryDate || bodyMetadata?.expiryDate,
+            courseName: bodyMetadata?.courseName,
+            courseType: bodyMetadata?.courseType,
+            durationFrom: bodyMetadata?.durationFrom,
+            durationTo: bodyMetadata?.durationTo,
+        };
         const { data, error } = await this.db
             .from('Document')
             .insert({
             id: docId,
             userId,
-            type,
+            type: docType,
             name: originalName,
             url: storagePath,
             status: 'Pending',
-            expiryDate: expiryDate ?? null,
+            expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
+            remarks: JSON.stringify(metadataObj),
             uploadDate: new Date().toISOString(),
         })
             .select()
             .single();
         if (error)
             throw new common_1.BadRequestException(error.message);
-        return { ...data, message: 'Document uploaded successfully and pending verification.' };
+        return { ...data, metadata: metadataObj, message: 'Document uploaded successfully.' };
+    }
+    async updateDocument(userId, docId, bodyMetadata, file) {
+        const { data: existingDoc, error: fetchErr } = await this.db
+            .from('Document')
+            .select('*')
+            .eq('id', docId)
+            .single();
+        if (fetchErr || !existingDoc) {
+            throw new common_1.BadRequestException('Document not found.');
+        }
+        if (existingDoc.userId !== userId) {
+            throw new common_1.BadRequestException('Access denied.');
+        }
+        let storagePath = existingDoc.url;
+        let fileName = existingDoc.name;
+        if (file && file.buffer && file.buffer.length > 0) {
+            const originalName = file.originalname || `${existingDoc.type}-${docId}`;
+            const mimeType = file.mimetype || 'application/octet-stream';
+            storagePath = `${userId}/${docId}/${originalName}`;
+            fileName = originalName;
+            const BUCKET = 'seafarer-documents';
+            const { error: storageError } = await this.db.storage
+                .from(BUCKET)
+                .upload(storagePath, file.buffer, {
+                contentType: mimeType,
+                upsert: true,
+            });
+            if (storageError) {
+                throw new common_1.BadRequestException(`File replacement storage failed: ${storageError.message}`);
+            }
+        }
+        let existingMeta = {};
+        try {
+            if (existingDoc.remarks && existingDoc.remarks.startsWith('{')) {
+                existingMeta = JSON.parse(existingDoc.remarks);
+            }
+        }
+        catch (e) {
+            existingMeta = {};
+        }
+        const updatedMeta = {
+            ...existingMeta,
+            passportNumber: bodyMetadata?.passportNumber ?? existingMeta.passportNumber,
+            cdcNumber: bodyMetadata?.cdcNumber ?? existingMeta.cdcNumber,
+            placeOfIssue: bodyMetadata?.placeOfIssue ?? existingMeta.placeOfIssue,
+            issueDate: bodyMetadata?.issueDate ?? existingMeta.issueDate,
+            expiryDate: bodyMetadata?.expiryDate ?? existingMeta.expiryDate,
+            courseName: bodyMetadata?.courseName ?? existingMeta.courseName,
+            courseType: bodyMetadata?.courseType ?? existingMeta.courseType,
+            durationFrom: bodyMetadata?.durationFrom ?? existingMeta.durationFrom,
+            durationTo: bodyMetadata?.durationTo ?? existingMeta.durationTo,
+        };
+        const { data, error } = await this.db
+            .from('Document')
+            .update({
+            name: fileName,
+            url: storagePath,
+            expiryDate: bodyMetadata?.expiryDate || existingDoc.expiryDate,
+            remarks: JSON.stringify(updatedMeta),
+        })
+            .eq('id', docId)
+            .select()
+            .single();
+        if (error)
+            throw new common_1.BadRequestException(error.message);
+        return { ...data, metadata: updatedMeta, message: 'Document updated successfully.' };
     }
     async downloadDocument(userId, docId, role) {
         const { data: doc, error } = await this.db
@@ -591,7 +708,7 @@ let SeafarerService = class SeafarerService {
                 }
             }
         }
-        throw new common_1.BadRequestException('Document file not found in storage. Please re-upload the document.');
+        throw new common_1.BadRequestException('Document file is unavailable.');
     }
     async deleteDocument(userId, docId) {
         const { error } = await this.db
@@ -618,14 +735,29 @@ let SeafarerService = class SeafarerService {
             .from('SeaServiceRecord')
             .select('*')
             .eq('profileId', profile?.id ?? userId);
+        const nameParts = (user?.name || '').trim().split(' ');
+        const firstName = profile?.firstName || nameParts[0] || '';
+        const lastName = profile?.lastName || nameParts.slice(1).join(' ') || '';
         return {
             ...(user ?? {}),
+            firstName,
+            lastName,
+            email: user?.email,
+            phone: user?.phone,
             profile: {
-                dob: profile?.dob,
-                birthPlace: profile?.address,
-                nationality: profile?.nationality,
-                indosNumber: profile?.indosNumber,
-                address: profile?.address,
+                firstName,
+                lastName,
+                email: user?.email,
+                phone: user?.phone,
+                alternatePhone: profile?.alternatePhone ?? profile?.altPhone ?? '',
+                dob: profile?.dob ?? '',
+                placeOfBirth: profile?.placeOfBirth ?? profile?.birthPlace ?? '',
+                nationality: profile?.nationality ?? '',
+                indosNumber: profile?.indosNumber ?? '',
+                address: profile?.address ?? '',
+                city: profile?.city ?? '',
+                state: profile?.state ?? '',
+                country: profile?.country ?? '',
                 profilePicture: profile?.profilePicture ?? null,
                 seaService: (seaServiceRecords ?? []).map((r) => ({
                     id: r.id,
@@ -641,23 +773,106 @@ let SeafarerService = class SeafarerService {
         };
     }
     async updateUserProfile(userId, details) {
-        const { name, phone } = details;
-        if (name || phone) {
-            await this.db
-                .from('User')
-                .update({ name, phone, updatedAt: new Date().toISOString() })
-                .eq('id', userId);
+        const { firstName, lastName, name, email, phone, alternatePhone, dob, placeOfBirth, address, city, state, country, indosNumber, profilePicture, } = details;
+        const fullName = (firstName && lastName) ? `${firstName.trim()} ${lastName.trim()}` : (name || firstName || '');
+        if (!fullName || !fullName.trim()) {
+            throw new common_1.BadRequestException('First Name and Last Name are required.');
         }
+        if (!email || !email.trim()) {
+            throw new common_1.BadRequestException('Email address is required.');
+        }
+        if (!phone || !phone.trim()) {
+            throw new common_1.BadRequestException('Mobile phone number is required.');
+        }
+        if (!dob) {
+            throw new common_1.BadRequestException('Date of birth is required.');
+        }
+        if (!placeOfBirth) {
+            throw new common_1.BadRequestException('Place of birth is required.');
+        }
+        if (!address) {
+            throw new common_1.BadRequestException('Address is required.');
+        }
+        if (!city) {
+            throw new common_1.BadRequestException('City is required.');
+        }
+        if (!state) {
+            throw new common_1.BadRequestException('State is required.');
+        }
+        if (!country) {
+            throw new common_1.BadRequestException('Country is required.');
+        }
+        if (!indosNumber || !indosNumber.trim()) {
+            throw new common_1.BadRequestException('INDOS Number is required.');
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            throw new common_1.BadRequestException('Invalid email address format.');
+        }
+        const { data: existingUserWithEmail } = await this.db
+            .from('User')
+            .select('id')
+            .eq('email', email.trim().toLowerCase())
+            .neq('id', userId)
+            .maybeSingle();
+        if (existingUserWithEmail) {
+            throw new common_1.BadRequestException('Email address is already registered to another user.');
+        }
+        if (indosNumber && indosNumber.trim()) {
+            const { data: existingProfileWithIndos } = await this.db
+                .from('SeafarerProfile')
+                .select('userId')
+                .eq('indosNumber', indosNumber.trim())
+                .neq('userId', userId)
+                .maybeSingle();
+            if (existingProfileWithIndos) {
+                throw new common_1.BadRequestException('INDOS Number is already registered to another Seafarer.');
+            }
+        }
+        await this.db
+            .from('User')
+            .update({
+            name: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            phone: phone.trim(),
+            updatedAt: new Date().toISOString(),
+        })
+            .eq('id', userId);
         await this.db
             .from('SeafarerProfile')
             .upsert({
             userId,
-            dob: details.dob,
-            address: details.address ?? details.birthPlace,
-            nationality: details.nationality,
-            indosNumber: details.indosNumber,
+            firstName: firstName?.trim(),
+            lastName: lastName?.trim(),
+            alternatePhone: alternatePhone?.trim() ?? null,
+            dob,
+            placeOfBirth: placeOfBirth?.trim(),
+            birthPlace: placeOfBirth?.trim(),
+            address: address?.trim(),
+            city: city?.trim(),
+            state: state?.trim(),
+            country: country?.trim(),
+            nationality: country?.trim() || 'Indian',
+            indosNumber: indosNumber?.trim(),
+            profilePicture: profilePicture ?? null,
             updatedAt: new Date().toISOString(),
         }, { onConflict: 'userId' });
+        try {
+            await this.db.from('audit_logs').insert({
+                id: (0, crypto_1.randomUUID)(),
+                user_id: userId,
+                user_name: fullName,
+                action: 'UPDATE_SEAFARER_PROFILE',
+                module: 'Seafarer Portal',
+                entity_id: userId,
+                details: `Updated seafarer profile: ${fullName} (INDOS: ${indosNumber})`,
+                ip_address: '127.0.0.1',
+                created_at: new Date().toISOString(),
+            });
+        }
+        catch (e) {
+            console.warn('Audit log write warning:', e);
+        }
         return this.getUserProfile(userId);
     }
     async addSeaService(userId, record) {

@@ -559,15 +559,39 @@ export class SeafarerService {
       .eq('userId', userId);
 
     if (error) throw new BadRequestException(error.message);
-    return (data ?? []).map((d: any) => ({
-      id: d.id,
-      type: d.type,
-      label: d.name ?? d.type,
-      status: d.status ?? 'pending',
-      expiryDate: d.expiryDate ?? null,
-      uploadedAt: d.uploadDate ?? d.createdAt ?? null,
-      url: d.url,
-    }));
+    return (data ?? []).map((d: any) => {
+      let meta: any = {};
+      try {
+        if (d.remarks && d.remarks.startsWith('{')) {
+          meta = JSON.parse(d.remarks);
+        } else if (d.metadata && typeof d.metadata === 'string') {
+          meta = JSON.parse(d.metadata);
+        } else if (d.metadata && typeof d.metadata === 'object') {
+          meta = d.metadata;
+        }
+      } catch (e) {
+        meta = {};
+      }
+
+      return {
+        id: d.id,
+        type: d.type,
+        label: d.name ?? d.type,
+        status: d.status ?? 'pending',
+        expiryDate: d.expiryDate ?? meta.expiryDate ?? null,
+        uploadedAt: d.uploadDate ?? d.createdAt ?? null,
+        url: d.url,
+        passportNumber: meta.passportNumber ?? d.passportNumber ?? null,
+        cdcNumber: meta.cdcNumber ?? d.cdcNumber ?? null,
+        placeOfIssue: meta.placeOfIssue ?? d.placeOfIssue ?? null,
+        issueDate: meta.issueDate ?? d.issueDate ?? null,
+        courseName: meta.courseName ?? d.courseName ?? null,
+        courseType: meta.courseType ?? d.courseType ?? null,
+        durationFrom: meta.durationFrom ?? d.durationFrom ?? null,
+        durationTo: meta.durationTo ?? d.durationTo ?? null,
+        metadata: meta,
+      };
+    });
   }
 
   async uploadDocument(
@@ -575,52 +599,156 @@ export class SeafarerService {
     type: string,
     expiryDate?: string,
     file?: any,
+    bodyMetadata?: any,
   ) {
     if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('No file provided or file is empty.');
     }
 
+    const docType = (type || bodyMetadata?.type || 'other').toLowerCase();
+
+    // Business Rule for Passport & CDC: Only ONE active document allowed. Delete pre-existing ones.
+    if (docType === 'passport' || docType === 'cdc') {
+      const { data: existingDocs } = await this.db
+        .from('Document')
+        .select('id')
+        .eq('userId', userId)
+        .ilike('type', docType);
+
+      if (existingDocs && existingDocs.length > 0) {
+        for (const exDoc of existingDocs) {
+          await this.db.from('Document').delete().eq('id', exDoc.id);
+        }
+      }
+    }
+
     const docId = randomUUID();
-    const originalName = file.originalname || `${type}-${docId}`;
+    const originalName = file.originalname || `${docType}-${docId}`;
     const mimeType = file.mimetype || 'application/octet-stream';
 
-    // Storage path: userId/docId/originalFilename  (preserves original name & extension)
+    // Storage path: userId/docId/originalFilename
     const storagePath = `${userId}/${docId}/${originalName}`;
     const BUCKET = 'seafarer-documents';
 
-    // Upload the actual file buffer to Supabase Storage
     const { error: storageError } = await this.db.storage
       .from(BUCKET)
       .upload(storagePath, file.buffer, {
         contentType: mimeType,
-        upsert: false,
+        upsert: true,
       });
 
     if (storageError) {
       console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
       throw new BadRequestException(
-        `File storage failed: ${storageError.message}. Ensure the '${BUCKET}' bucket exists in Supabase Storage.`,
+        `File storage failed: ${storageError.message}. Ensure '${BUCKET}' bucket exists in Supabase Storage.`,
       );
     }
 
-    // Persist the DB record — store the storage path (not a full URL)
+    const metadataObj = {
+      passportNumber: bodyMetadata?.passportNumber,
+      cdcNumber: bodyMetadata?.cdcNumber,
+      placeOfIssue: bodyMetadata?.placeOfIssue,
+      issueDate: bodyMetadata?.issueDate,
+      expiryDate: expiryDate || bodyMetadata?.expiryDate,
+      courseName: bodyMetadata?.courseName,
+      courseType: bodyMetadata?.courseType,
+      durationFrom: bodyMetadata?.durationFrom,
+      durationTo: bodyMetadata?.durationTo,
+    };
+
     const { data, error } = await this.db
       .from('Document')
       .insert({
         id: docId,
         userId,
-        type,
+        type: docType,
         name: originalName,
-        url: storagePath,          // real storage object path
+        url: storagePath,
         status: 'Pending',
-        expiryDate: expiryDate ?? null,
+        expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
+        remarks: JSON.stringify(metadataObj),
         uploadDate: new Date().toISOString(),
       })
       .select()
       .single();
 
     if (error) throw new BadRequestException(error.message);
-    return { ...data, message: 'Document uploaded successfully and pending verification.' };
+    return { ...data, metadata: metadataObj, message: 'Document uploaded successfully.' };
+  }
+
+  async updateDocument(userId: string, docId: string, bodyMetadata: any, file?: any) {
+    const { data: existingDoc, error: fetchErr } = await this.db
+      .from('Document')
+      .select('*')
+      .eq('id', docId)
+      .single();
+
+    if (fetchErr || !existingDoc) {
+      throw new BadRequestException('Document not found.');
+    }
+
+    if (existingDoc.userId !== userId) {
+      throw new BadRequestException('Access denied.');
+    }
+
+    let storagePath = existingDoc.url;
+    let fileName = existingDoc.name;
+
+    if (file && file.buffer && file.buffer.length > 0) {
+      const originalName = file.originalname || `${existingDoc.type}-${docId}`;
+      const mimeType = file.mimetype || 'application/octet-stream';
+      storagePath = `${userId}/${docId}/${originalName}`;
+      fileName = originalName;
+
+      const BUCKET = 'seafarer-documents';
+      const { error: storageError } = await this.db.storage
+        .from(BUCKET)
+        .upload(storagePath, file.buffer, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (storageError) {
+        throw new BadRequestException(`File replacement storage failed: ${storageError.message}`);
+      }
+    }
+
+    let existingMeta: any = {};
+    try {
+      if (existingDoc.remarks && existingDoc.remarks.startsWith('{')) {
+        existingMeta = JSON.parse(existingDoc.remarks);
+      }
+    } catch (e) {
+      existingMeta = {};
+    }
+
+    const updatedMeta = {
+      ...existingMeta,
+      passportNumber: bodyMetadata?.passportNumber ?? existingMeta.passportNumber,
+      cdcNumber: bodyMetadata?.cdcNumber ?? existingMeta.cdcNumber,
+      placeOfIssue: bodyMetadata?.placeOfIssue ?? existingMeta.placeOfIssue,
+      issueDate: bodyMetadata?.issueDate ?? existingMeta.issueDate,
+      expiryDate: bodyMetadata?.expiryDate ?? existingMeta.expiryDate,
+      courseName: bodyMetadata?.courseName ?? existingMeta.courseName,
+      courseType: bodyMetadata?.courseType ?? existingMeta.courseType,
+      durationFrom: bodyMetadata?.durationFrom ?? existingMeta.durationFrom,
+      durationTo: bodyMetadata?.durationTo ?? existingMeta.durationTo,
+    };
+
+    const { data, error } = await this.db
+      .from('Document')
+      .update({
+        name: fileName,
+        url: storagePath,
+        expiryDate: bodyMetadata?.expiryDate || existingDoc.expiryDate,
+        remarks: JSON.stringify(updatedMeta),
+      })
+      .eq('id', docId)
+      .select()
+      .single();
+
+    if (error) throw new BadRequestException(error.message);
+    return { ...data, metadata: updatedMeta, message: 'Document updated successfully.' };
   }
 
   async downloadDocument(userId: string, docId: string, role?: string) {
@@ -694,7 +822,7 @@ export class SeafarerService {
     }
 
     throw new BadRequestException(
-      'Document file not found in storage. Please re-upload the document.',
+      'Document file is unavailable.',
     );
   }
 
@@ -730,14 +858,30 @@ export class SeafarerService {
       .select('*')
       .eq('profileId', profile?.id ?? userId);
 
+    const nameParts = (user?.name || '').trim().split(' ');
+    const firstName = profile?.firstName || nameParts[0] || '';
+    const lastName = profile?.lastName || nameParts.slice(1).join(' ') || '';
+
     return {
       ...(user ?? {}),
+      firstName,
+      lastName,
+      email: user?.email,
+      phone: user?.phone,
       profile: {
-        dob: profile?.dob,
-        birthPlace: profile?.address,
-        nationality: profile?.nationality,
-        indosNumber: profile?.indosNumber,
-        address: profile?.address,
+        firstName,
+        lastName,
+        email: user?.email,
+        phone: user?.phone,
+        alternatePhone: profile?.alternatePhone ?? profile?.altPhone ?? '',
+        dob: profile?.dob ?? '',
+        placeOfBirth: profile?.placeOfBirth ?? profile?.birthPlace ?? '',
+        nationality: profile?.nationality ?? '',
+        indosNumber: profile?.indosNumber ?? '',
+        address: profile?.address ?? '',
+        city: profile?.city ?? '',
+        state: profile?.state ?? '',
+        country: profile?.country ?? '',
         profilePicture: profile?.profilePicture ?? null,
         seaService: (seaServiceRecords ?? []).map((r: any) => ({
           id: r.id,
@@ -754,28 +898,140 @@ export class SeafarerService {
   }
 
   async updateUserProfile(userId: string, details: any) {
-    const { name, phone } = details;
+    const {
+      firstName,
+      lastName,
+      name,
+      email,
+      phone,
+      alternatePhone,
+      dob,
+      placeOfBirth,
+      address,
+      city,
+      state,
+      country,
+      indosNumber,
+      profilePicture,
+    } = details;
 
-    if (name || phone) {
-      await this.db
-        .from('User')
-        .update({ name, phone, updatedAt: new Date().toISOString() })
-        .eq('id', userId);
+    const fullName = (firstName && lastName) ? `${firstName.trim()} ${lastName.trim()}` : (name || firstName || '');
+
+    // 1. Mandatory Fields Validation
+    if (!fullName || !fullName.trim()) {
+      throw new BadRequestException('First Name and Last Name are required.');
+    }
+    if (!email || !email.trim()) {
+      throw new BadRequestException('Email address is required.');
+    }
+    if (!phone || !phone.trim()) {
+      throw new BadRequestException('Mobile phone number is required.');
+    }
+    if (!dob) {
+      throw new BadRequestException('Date of birth is required.');
+    }
+    if (!placeOfBirth) {
+      throw new BadRequestException('Place of birth is required.');
+    }
+    if (!address) {
+      throw new BadRequestException('Address is required.');
+    }
+    if (!city) {
+      throw new BadRequestException('City is required.');
+    }
+    if (!state) {
+      throw new BadRequestException('State is required.');
+    }
+    if (!country) {
+      throw new BadRequestException('Country is required.');
+    }
+    if (!indosNumber || !indosNumber.trim()) {
+      throw new BadRequestException('INDOS Number is required.');
     }
 
+    // 2. Email Format Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      throw new BadRequestException('Invalid email address format.');
+    }
+
+    // 3. Email Uniqueness Check
+    const { data: existingUserWithEmail } = await this.db
+      .from('User')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .neq('id', userId)
+      .maybeSingle();
+
+    if (existingUserWithEmail) {
+      throw new BadRequestException('Email address is already registered to another user.');
+    }
+
+    // 4. INDOS Number Uniqueness Check
+    if (indosNumber && indosNumber.trim()) {
+      const { data: existingProfileWithIndos } = await this.db
+        .from('SeafarerProfile')
+        .select('userId')
+        .eq('indosNumber', indosNumber.trim())
+        .neq('userId', userId)
+        .maybeSingle();
+
+      if (existingProfileWithIndos) {
+        throw new BadRequestException('INDOS Number is already registered to another Seafarer.');
+      }
+    }
+
+    // 5. Update User Table
+    await this.db
+      .from('User')
+      .update({
+        name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    // 6. Update/Upsert SeafarerProfile Table
     await this.db
       .from('SeafarerProfile')
       .upsert(
         {
           userId,
-          dob: details.dob,
-          address: details.address ?? details.birthPlace,
-          nationality: details.nationality,
-          indosNumber: details.indosNumber,
+          firstName: firstName?.trim(),
+          lastName: lastName?.trim(),
+          alternatePhone: alternatePhone?.trim() ?? null,
+          dob,
+          placeOfBirth: placeOfBirth?.trim(),
+          birthPlace: placeOfBirth?.trim(),
+          address: address?.trim(),
+          city: city?.trim(),
+          state: state?.trim(),
+          country: country?.trim(),
+          nationality: country?.trim() || 'Indian',
+          indosNumber: indosNumber?.trim(),
+          profilePicture: profilePicture ?? null,
           updatedAt: new Date().toISOString(),
         },
         { onConflict: 'userId' },
       );
+
+    // 7. Audit Log Entry
+    try {
+      await this.db.from('audit_logs').insert({
+        id: randomUUID(),
+        user_id: userId,
+        user_name: fullName,
+        action: 'UPDATE_SEAFARER_PROFILE',
+        module: 'Seafarer Portal',
+        entity_id: userId,
+        details: `Updated seafarer profile: ${fullName} (INDOS: ${indosNumber})`,
+        ip_address: '127.0.0.1',
+        created_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('Audit log write warning:', e);
+    }
 
     return this.getUserProfile(userId);
   }

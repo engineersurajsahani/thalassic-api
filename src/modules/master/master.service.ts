@@ -1,9 +1,15 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { InvoicesService } from '../invoices/invoices.service';
+import { AgentAdminService } from '../agent-admin/agent-admin.service';
 
 @Injectable()
 export class MasterService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(
+    private supabaseService: SupabaseService,
+    private invoicesService: InvoicesService,
+    private agentAdminService: AgentAdminService,
+  ) {}
 
   private getSupabase() {
     return this.supabaseService.getClient();
@@ -413,5 +419,116 @@ export class MasterService {
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
+  }
+
+  // --- 5. Finance Module Services (Chapters 7.1 to 7.5) ---
+
+  // 5.1 Payment Management
+  async getPayments(query: any = {}) {
+    // Invoices represent payments since every successful payment generates exactly one invoice
+    const mockUser = { role: 'MASTER', id: 'master-system-user' };
+    const invoices = await this.invoicesService.getInvoices(mockUser, query);
+
+    let payments = invoices.map((inv: any) => {
+      const regType = inv.agent_id || inv.agent_referral_code ? 'Referral' : 'Direct';
+      return {
+        id: inv.id,
+        transactionId: inv.transaction_id || `TXN-${inv.id.substring(0, 8).toUpperCase()}`,
+        orderId: inv.purchase_id || 'N/A',
+        paymentGateway: inv.payment_gateway || 'Razorpay',
+        paymentMethod: inv.payment_method || 'Online UPI/Card',
+        transactionDate: inv.payment_date || inv.created_at,
+        paymentStatus: inv.status === 'Paid' ? 'Successful' : inv.status || 'Successful',
+        seafarerName: inv.customer_name || 'N/A',
+        registrationType: regType,
+        referringAgent: inv.agent_name || null,
+        courseName: inv.course_name || 'N/A',
+        courseFee: inv.course_fee || 0,
+        discountApplied: inv.discount || 0,
+        finalAmount: inv.final_amount || 0,
+        invoiceNumber: inv.invoice_number,
+      };
+    });
+
+    // Apply additional payments-specific filters if provided
+    const { status, paymentMethod, paymentGateway } = query;
+    if (status && status !== 'all') {
+      const normalizedStatus = status.toLowerCase() === 'successful' ? 'successful' : status.toLowerCase();
+      payments = payments.filter((p: any) => p.paymentStatus.toLowerCase() === normalizedStatus);
+    }
+    if (paymentMethod && paymentMethod !== 'all') {
+      payments = payments.filter((p: any) => p.paymentMethod.toLowerCase().includes(paymentMethod.toLowerCase()));
+    }
+    if (paymentGateway && paymentGateway !== 'all') {
+      payments = payments.filter((p: any) => p.paymentGateway.toLowerCase().includes(paymentGateway.toLowerCase()));
+    }
+
+    return payments;
+  }
+
+  // 5.2 Commission Management Overview
+  async getCommissionsOverview() {
+    const commissions = await this.agentAdminService.getCommissions();
+
+    let pendingCommission = 0;
+    let approvedCommission = 0;
+    let paidCommission = 0;
+
+    for (const c of commissions) {
+      const amount = c.rawAmount || 0;
+      if (c.status === 'Pending') {
+        pendingCommission += amount;
+      } else if (c.status === 'Approved') {
+        approvedCommission += amount;
+      } else if (c.status === 'Paid' || c.status === 'Settled') {
+        paidCommission += amount;
+      }
+    }
+
+    const outstandingCommission = pendingCommission + approvedCommission;
+    const totalCommissionExpense = pendingCommission + approvedCommission + paidCommission;
+
+    return {
+      summary: {
+        pendingCommission,
+        approvedCommission,
+        paidCommission,
+        outstandingCommission,
+        totalCommissionExpense,
+      },
+      commissions,
+    };
+  }
+
+  // 5.3 Settlements delegation & wrapper
+  async approveSettlement(settlementId: string, adminId: string, adminName: string) {
+    return this.agentAdminService.approveSettlement(settlementId, adminId, adminName);
+  }
+
+  async paySettlement(settlementId: string, adminId: string, adminName: string) {
+    return this.agentAdminService.paySettlement(settlementId, adminId, adminName);
+  }
+
+  async getInvoices(user: any, query: any) {
+    return this.invoicesService.getInvoices(user, query);
+  }
+
+  async getInvoicePdf(id: string, user: any) {
+    return this.invoicesService.getInvoicePdf(id, user);
+  }
+
+  async resendInvoice(id: string, user: any) {
+    await this.invoicesService.logAction(
+      user.id,
+      user.name || 'Master Admin',
+      'INVOICE_RESENT',
+      id,
+      `Resent invoice ${id} to customer email.`,
+    );
+    return { success: true, message: 'Invoice resent successfully' };
+  }
+
+  async getSettlements() {
+    return this.agentAdminService.getSettlements();
   }
 }

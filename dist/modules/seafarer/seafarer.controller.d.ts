@@ -55,8 +55,18 @@ export declare class SeafarerController {
         expiryDate: any;
         uploadedAt: any;
         url: any;
+        passportNumber: any;
+        cdcNumber: any;
+        placeOfIssue: any;
+        issueDate: any;
+        courseName: any;
+        courseType: any;
+        durationFrom: any;
+        durationTo: any;
+        metadata: any;
     }[]>;
-    uploadDocument(req: Request, type: string, expiryDate: string, file: any): Promise<any>;
+    uploadDocument(req: Request, type: string, expiryDate: string, body: any, file: any): Promise<any>;
+    updateDocument(req: Request, docId: string, body: any, file?: any): Promise<any>;
     downloadDocument(req: Request, docId: string): Promise<{
         signedUrl: string;
         fileName: any;
@@ -66,12 +76,24 @@ export declare class SeafarerController {
         deleted: boolean;
     }>;
     getUserProfile(req: Request): Promise<{
+        firstName: any;
+        lastName: any;
+        email: any;
+        phone: any;
         profile: {
+            firstName: any;
+            lastName: any;
+            email: any;
+            phone: any;
+            alternatePhone: any;
             dob: any;
-            birthPlace: any;
+            placeOfBirth: any;
             nationality: any;
             indosNumber: any;
             address: any;
+            city: any;
+            state: any;
+            country: any;
             profilePicture: any;
             seaService: {
                 id: any;
@@ -86,17 +108,27 @@ export declare class SeafarerController {
         };
         id?: any;
         name?: any;
-        email?: any;
-        phone?: any;
         role?: any;
     }>;
     updateUserProfile(req: Request, details: any): Promise<{
+        firstName: any;
+        lastName: any;
+        email: any;
+        phone: any;
         profile: {
+            firstName: any;
+            lastName: any;
+            email: any;
+            phone: any;
+            alternatePhone: any;
             dob: any;
-            birthPlace: any;
+            placeOfBirth: any;
             nationality: any;
             indosNumber: any;
             address: any;
+            city: any;
+            state: any;
+            country: any;
             profilePicture: any;
             seaService: {
                 id: any;
@@ -111,8 +143,6 @@ export declare class SeafarerController {
         };
         id?: any;
         name?: any;
-        email?: any;
-        phone?: any;
         role?: any;
     }>;
     addSeaService(req: Request, record: any): Promise<any>;
