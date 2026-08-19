@@ -93,10 +93,21 @@ export class SeafarerController {
     @Req() req: Request,
     @Body('type') type: string,
     @Body('expiryDate') expiryDate: string,
+    @Body() body: any,
     @UploadedFile() file: any,
   ) {
-    // Pass the full file object so the service can access buffer, mimetype, and originalname
-    return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file);
+    return this.seafarerService.uploadDocument(this.uid(req), type || body?.type, expiryDate || body?.expiryDate, file, body);
+  }
+
+  @Put('documents/:id')
+  @UseInterceptors(FileInterceptor('file'))
+  updateDocument(
+    @Req() req: Request,
+    @Param('id') docId: string,
+    @Body() body: any,
+    @UploadedFile() file?: any,
+  ) {
+    return this.seafarerService.updateDocument(this.uid(req), docId, body, file);
   }
 
   @Get('documents/:id/download')

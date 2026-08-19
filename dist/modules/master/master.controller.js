@@ -66,6 +66,47 @@ let MasterController = class MasterController {
         const adminId = decoded.sub;
         return this.masterService.updateAdminProfile(adminId, dto);
     }
+    verifyMasterRole(req) {
+        if (!req.user || req.user.role !== 'MASTER') {
+            throw new common_1.ForbiddenException('Access denied. Master role required.');
+        }
+    }
+    getPayments(req, query) {
+        this.verifyMasterRole(req);
+        return this.masterService.getPayments(query);
+    }
+    getInvoices(req, query) {
+        this.verifyMasterRole(req);
+        return this.masterService.getInvoices(req.user, query);
+    }
+    getInvoicePdf(req, id) {
+        this.verifyMasterRole(req);
+        return this.masterService.getInvoicePdf(id, req.user);
+    }
+    resendInvoice(req, id) {
+        this.verifyMasterRole(req);
+        return this.masterService.resendInvoice(id, req.user);
+    }
+    getCommissions(req) {
+        this.verifyMasterRole(req);
+        return this.masterService.getCommissionsOverview();
+    }
+    getSettlements(req) {
+        this.verifyMasterRole(req);
+        return this.masterService.getSettlements();
+    }
+    approveSettlement(req, id) {
+        this.verifyMasterRole(req);
+        const adminId = req.user?.id || 'system';
+        const adminName = req.user?.name || 'Master Admin';
+        return this.masterService.approveSettlement(id, adminId, adminName);
+    }
+    paySettlement(req, id) {
+        this.verifyMasterRole(req);
+        const adminId = req.user?.id || 'system';
+        const adminName = req.user?.name || 'Master Admin';
+        return this.masterService.paySettlement(id, adminId, adminName);
+    }
 };
 exports.MasterController = MasterController;
 __decorate([
@@ -159,6 +200,68 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], MasterController.prototype, "updateProfile", null);
+__decorate([
+    (0, common_1.Get)('finance/payments'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "getPayments", null);
+__decorate([
+    (0, common_1.Get)('finance/invoices'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "getInvoices", null);
+__decorate([
+    (0, common_1.Get)('finance/invoices/:id/pdf'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "getInvoicePdf", null);
+__decorate([
+    (0, common_1.Post)('finance/invoices/:id/resend'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "resendInvoice", null);
+__decorate([
+    (0, common_1.Get)('finance/commissions'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "getCommissions", null);
+__decorate([
+    (0, common_1.Get)('finance/settlements'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "getSettlements", null);
+__decorate([
+    (0, common_1.Post)('finance/settlements/:id/approve'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "approveSettlement", null);
+__decorate([
+    (0, common_1.Post)('finance/settlements/:id/pay'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", void 0)
+], MasterController.prototype, "paySettlement", null);
 exports.MasterController = MasterController = __decorate([
     (0, common_1.Controller)('master'),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),

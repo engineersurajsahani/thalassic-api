@@ -811,6 +811,93 @@ export class AgentAdminService {
     }));
   }
 
+  async approveSettlement(settlementId: string, adminId: string, adminName: string) {
+    const db = this.getDb();
+    const nowIso = new Date().toISOString();
+
+    let settlement: any = null;
+    try {
+      const { data } = await db
+        .from('settlements')
+        .select('*')
+        .eq('id', settlementId)
+        .maybeSingle();
+      if (data) settlement = data;
+    } catch (e) {
+      console.warn('Supabase settlement lookup warning:', e);
+    }
+
+    if (!settlement) {
+      settlement = this.inMemorySettlements.find(s => s.id === settlementId);
+    }
+
+    if (!settlement) throw new NotFoundException('Settlement record not found');
+
+    if (settlement.status !== 'Pending') {
+      throw new BadRequestException('Only Pending settlements can be approved.');
+    }
+
+    // Update local settlement state
+    settlement.status = 'Approved';
+    this.saveSettlementsToDisk();
+
+    // Update remote settlement to Approved
+    try {
+      await db
+        .from('settlements')
+        .update({ status: 'Approved' })
+        .eq('id', settlementId);
+    } catch (e) {
+      console.warn('Supabase settlement update warning:', e);
+    }
+
+    // Update linked commissions to Approved
+    let comms: any[] = [];
+    try {
+      const { data } = await db
+        .from('commissions')
+        .select('id, status')
+        .eq('settlement_id', settlementId);
+      if (data) comms = data;
+    } catch (e) {
+      console.warn('Supabase commissions lookup warning:', e);
+    }
+
+    for (const c of comms) {
+      try {
+        await db
+          .from('commissions')
+          .update({ status: 'Approved' })
+          .eq('id', c.id);
+
+        await db.from('commission_status_history').insert({
+          id: randomUUID(),
+          commission_id: c.id,
+          old_status: c.status,
+          new_status: 'Approved',
+          reason: `Settlement Batch ${settlement.settlement_number} approved by Master`,
+          changed_by_user_id: adminId,
+          changed_by_user_name: adminName,
+          created_at: nowIso,
+        });
+      } catch (e) {
+        console.warn('Commissions status history Approved insert warning:', e);
+      }
+    }
+
+    // Write audit log
+    await this.logAction(
+      adminId,
+      adminName,
+      'SETTLEMENT_APPROVED',
+      'Settlements',
+      settlementId,
+      `Approved Settlement Batch ${settlement.settlement_number} (Total: ₹${parseFloat(settlement.total_amount || 0).toLocaleString('en-IN')})`,
+    );
+
+    return { id: settlementId, status: 'Approved', success: true };
+  }
+
   async paySettlement(settlementId: string, adminId: string, adminName: string) {
     const db = this.getDb();
     const nowIso = new Date().toISOString();
@@ -835,6 +922,11 @@ export class AgentAdminService {
 
     if (settlement.status === 'Paid') {
       throw new BadRequestException('PRD 9.7 Violation: Paid settlements are immutable.');
+    }
+
+    // PRD 7.5: Do NOT allow a settlement to be marked Paid if it has not been approved
+    if (settlement.status !== 'Approved') {
+      throw new BadRequestException('PRD 7.5 Violation: Settlement must be Approved before it can be marked as Paid.');
     }
 
     // Update local settlement state
@@ -890,6 +982,81 @@ export class AgentAdminService {
       } catch (e) {
         console.warn('Commissions status history Paid insert warning:', e);
       }
+    }
+
+    // ── Generate HAC Invoice automatically on Successful Settlement Payment (PRD 7.5) ──
+    let generatedInvoiceNumber = null;
+    try {
+      // 1. Get Agent details
+      const { data: agentUser } = await db
+        .from('User')
+        .select('*')
+        .eq('id', settlement.agent_id)
+        .maybeSingle();
+
+      const agentEmail = agentUser?.email || 'agent@thalassic.in';
+      const agentName = agentUser?.name || 'Agent User';
+      const agentPhone = agentUser?.phone || '';
+
+      // 2. Generate unique sequential HAC invoice number
+      const currentYear = new Date().getFullYear();
+      const prefix = `HAC-${currentYear}-`;
+      let invoicesList = [];
+      const invoicesFilePath = path.join(process.cwd(), 'invoices_data.json');
+      try {
+        if (fs.existsSync(invoicesFilePath)) {
+          invoicesList = JSON.parse(fs.readFileSync(invoicesFilePath, 'utf8'));
+        }
+      } catch (e) {
+        console.warn('Invoices file read warning inside settlements:', e);
+      }
+
+      const count = invoicesList.filter((i: any) => i.invoice_type === 'HAC').length;
+      const seqNum = String(count + 1).padStart(6, '0');
+      generatedInvoiceNumber = `${prefix}${seqNum}`;
+
+      const invoiceId = randomUUID();
+      const invoiceObj = {
+        id: invoiceId,
+        invoice_number: generatedInvoiceNumber,
+        invoice_type: 'HAC',
+        user_id: settlement.agent_id,
+        purchase_id: settlement.id, // Linked to Settlement
+        agent_id: settlement.agent_id,
+        commission_snapshot_id: comms[0]?.id || null, // Linked to commission snapshot
+        customer_name: agentName,
+        customer_email: agentEmail,
+        customer_phone: agentPhone,
+        agent_name: agentName,
+        agent_referral_code: null,
+        course_name: `Commission Settlement for ${settlement.settlement_number}`,
+        course_fee: parseFloat(settlement.total_amount),
+        discount: 0,
+        final_amount: parseFloat(settlement.total_amount),
+        payment_gateway: 'Manual Settlement',
+        transaction_id: settlement.settlement_number, // Permanent reference link
+        payment_method: 'Bank Transfer',
+        payment_date: nowIso,
+        status: 'Paid',
+        created_at: nowIso,
+      };
+
+      // Save locally
+      invoicesList.unshift(invoiceObj);
+      fs.writeFileSync(invoicesFilePath, JSON.stringify(invoicesList, null, 2), 'utf8');
+
+      // Save to Supabase DB
+      await db.from('invoices').insert(invoiceObj);
+
+      // Update local and remote settlement with generated invoice number
+      settlement.hac_invoice_number = generatedInvoiceNumber;
+      this.saveSettlementsToDisk();
+      await db
+        .from('settlements')
+        .update({ hac_invoice_number: generatedInvoiceNumber })
+        .eq('id', settlementId);
+    } catch (e) {
+      console.warn('[Settlement HAC Invoice] Error generating invoice:', e);
     }
 
     // Write audit log
