@@ -947,7 +947,7 @@ export class AgentAdminService {
         city = 'Unknown';
       } else {
         city = city.split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' ');
       }
       regions[city] = (regions[city] || 0) + 1;
