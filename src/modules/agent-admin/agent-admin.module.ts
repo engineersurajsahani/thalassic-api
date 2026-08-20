@@ -7,6 +7,6 @@ import { PartnerApplicationsService } from './partner-applications.service';
 @Module({
   controllers: [AgentAdminController, PublicPartnerApplicationsController],
   providers: [AgentAdminService, PartnerApplicationsService],
-  exports: [PartnerApplicationsService],
+  exports: [AgentAdminService, PartnerApplicationsService],
 })
 export class AgentAdminModule {}

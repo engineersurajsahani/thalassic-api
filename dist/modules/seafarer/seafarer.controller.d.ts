@@ -54,19 +54,46 @@ export declare class SeafarerController {
         status: any;
         expiryDate: any;
         uploadedAt: any;
+        url: any;
+        passportNumber: any;
+        cdcNumber: any;
+        placeOfIssue: any;
+        issueDate: any;
+        courseName: any;
+        courseType: any;
+        durationFrom: any;
+        durationTo: any;
+        metadata: any;
     }[]>;
-    uploadDocument(req: Request, type: string, expiryDate: string, file: any): Promise<any>;
+    uploadDocument(req: Request, type: string, expiryDate: string, body: any, file: any): Promise<any>;
+    updateDocument(req: Request, docId: string, body: any, file?: any): Promise<any>;
+    downloadDocument(req: Request, docId: string): Promise<{
+        signedUrl: string;
+        fileName: any;
+    }>;
     deleteDocument(req: Request, docId: string): Promise<{
         id: string;
         deleted: boolean;
     }>;
     getUserProfile(req: Request): Promise<{
+        firstName: any;
+        lastName: any;
+        email: any;
+        phone: any;
         profile: {
+            firstName: any;
+            lastName: any;
+            email: any;
+            phone: any;
+            alternatePhone: any;
             dob: any;
-            birthPlace: any;
+            placeOfBirth: any;
             nationality: any;
             indosNumber: any;
             address: any;
+            city: any;
+            state: any;
+            country: any;
             profilePicture: any;
             seaService: {
                 id: any;
@@ -81,17 +108,27 @@ export declare class SeafarerController {
         };
         id?: any;
         name?: any;
-        email?: any;
-        phone?: any;
         role?: any;
     }>;
     updateUserProfile(req: Request, details: any): Promise<{
+        firstName: any;
+        lastName: any;
+        email: any;
+        phone: any;
         profile: {
+            firstName: any;
+            lastName: any;
+            email: any;
+            phone: any;
+            alternatePhone: any;
             dob: any;
-            birthPlace: any;
+            placeOfBirth: any;
             nationality: any;
             indosNumber: any;
             address: any;
+            city: any;
+            state: any;
+            country: any;
             profilePicture: any;
             seaService: {
                 id: any;
@@ -106,8 +143,6 @@ export declare class SeafarerController {
         };
         id?: any;
         name?: any;
-        email?: any;
-        phone?: any;
         role?: any;
     }>;
     addSeaService(req: Request, record: any): Promise<any>;
@@ -115,20 +150,36 @@ export declare class SeafarerController {
         id: string;
         deleted: boolean;
     }>;
-    getTickets(req: Request): Promise<never[]>;
-    getTicketById(req: Request, id: string): Promise<null>;
+    getTickets(req: Request): Promise<any[]>;
+    getTicketById(req: Request, id: string): Promise<any>;
     createTicket(req: Request, subject: string, description: string): Promise<{
         id: string;
         userId: string;
         subject: string;
         description: string;
         status: string;
+        priority: string;
         createdAt: string;
+        replies: never[];
     }>;
     addReply(req: Request, ticketId: string, message: string): Promise<{
-        ticketId: string;
+        id: string;
+        sender: string;
         message: string;
-        from: string;
-        createdAt: string;
+        timestamp: string;
+    }>;
+    getReferrals(req: Request): Promise<{
+        referralCode: string;
+        totalReferrals: number;
+        successfulRegistrations: number;
+        earnedCredits: number;
+        history: {
+            id: string;
+            name: string;
+            email: string;
+            registrationDate: string;
+            status: string;
+            creditsEarned: number;
+        }[];
     }>;
 }

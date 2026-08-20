@@ -93,9 +93,27 @@ export class SeafarerController {
     @Req() req: Request,
     @Body('type') type: string,
     @Body('expiryDate') expiryDate: string,
+    @Body() body: any,
     @UploadedFile() file: any,
   ) {
-    return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file?.originalname);
+    return this.seafarerService.uploadDocument(this.uid(req), type || body?.type, expiryDate || body?.expiryDate, file, body);
+  }
+
+  @Put('documents/:id')
+  @UseInterceptors(FileInterceptor('file'))
+  updateDocument(
+    @Req() req: Request,
+    @Param('id') docId: string,
+    @Body() body: any,
+    @UploadedFile() file?: any,
+  ) {
+    return this.seafarerService.updateDocument(this.uid(req), docId, body, file);
+  }
+
+  @Get('documents/:id/download')
+  downloadDocument(@Req() req: Request, @Param('id') docId: string) {
+    const user = (req as any).user;
+    return this.seafarerService.downloadDocument(this.uid(req), docId, user?.role);
   }
 
   @Delete('documents/:id')
@@ -153,4 +171,11 @@ export class SeafarerController {
   ) {
     return this.seafarerService.addReply(this.uid(req), ticketId, message);
   }
+
+  // ── Referrals ──────────────────────────────
+  @Get('referrals')
+  getReferrals(@Req() req: Request) {
+    return this.seafarerService.getReferrals(this.uid(req));
+  }
 }
+
