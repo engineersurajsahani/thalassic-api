@@ -505,63 +505,222 @@ export class AgentService {
     const { data, error } = await db
       .from('Document')
       .select('*')
-      .eq('userId', agentId);
+      .eq('userId', agentId)
+      .order('uploadDate', { ascending: false });
 
     if (error) throw new BadRequestException(error.message);
 
-    return (data || []).map((d: any) => ({
-      id: d.id,
-      type: d.type,
-      label: d.name || d.type,
-      status: d.status || 'Pending',
-      expiryDate: d.expiryDate || null,
-      uploadedAt: d.uploadDate || null
-    }));
+    return (data || []).map((d: any) => {
+      let meta: any = {};
+      if (d.remarks) {
+        try { meta = JSON.parse(d.remarks); } catch { meta = {}; }
+      }
+      return {
+        id: d.id,
+        type: d.type,
+        label: d.name || d.type,
+        status: d.status || 'Pending',
+        expiryDate: d.expiryDate || null,
+        uploadedAt: d.uploadDate || null,
+        url: d.url || null,
+        documentNumber: meta.documentNumber || d.documentNumber || null,
+        placeOfIssue: meta.placeOfIssue || d.placeOfIssue || null,
+        dateOfIssue: meta.dateOfIssue || d.dateOfIssue || null,
+        remarks: meta.adminRemarks || d.adminRemarks || null,
+      };
+    });
   }
 
-  async uploadDocument(agentId: string, type: string, expiryDate?: string, fileName?: string) {
+  async uploadDocument(
+    agentId: string,
+    type: string,
+    file: any,
+    metadata?: { expiryDate?: string; documentNumber?: string; placeOfIssue?: string; dateOfIssue?: string },
+  ) {
     const db = this.getDb();
 
-    // Check if the document type already exists; if so, replace it
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new BadRequestException('No file provided or file is empty.');
+    }
+
+    const originalName = file.originalname || `${type}-${agentId}`;
+    const mimeType = file.mimetype || 'application/octet-stream';
+
+    // Check if the document type already exists; if so, replace (delete old file + record)
     const { data: existingDoc } = await db
       .from('Document')
-      .select('id')
+      .select('id, url')
       .eq('userId', agentId)
       .eq('type', type)
       .single();
 
+    const docId = existingDoc?.id || randomUUID();
+    const storagePath = `${agentId}/${docId}/${originalName}`;
+    const BUCKET = 'seafarer-documents';
+
+    // Delete old file from storage if replacing
+    if (existingDoc?.url && !existingDoc.url.startsWith('/uploads/')) {
+      const publicPathMarker = `/object/public/${BUCKET}/`;
+      const signedPathMarker = `/object/sign/${BUCKET}/`;
+      let oldPath = existingDoc.url;
+      if (oldPath.includes(publicPathMarker)) {
+        oldPath = decodeURIComponent(oldPath.substring(oldPath.indexOf(publicPathMarker) + publicPathMarker.length));
+      } else if (oldPath.includes(signedPathMarker)) {
+        oldPath = decodeURIComponent(oldPath.substring(oldPath.indexOf(signedPathMarker) + signedPathMarker.length));
+      }
+      if (oldPath && !oldPath.startsWith('/uploads/')) {
+        await db.storage.from(BUCKET).remove([oldPath]);
+      }
+    }
+
+    // Upload the actual file buffer to Supabase Storage
+    const { error: storageError } = await db.storage
+      .from(BUCKET)
+      .upload(storagePath, file.buffer, {
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (storageError) {
+      console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
+      throw new BadRequestException(
+        `File storage failed: ${storageError.message}. Ensure the '${BUCKET}' bucket exists in Supabase Storage.`,
+      );
+    }
+
+    // Build document record — metadata stored as JSON in remarks if column exists
+    const metaObj: any = {};
+    if (metadata?.documentNumber) metaObj.documentNumber = metadata.documentNumber;
+    if (metadata?.placeOfIssue) metaObj.placeOfIssue = metadata.placeOfIssue;
+    if (metadata?.dateOfIssue) metaObj.dateOfIssue = metadata.dateOfIssue;
+
+    const remarksJson = Object.keys(metaObj).length > 0 ? JSON.stringify(metaObj) : null;
+
+    const documentData: any = {
+      userId: agentId,
+      type,
+      name: originalName,
+      url: storagePath,
+      status: 'Pending',
+      expiryDate: metadata?.expiryDate || null,
+      uploadDate: new Date().toISOString(),
+    };
+    if (remarksJson) documentData.remarks = remarksJson;
+
     if (existingDoc) {
       const { data, error } = await db
         .from('Document')
-        .update({
-          name: fileName || type,
-          status: 'Pending', // resets verification status to Pending
-          expiryDate: expiryDate || null,
-          uploadDate: new Date().toISOString()
-        })
-        .eq('id', existingDoc.id)
+        .update(documentData)
+        .eq('id', docId)
         .select()
         .single();
-      if (error) throw new BadRequestException(error.message);
+      if (error) {
+        // If remarks column causes error, retry without it
+        if (error.message?.includes('remarks')) {
+          delete documentData.remarks;
+          const { data: retryData, error: retryError } = await db
+            .from('Document')
+            .update(documentData)
+            .eq('id', docId)
+            .select()
+            .single();
+          if (retryError) throw new BadRequestException(retryError.message);
+          return retryData;
+        }
+        throw new BadRequestException(error.message);
+      }
       return data;
     } else {
       const { data, error } = await db
         .from('Document')
-        .insert({
-          id: randomUUID(),
-          userId: agentId,
-          type,
-          name: fileName || type,
-          url: `/uploads/documents/${type}-${agentId}.pdf`,
-          status: 'Pending',
-          expiryDate: expiryDate || null,
-          uploadDate: new Date().toISOString()
-        })
+        .insert({ id: docId, ...documentData })
         .select()
         .single();
-      if (error) throw new BadRequestException(error.message);
+      if (error) {
+        // If remarks column causes error, retry without it
+        if (error.message?.includes('remarks')) {
+          delete documentData.remarks;
+          const { data: retryData, error: retryError } = await db
+            .from('Document')
+            .insert({ id: docId, ...documentData })
+            .select()
+            .single();
+          if (retryError) throw new BadRequestException(retryError.message);
+          return retryData;
+        }
+        throw new BadRequestException(error.message);
+      }
       return data;
     }
+  }
+
+  async downloadDocument(agentId: string, docId: string) {
+    const db = this.getDb();
+    const { data: doc, error } = await db
+      .from('Document')
+      .select('id, url, name, userId, type')
+      .eq('id', docId)
+      .single();
+
+    if (error || !doc) {
+      throw new NotFoundException('Document not found.');
+    }
+
+    if (doc.userId !== agentId) {
+      throw new ForbiddenException('Access denied. You do not have permission to download this document.');
+    }
+
+    const storedUrl: string = doc.url || '';
+    const BUCKET = 'seafarer-documents';
+    let storagePath = storedUrl;
+
+    const publicPathMarker = `/object/public/${BUCKET}/`;
+    const signedPathMarker = `/object/sign/${BUCKET}/`;
+
+    if (storedUrl.includes(publicPathMarker)) {
+      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(publicPathMarker) + publicPathMarker.length));
+    } else if (storedUrl.includes(signedPathMarker)) {
+      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(signedPathMarker) + signedPathMarker.length));
+    }
+
+    if (storagePath && !storagePath.startsWith('/uploads/')) {
+      const { data: signedData } = await db.storage
+        .from(BUCKET)
+        .createSignedUrl(storagePath, 60);
+      if (signedData?.signedUrl) {
+        return {
+          signedUrl: signedData.signedUrl,
+          fileName: doc.name || `Document_${doc.type || 'file'}`,
+        };
+      }
+    }
+
+    // Fallback: search bucket
+    const { data: bucketFiles } = await db.storage.from(BUCKET).list('', { limit: 100 });
+    if (bucketFiles && bucketFiles.length > 0) {
+      const matchingFile = bucketFiles.find(f =>
+        (doc.userId && f.name.includes(doc.userId)) ||
+        (doc.id && f.name.includes(doc.id)) ||
+        (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase()))
+      ) || bucketFiles.find(f => f.name.endsWith('.pdf') || f.name.endsWith('.png') || f.name.endsWith('.jpg'));
+
+      if (matchingFile) {
+        storagePath = matchingFile.name;
+        await db.from('Document').update({ url: storagePath }).eq('id', doc.id);
+
+        const { data: signedData2 } = await db.storage
+          .from(BUCKET)
+          .createSignedUrl(storagePath, 60);
+        if (signedData2?.signedUrl) {
+          return {
+            signedUrl: signedData2.signedUrl,
+            fileName: doc.name || matchingFile.name,
+          };
+        }
+      }
+    }
+
+    throw new BadRequestException('Document file not found in storage. Please re-upload the document.');
   }
 
   // --- 7. Profile ---

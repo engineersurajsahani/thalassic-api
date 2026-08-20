@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, ForbiddenException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AgentService } from './agent.service';
 import { AuthGuard } from '../auth/auth.guard';
 
@@ -74,14 +75,29 @@ export class AgentController {
   }
 
   @Post('documents')
+  @UseInterceptors(FileInterceptor('file'))
   uploadDocument(
     @Req() req: any,
+    @UploadedFile() file: any,
     @Body('type') type: string,
     @Body('expiryDate') expiryDate?: string,
-    @Body('fileName') fileName?: string,
+    @Body('documentNumber') documentNumber?: string,
+    @Body('placeOfIssue') placeOfIssue?: string,
+    @Body('dateOfIssue') dateOfIssue?: string,
   ) {
     this.checkRole(req);
-    return this.agentService.uploadDocument(req.user.id, type, expiryDate, fileName);
+    return this.agentService.uploadDocument(req.user.id, type, file, {
+      expiryDate,
+      documentNumber,
+      placeOfIssue,
+      dateOfIssue,
+    });
+  }
+
+  @Get('documents/:id/download')
+  downloadDocument(@Req() req: any, @Param('id') docId: string) {
+    this.checkRole(req);
+    return this.agentService.downloadDocument(req.user.id, docId);
   }
 
   @Get('profile')
