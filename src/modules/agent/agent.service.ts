@@ -885,6 +885,13 @@ export class AgentService {
   // --- 9. Invoices ---
   async getInvoices(agentId: string) {
     const db = this.getDb();
+    
+    // Fetch referral leads to match registration/lead converted date
+    const { data: leads } = await db
+      .from('referral_leads')
+      .select('name, created_at')
+      .eq('agent_id', agentId);
+
     const { data, error } = await db
       .from('commissions')
       .select('id, seafarer_name, course_name, created_at, course_fee, status, purchase_id, commission_rate, commission_amount')
@@ -893,18 +900,31 @@ export class AgentService {
 
     if (error) throw new BadRequestException(error.message);
 
-    return (data || []).map((p: any) => ({
-      id: p.id,
-      invoiceNumber: `HAC-2026-${p.purchase_id?.substring(0, 6).toUpperCase() || p.id.substring(0, 6).toUpperCase()}`,
-      invoiceType: 'HAC',
-      seafarerName: p.seafarer_name,
-      courseName: p.course_name,
-      purchaseAmount: p.course_fee,
-      purchaseDate: p.created_at,
-      invoiceStatus: p.status === 'Cancelled' ? 'Cancelled' : 'Paid',
-      commissionRate: p.commission_rate,
-      commissionAmount: p.commission_amount
-    }));
+    const leadsMap = new Map();
+    (leads || []).forEach((l: any) => {
+      if (l.name) {
+        leadsMap.set(l.name.toLowerCase().trim(), l.created_at);
+      }
+    });
+
+    return (data || []).map((p: any) => {
+      const seafarerKey = (p.seafarer_name || "").toLowerCase().trim();
+      const leadRegisteredAt = leadsMap.get(seafarerKey) || p.created_at;
+
+      return {
+        id: p.id,
+        invoiceNumber: `HAC-2026-${p.purchase_id?.substring(0, 6).toUpperCase() || p.id.substring(0, 6).toUpperCase()}`,
+        invoiceType: 'HAC',
+        seafarerName: p.seafarer_name,
+        courseName: p.course_name,
+        purchaseAmount: p.course_fee,
+        purchaseDate: p.created_at, // Payment Date
+        leadRegisteredAt, // Lead Converted/Registered Date
+        invoiceStatus: p.status === 'Cancelled' ? 'Cancelled' : 'Paid',
+        commissionRate: p.commission_rate,
+        commissionAmount: p.commission_amount
+      };
+    });
   }
 
   // --- 10. Notifications ---

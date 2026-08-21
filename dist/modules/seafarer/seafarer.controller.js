@@ -56,8 +56,11 @@ let SeafarerController = class SeafarerController {
     getDocuments(req) {
         return this.seafarerService.getDocuments(this.uid(req));
     }
-    uploadDocument(req, type, expiryDate, file) {
-        return this.seafarerService.uploadDocument(this.uid(req), type, expiryDate, file);
+    uploadDocument(req, type, expiryDate, body, file) {
+        return this.seafarerService.uploadDocument(this.uid(req), type || body?.type, expiryDate || body?.expiryDate, file, body);
+    }
+    updateDocument(req, docId, body, file) {
+        return this.seafarerService.updateDocument(this.uid(req), docId, body, file);
     }
     downloadDocument(req, docId) {
         const user = req.user;
@@ -166,11 +169,23 @@ __decorate([
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)('type')),
     __param(2, (0, common_1.Body)('expiryDate')),
-    __param(3, (0, common_1.UploadedFile)()),
+    __param(3, (0, common_1.Body)()),
+    __param(4, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, Object]),
+    __metadata("design:paramtypes", [Object, String, String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], SeafarerController.prototype, "uploadDocument", null);
+__decorate([
+    (0, common_1.Put)('documents/:id'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('id')),
+    __param(2, (0, common_1.Body)()),
+    __param(3, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], SeafarerController.prototype, "updateDocument", null);
 __decorate([
     (0, common_1.Get)('documents/:id/download'),
     __param(0, (0, common_1.Req)()),

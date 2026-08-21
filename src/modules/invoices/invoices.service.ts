@@ -280,7 +280,35 @@ export class InvoicesService {
       );
     }
 
-    return invoiceList;
+    // Fetch referral leads to match registration/lead converted date for AGENT
+    let leads: any[] = [];
+    if (roleNorm === 'AGENT' && user?.id) {
+      try {
+        const { data } = await this.db
+          .from('referral_leads')
+          .select('name, created_at')
+          .eq('agent_id', user.id);
+        if (data) leads = data;
+      } catch (e) {
+        console.warn('Failed to fetch leads for invoice converted_at mapping:', e);
+      }
+    }
+
+    const leadsMap = new Map();
+    leads.forEach((l: any) => {
+      if (l.name) {
+        leadsMap.set(l.name.toLowerCase().trim(), l.created_at);
+      }
+    });
+
+    return invoiceList.map((inv: any) => {
+      const seafarerKey = (inv.customer_name || "").toLowerCase().trim();
+      const convertedAt = leadsMap.get(seafarerKey) || inv.created_at;
+      return {
+        ...inv,
+        converted_at: convertedAt
+      };
+    });
   }
 
   private filterInMemoryInvoices(user: any, query: any) {
