@@ -76,6 +76,7 @@ export declare class SeafarerController {
         deleted: boolean;
     }>;
     getUserProfile(req: Request): Promise<{
+        onboardingStatus: any;
         firstName: any;
         lastName: any;
         email: any;
@@ -111,6 +112,7 @@ export declare class SeafarerController {
         role?: any;
     }>;
     updateUserProfile(req: Request, details: any): Promise<{
+        onboardingStatus: any;
         firstName: any;
         lastName: any;
         email: any;
