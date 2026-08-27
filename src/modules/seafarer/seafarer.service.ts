@@ -562,12 +562,11 @@ export class SeafarerService {
     return (data ?? []).map((d: any) => {
       let meta: any = {};
       try {
-        if (d.remarks && d.remarks.startsWith('{')) {
-          meta = JSON.parse(d.remarks);
-        } else if (d.metadata && typeof d.metadata === 'string') {
-          meta = JSON.parse(d.metadata);
-        } else if (d.metadata && typeof d.metadata === 'object') {
-          meta = d.metadata;
+        const remarksStr = d.remarks || d.metadata;
+        if (remarksStr && typeof remarksStr === 'string' && remarksStr.startsWith('{')) {
+          meta = JSON.parse(remarksStr);
+        } else if (remarksStr && typeof remarksStr === 'object') {
+          meta = remarksStr;
         }
       } catch (e) {
         meta = {};
@@ -656,21 +655,35 @@ export class SeafarerService {
       durationTo: bodyMetadata?.durationTo,
     };
 
-    const { data, error } = await this.db
+    const insertPayload: any = {
+      id: docId,
+      userId,
+      type: docType,
+      name: originalName,
+      url: storagePath,
+      status: 'Pending',
+      expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
+      uploadDate: new Date().toISOString(),
+    };
+
+    // Try including remarks column; if it fails, retry without it
+    insertPayload.remarks = JSON.stringify(metadataObj);
+    let { data, error } = await this.db
       .from('Document')
-      .insert({
-        id: docId,
-        userId,
-        type: docType,
-        name: originalName,
-        url: storagePath,
-        status: 'Pending',
-        expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
-        remarks: JSON.stringify(metadataObj),
-        uploadDate: new Date().toISOString(),
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    if (error && error.message?.includes('remarks')) {
+      delete insertPayload.remarks;
+      const retry = await this.db
+        .from('Document')
+        .insert(insertPayload)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) throw new BadRequestException(error.message);
     return { ...data, metadata: metadataObj, message: 'Document uploaded successfully.' };
@@ -715,8 +728,9 @@ export class SeafarerService {
 
     let existingMeta: any = {};
     try {
-      if (existingDoc.remarks && existingDoc.remarks.startsWith('{')) {
-        existingMeta = JSON.parse(existingDoc.remarks);
+      const remarksStr = existingDoc.remarks || existingDoc.metadata;
+      if (remarksStr && typeof remarksStr === 'string' && remarksStr.startsWith('{')) {
+        existingMeta = JSON.parse(remarksStr);
       }
     } catch (e) {
       existingMeta = {};
@@ -735,17 +749,31 @@ export class SeafarerService {
       durationTo: bodyMetadata?.durationTo ?? existingMeta.durationTo,
     };
 
-    const { data, error } = await this.db
+    const updatePayload: any = {
+      name: fileName,
+      url: storagePath,
+      expiryDate: bodyMetadata?.expiryDate || existingDoc.expiryDate,
+      remarks: JSON.stringify(updatedMeta),
+    };
+
+    let { data, error } = await this.db
       .from('Document')
-      .update({
-        name: fileName,
-        url: storagePath,
-        expiryDate: bodyMetadata?.expiryDate || existingDoc.expiryDate,
-        remarks: JSON.stringify(updatedMeta),
-      })
+      .update(updatePayload)
       .eq('id', docId)
       .select()
       .single();
+
+    if (error && error.message?.includes('remarks')) {
+      delete updatePayload.remarks;
+      const retry = await this.db
+        .from('Document')
+        .update(updatePayload)
+        .eq('id', docId)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) throw new BadRequestException(error.message);
     return { ...data, metadata: updatedMeta, message: 'Document updated successfully.' };

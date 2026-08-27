@@ -8,8 +8,16 @@ import {
 
 export class RegisterDto {
   @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  firstName?: string;
+
+  @IsString()
+  @IsOptional()
+  lastName?: string;
 
   @IsEmail()
   @IsNotEmpty()
@@ -27,4 +35,8 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   role?: string;
+
+  @IsString()
+  @IsOptional()
+  referralCode?: string;
 }
