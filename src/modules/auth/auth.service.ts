@@ -119,8 +119,16 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const { name, email, password, phone, role = 'seafarer' } = registerDto;
+    const { name, firstName, lastName, email, password, phone, role = 'seafarer', referralCode } = registerDto;
     const supabase = this.supabaseService.getClient();
+
+    let resolvedName = name;
+    if (!resolvedName && (firstName || lastName)) {
+      resolvedName = `${firstName || ''} ${lastName || ''}`.trim();
+    }
+    if (!resolvedName) {
+      resolvedName = email.split('@')[0];
+    }
 
     // Map frontend role slug to DB enum value
     const dbRole = ROLE_MAP[role] ?? 'SEAFARER';
@@ -140,11 +148,12 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert new user — supply id explicitly since the 'User' table has no default
+    const userId = randomUUID();
     const { data: newUser, error } = await supabase
       .from('User')
       .insert({
-        id: randomUUID(),
-        name,
+        id: userId,
+        name: resolvedName,
         email,
         password: hashedPassword,
         phone: phone ?? null,
@@ -159,6 +168,54 @@ export class AuthService {
       throw new BadRequestException(
         error?.message ?? 'Registration failed. Please try again.',
       );
+    }
+
+    // If a referral code was provided, register/update referral lead
+    if (referralCode && referralCode.trim()) {
+      try {
+        const cleanRef = referralCode.trim().toUpperCase();
+        const { data: agentMeta } = await supabase
+          .from('agent_metadata')
+          .select('user_id')
+          .ilike('referral_code', cleanRef)
+          .maybeSingle();
+
+        if (agentMeta?.user_id) {
+          // Check for existing lead with matching email or phone
+          const { data: existingLead } = await supabase
+            .from('referral_leads')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
+          if (existingLead) {
+            await supabase
+              .from('referral_leads')
+              .update({
+                status: 'Registered',
+                agent_id: agentMeta.user_id,
+                remarks: `Direct signup via referral code ${cleanRef}`,
+              })
+              .eq('id', existingLead.id);
+          } else {
+            await supabase
+              .from('referral_leads')
+              .insert({
+                id: randomUUID(),
+                agent_id: agentMeta.user_id,
+                name: resolvedName,
+                email,
+                phone: phone || '',
+                status: 'Registered',
+                remarks: `Registered with referral code ${cleanRef}`,
+                created_at: new Date().toISOString(),
+                expiry_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+              });
+          }
+        }
+      } catch (refErr) {
+        console.warn('Referral lead association skipped on register:', (refErr as any)?.message);
+      }
     }
 
     // Generate JWT

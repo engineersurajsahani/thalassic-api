@@ -70,7 +70,7 @@ export class AuthGuard implements CanActivate {
     if (dbError || !dbUser) {
       // Return basic auth user if not mapped in public.users yet
       request.user = {
-        authId: user.id,
+        id: user.id,
         email: user.email,
         role: 'SEAFARER',
         status: 'Pending Audit',

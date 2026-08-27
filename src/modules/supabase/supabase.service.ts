@@ -23,6 +23,22 @@ export class SupabaseService implements OnModuleInit {
   async onModuleInit() {
     try {
       const supabase = this.client;
+
+      // Auto-migration: Add 'remarks' column to Document table if missing
+      try {
+        const { error: migrationError } = await supabase.rpc('exec_sql', {
+          query: `ALTER TABLE public."Document" ADD COLUMN IF NOT EXISTS remarks TEXT;`,
+        });
+        if (migrationError) {
+          // rpc 'exec_sql' may not exist — try a direct test insert/read approach
+          console.warn('Could not run remarks migration via rpc:', migrationError.message);
+        } else {
+          console.log('Document.remarks column ensured.');
+        }
+      } catch (migErr) {
+        console.warn('Remarks column migration skipped:', (migErr as any)?.message);
+      }
+
       const bcrypt = require('bcryptjs');
       const hashedPassword = await bcrypt.hash('password123', 10);
       const now = new Date();
