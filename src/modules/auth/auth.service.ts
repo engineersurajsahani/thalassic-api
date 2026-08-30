@@ -1,96 +1,115 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import * as bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
 
+// Map frontend role slugs → DB enum values
 const ROLE_MAP: Record<string, string> = {
   seafarer: 'SEAFARER',
-  company_admin: 'COMPANY_ADMIN',
   'company-admin': 'COMPANY_ADMIN',
-  agent_admin: 'AGENT_ADMIN',
+  company_admin: 'COMPANY_ADMIN',
+  master: 'MASTER',
   'agent-admin': 'AGENT_ADMIN',
+  agent_admin: 'AGENT_ADMIN',
   agent: 'AGENT',
   partner: 'AGENT',
-  master: 'MASTER',
 };
 
-const KNOWN_CREDENTIALS: Record<string, { pass: string[]; user: any }> = {
-  'kishan1@gmail.com': {
-    pass: ['kishan123', 'admin123'],
-    user: {
-      id: '7af1cb6a-7a93-4ee8-ab95-1dc06ced736c',
-      name: 'Kishan (Partner)',
-      email: 'kishan1@gmail.com',
-      role: 'AGENT',
-      phone: '+91 98200 99887',
-      onboardingStatus: 'Active',
-    },
+const USERS_FILE = path.join(process.cwd(), 'users_data.json');
+
+const DEFAULT_USERS = [
+  {
+    id: 'a0000000-0000-0000-0000-000000000001',
+    email: 'master@gmail.com',
+    plainPassword: 'master@12',
+    name: 'Master Admin',
+    role: 'MASTER',
+    phone: '+91 91111 22222',
   },
-  'agentadmin@thalassic.in': {
-    pass: ['Password123!', 'password123!', 'admin123'],
-    user: {
-      id: 'agent-admin-0001',
-      name: 'Agent Administrator',
-      email: 'agentadmin@thalassic.in',
-      role: 'AGENT_ADMIN',
-      phone: '+91 98200 11223',
-      onboardingStatus: 'Active',
-    },
+  {
+    id: 'a0000000-0000-0000-0000-000000000002',
+    email: 'seafarer@test.com',
+    plainPassword: 'seafarer@123',
+    name: 'Rohan Sharma',
+    role: 'SEAFARER',
+    phone: '+91 98765 11223',
   },
-  'master@gmail.com': {
-    pass: ['master@12', 'master123', 'admin123'],
-    user: {
-      id: 'master-admin-0001',
-      name: 'Master Admin',
-      email: 'master@gmail.com',
-      role: 'MASTER',
-      phone: '+91 98200 00000',
-      onboardingStatus: 'Active',
-    },
+  {
+    id: 'a0000000-0000-0000-0000-000000000003',
+    email: 'admin2@shippingco.com',
+    plainPassword: 'Password123!',
+    name: 'Shipping Co Admin',
+    role: 'COMPANY_ADMIN',
+    phone: '+91 98888 33333',
   },
-  'seafarer@test.com': {
-    pass: ['seafarer@123', 'seafarer123', 'admin123'],
-    user: {
-      id: 'a0000000-0000-0000-0000-000000000001',
-      name: 'Raj Kumar',
-      email: 'seafarer@test.com',
-      role: 'SEAFARER',
-      phone: '+91 98765 43210',
-      onboardingStatus: 'Active',
-    },
+  {
+    id: '58f7dc83-cb27-4547-8264-ed433b557103',
+    email: 'kishan1@gmail.com',
+    plainPassword: 'kishan123',
+    name: 'Kishan (Hari Om Partner)',
+    role: 'AGENT',
+    phone: '+91 98200 44556',
+    onboardingStatus: 'Active',
   },
-  'partner@hariom.in': {
-    pass: ['partner123', 'admin123'],
-    user: {
-      id: '7af1cb6a-7a93-4ee8-ab95-1dc06ced736c',
-      name: 'Hari Om Manning Partner',
-      email: 'partner@hariom.in',
-      role: 'AGENT',
-      phone: '+91 98200 11223',
-      onboardingStatus: 'Active',
-    },
+  {
+    id: 'a0000000-0000-0000-0000-000000000008',
+    email: 'agentadmin@thalassic.in',
+    plainPassword: 'Password123!',
+    name: 'Agent Admin Head',
+    role: 'AGENT_ADMIN',
+    phone: '+91 88888 11111',
+    onboardingStatus: 'Active',
   },
-  'agent@thalassic.in': {
-    pass: ['agent123', 'admin123'],
-    user: {
-      id: '7af1cb6a-7a93-4ee8-ab95-1dc06ced736c',
-      name: 'Hari Om Manning Partner',
-      email: 'agent@thalassic.in',
-      role: 'AGENT',
-      phone: '+91 98200 11223',
-      onboardingStatus: 'Active',
-    },
+  {
+    id: '58f7dc83-cb27-4547-8264-ed433b557103',
+    email: 'partner@test.com',
+    plainPassword: 'partner@123',
+    name: 'Hari Om Global Partner',
+    role: 'AGENT',
+    phone: '+91 99999 55555',
+    onboardingStatus: 'Active',
   },
-};
+  {
+    id: '58f7dc83-cb27-4547-8264-ed433b557103',
+    email: 'agent@thalassic.in',
+    plainPassword: 'password123',
+    name: 'Hari Om Partner Agency',
+    role: 'AGENT',
+    phone: '+91 99999 88888',
+    onboardingStatus: 'Active',
+  },
+  {
+    id: 'a0000000-0000-0000-0000-000000000005',
+    email: 'admin@thalassic.in',
+    plainPassword: 'password123',
+    name: 'Partner Admin',
+    role: 'AGENT_ADMIN',
+    phone: '+91 88888 77777',
+    onboardingStatus: 'Active',
+  },
+  {
+    id: 'a0000000-0000-0000-0000-000000000006',
+    email: 'priya@example.com',
+    plainPassword: 'password123',
+    name: 'Priya Singh',
+    role: 'SEAFARER',
+    phone: '+91 99887 76655',
+  },
+  {
+    id: 'a0000000-0000-0000-0000-000000000007',
+    email: 'raj@example.com',
+    plainPassword: 'password123',
+    name: 'Raj Kumar',
+    role: 'SEAFARER',
+    phone: '+91 98765 43210',
+  }
+];
 
 @Injectable()
 export class AuthService {
@@ -98,137 +117,193 @@ export class AuthService {
     private supabaseService: SupabaseService,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {}
+  ) { }
+
+  private readLocalUsers(): any[] {
+    try {
+      if (fs.existsSync(USERS_FILE)) {
+        return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+      }
+    } catch (e) {
+      console.error('Error reading users_data.json:', e);
+    }
+    return DEFAULT_USERS;
+  }
+
+  private saveLocalUser(user: any) {
+    try {
+      const users = this.readLocalUsers();
+      const existingIdx = users.findIndex((u) => u.email?.toLowerCase() === user.email?.toLowerCase());
+      if (existingIdx >= 0) {
+        users[existingIdx] = { ...users[existingIdx], ...user };
+      } else {
+        users.push(user);
+      }
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+    } catch (e) {
+      console.error('Error saving local user:', e);
+    }
+  }
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
-    const cleanEmail = (email || '').trim().toLowerCase();
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
 
-    // Check predefined / verified demo credentials first
-    if (KNOWN_CREDENTIALS[cleanEmail]) {
-      const entry = KNOWN_CREDENTIALS[cleanEmail];
-      if (entry.pass.includes(password)) {
-        const demoUser = entry.user;
-        const payload = {
-          sub: demoUser.id,
-          email: demoUser.email,
-          role: demoUser.role,
-        };
+    console.log(`[AUTH] Login attempt for: ${normalizedEmail}`);
 
-        const token = this.jwtService.sign(payload, {
-          secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
-          expiresIn: '24h',
-        });
+    let user: any = null;
 
-        return {
-          token,
-          user: demoUser,
-        };
-      }
-    }
+    // 1. Check local users list and default users FIRST for instant local reliability
+    const localUsers = this.readLocalUsers();
+    const defaultMatch = DEFAULT_USERS.find((u) => u.email.toLowerCase() === normalizedEmail);
+    const localMatch = localUsers.find((u) => (u.email || '').toLowerCase() === normalizedEmail);
+    user = localMatch || defaultMatch;
 
-    // Query User table from database
-    try {
-      const supabase = this.supabaseService.getClient();
-      const { data: user, error } = await supabase
-        .from('User')
-        .select('id, email, password, name, role, phone')
-        .eq('email', cleanEmail)
-        .maybeSingle();
+    // 2. If not found locally, try querying Supabase
+    if (!user) {
+      try {
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase
+          .from('User')
+          .select('id, email, password, name, role, phone')
+          .ilike('email', normalizedEmail)
+          .maybeSingle();
 
-      if (user && user.password) {
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (isPasswordValid) {
-          let onboardingStatus = 'Active';
-          if (user.role?.toUpperCase() === 'AGENT') {
-            const { data: meta } = await supabase
-              .from('agent_metadata')
-              .select('onboarding_status')
-              .eq('user_id', user.id)
-              .maybeSingle();
-            if (meta) {
-              onboardingStatus = meta.onboarding_status || 'Active';
-            }
-          }
-
-          const payload = {
-            sub: user.id,
-            email: user.email,
-            role: user.role,
-          };
-
-          const token = this.jwtService.sign(payload, {
-            secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
-            expiresIn: '24h',
-          });
-
-          return {
-            token,
-            user: {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              role: user.role,
-              phone: user.phone ?? null,
-              onboardingStatus,
-            },
-          };
+        if (!error && data) {
+          user = data;
         }
+      } catch (err) {
+        console.warn('Supabase lookup failed:', err);
       }
-    } catch (e) {
-      // Ignore DB network errors and proceed to error check
     }
 
-    throw new BadRequestException('Invalid email or password');
+    if (!user) {
+      console.warn(`[AUTH] User not found: ${normalizedEmail}`);
+      throw new BadRequestException('Invalid email or password');
+    }
+
+    // 3. Check password validity
+    let isPasswordValid = false;
+
+    // Check plainPassword on user
+    if (user.plainPassword && (user.plainPassword === cleanPassword || user.plainPassword === password)) {
+      isPasswordValid = true;
+    }
+
+    // Check plainPassword on defaultMatch
+    if (!isPasswordValid && defaultMatch && (defaultMatch.plainPassword === cleanPassword || defaultMatch.plainPassword === password)) {
+      isPasswordValid = true;
+    }
+
+    // Check bcrypt hash
+    if (!isPasswordValid && user.password) {
+      try {
+        isPasswordValid = (await bcrypt.compare(cleanPassword, user.password)) || (await bcrypt.compare(password, user.password));
+      } catch {
+        isPasswordValid = false;
+      }
+    }
+
+    // Direct password match fallback
+    if (!isPasswordValid && (user.password === cleanPassword || user.password === password)) {
+      isPasswordValid = true;
+    }
+
+    if (!isPasswordValid) {
+      console.warn(`[AUTH] Password invalid for: ${normalizedEmail}`);
+      throw new BadRequestException('Invalid email or password');
+    }
+
+    // Retrieve onboarding status
+    let onboardingStatus = user.onboardingStatus || 'Active';
+    if (user.role?.toUpperCase() === 'AGENT') {
+      try {
+        const supabase = this.supabaseService.getClient();
+        const { data: meta } = await supabase
+          .from('agent_metadata')
+          .select('onboarding_status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (meta?.onboarding_status) {
+          onboardingStatus = meta.onboarding_status;
+        }
+      } catch {
+        onboardingStatus = 'Active';
+      }
+    }
+
+    // Generate JWT token
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const token = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
+      expiresIn: '24h',
+    });
+
+    console.log(`[AUTH] Login successful for: ${normalizedEmail} with role ${user.role}`);
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone ?? null,
+        onboardingStatus,
+      },
+    };
   }
 
   async register(registerDto: RegisterDto) {
     const { name, email, password, phone, role = 'seafarer' } = registerDto;
-    const supabase = this.supabaseService.getClient();
-    const cleanEmail = (email || '').trim().toLowerCase();
-
-    // Map frontend role slug to DB enum value
+    const normalizedEmail = (email || '').trim().toLowerCase();
     const dbRole = ROLE_MAP[role] ?? 'SEAFARER';
-
-    // Check if user already exists
-    const { data: existing } = await supabase
-      .from('User')
-      .select('id')
-      .eq('email', cleanEmail)
-      .maybeSingle();
-
-    if (existing) {
-      throw new ConflictException('An account with this email already exists');
-    }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUserId = randomUUID();
 
-    // Insert new user
-    const { data: newUser, error } = await supabase
-      .from('User')
-      .insert({
+    const newUserObj = {
+      id: newUserId,
+      name,
+      email: normalizedEmail,
+      password: hashedPassword,
+      plainPassword: password,
+      phone: phone ?? null,
+      role: dbRole,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      onboardingStatus: dbRole === 'AGENT' ? 'Active' : undefined,
+    };
+
+    // Save locally
+    this.saveLocalUser(newUserObj);
+
+    // Also attempt Supabase insert
+    try {
+      const supabase = this.supabaseService.getClient();
+      await supabase.from('User').insert({
         id: newUserId,
         name,
-        email: cleanEmail,
+        email: normalizedEmail,
         password: hashedPassword,
         phone: phone ?? null,
         role: dbRole,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      })
-      .select('id, email, name, role, phone')
-      .single();
-
-    if (error || !newUser) {
-      throw new BadRequestException(
-        error?.message ?? 'Registration failed. Please try again.',
-      );
+      });
+    } catch (err) {
+      console.warn('Supabase registration insert skipped, saved locally.');
     }
 
     // Generate JWT
-    const payload = { sub: newUser.id, email: newUser.email, role: newUser.role };
+    const payload = { sub: newUserId, email: normalizedEmail, role: dbRole };
     const token = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
       expiresIn: '24h',
@@ -237,54 +312,64 @@ export class AuthService {
     return {
       token,
       user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        phone: newUser.phone ?? null,
-        onboardingStatus: dbRole === 'AGENT' ? 'Invited' : null,
+        id: newUserId,
+        name,
+        email: normalizedEmail,
+        role: dbRole,
+        phone: phone ?? null,
       },
     };
   }
 
-  async getProfile(userId: string) {
-    const supabase = this.supabaseService.getClient();
+  async getProfile(token: string) {
+    const jwt = require('jsonwebtoken');
+    const secret = this.configService.get<string>('JWT_SECRET') || 'your-secret-key';
 
-    const { data: user, error } = await supabase
-      .from('User')
-      .select('id, name, email, role, phone, createdAt')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (error || !user) {
-      // Check known credentials fallback
-      for (const key of Object.keys(KNOWN_CREDENTIALS)) {
-        if (KNOWN_CREDENTIALS[key].user.id === userId || KNOWN_CREDENTIALS[key].user.email === userId) {
-          return KNOWN_CREDENTIALS[key].user;
-        }
-      }
-      return {
-        id: userId,
-        name: 'Partner User',
-        email: 'partner@hariom.in',
-        role: 'AGENT',
-        onboardingStatus: 'Active',
-      };
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
     }
 
-    let profile: any = null;
-    if (user.role?.toUpperCase() === 'SEAFARER') {
-      const { data: seafarerProfile } = await supabase
-        .from('SeafarerProfile')
-        .select('*')
-        .eq('userId', userId)
+    let user: any = null;
+
+    // 1. Try Supabase
+    try {
+      const supabase = this.supabaseService.getClient();
+      const { data, error } = await supabase
+        .from('User')
+        .select('id, email, name, role, phone')
+        .eq('id', decoded.sub)
         .maybeSingle();
-      profile = seafarerProfile ?? null;
+
+      if (!error && data) {
+        user = data;
+      }
+    } catch {
+      console.warn('Supabase profile query failed, checking fallback.');
     }
+
+    // 2. Fallback
+    if (!user) {
+      const localUsers = this.readLocalUsers();
+      user = localUsers.find((u) => u.id === decoded.sub || u.email?.toLowerCase() === decoded.email?.toLowerCase()) ||
+        DEFAULT_USERS.find((u) => u.id === decoded.sub || u.email?.toLowerCase() === decoded.email?.toLowerCase());
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    let onboardingStatus = user.onboardingStatus || (user.role?.toUpperCase() === 'AGENT' ? 'Active' : null);
 
     return {
-      ...user,
-      profile,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone ?? null,
+      onboardingStatus,
     };
   }
 }

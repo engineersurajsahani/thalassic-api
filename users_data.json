@@ -1,0 +1,81 @@
+[
+  {
+    "id": "a0000000-0000-0000-0000-000000000001",
+    "email": "master@gmail.com",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "master@12",
+    "name": "Master Admin",
+    "role": "MASTER",
+    "phone": "+91 91111 22222"
+  },
+  {
+    "id": "a0000000-0000-0000-0000-000000000002",
+    "email": "seafarer@test.com",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "seafarer@123",
+    "name": "Rohan Sharma",
+    "role": "SEAFARER",
+    "phone": "+91 98765 11223"
+  },
+  {
+    "id": "a0000000-0000-0000-0000-000000000003",
+    "email": "admin2@shippingco.com",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "Password123!",
+    "name": "Shipping Co Admin",
+    "role": "COMPANY_ADMIN",
+    "phone": "+91 98888 33333"
+  },
+  {
+    "id": "58f7dc83-cb27-4547-8264-ed433b557103",
+    "email": "kishan1@gmail.com",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "kishan123",
+    "name": "Kishan (Hari Om Partner)",
+    "role": "AGENT",
+    "phone": "+91 98200 44556",
+    "onboardingStatus": "Active",
+    "status": "Active",
+    "updatedAt": "2026-08-16T11:25:44.435Z"
+  },
+  {
+    "id": "a0000000-0000-0000-0000-000000000008",
+    "email": "agentadmin@thalassic.in",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "Password123!",
+    "name": "Agent Admin Head",
+    "role": "AGENT_ADMIN",
+    "phone": "+91 88888 11111",
+    "onboardingStatus": "Active"
+  },
+  {
+    "id": "58f7dc83-cb27-4547-8264-ed433b557104",
+    "email": "partner@test.com",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "partner@123",
+    "name": "Hari Om Global Partner",
+    "role": "AGENT",
+    "phone": "+91 99999 55555",
+    "onboardingStatus": "Active"
+  },
+  {
+    "id": "58f7dc83-cb27-4547-8264-ed433b557105",
+    "email": "agent@thalassic.in",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "password123",
+    "name": "Hari Om Partner Agency",
+    "role": "AGENT",
+    "phone": "+91 99999 88888",
+    "onboardingStatus": "Active"
+  },
+  {
+    "id": "a0000000-0000-0000-0000-000000000005",
+    "email": "admin@thalassic.in",
+    "password": "$2a$10$7ZrqhWpDqG4K4K4K4K4K4.p6Xp7v5qQ2eE7v7u6u7u7u7u7u7u7u7u7",
+    "plainPassword": "password123",
+    "name": "Partner Admin",
+    "role": "AGENT_ADMIN",
+    "phone": "+91 88888 77777",
+    "onboardingStatus": "Active"
+  }
+]

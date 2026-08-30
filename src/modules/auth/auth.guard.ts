@@ -1,6 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -16,10 +15,10 @@ export class AuthGuard implements CanActivate {
 
     const token = authHeader.split(' ')[1];
 
-    // Local developer test token bypasses
+    // Local developer test token bypass
     if (token === 'mock-master-token') {
       request.user = {
-        id: 'a0000000-0000-0000-0000-000000000001',
+        id: 'a0000000-0000-0000-0000-000000000001', // Raj's ID or similar
         email: 'master@hariomthalassic.com',
         name: 'Master Admin',
         role: 'MASTER',
@@ -28,26 +27,16 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    if (token === 'mock-partner-token' || token === 'mock-agent-token') {
-      request.user = {
-        id: '7af1cb6a-7a93-4ee8-ab95-1dc06ced736c',
-        email: 'partner@hariom.in',
-        name: 'Hari Om Manning Partner',
-        role: 'AGENT',
-        status: 'Active',
-      };
-      return true;
-    }
-
     // Try verifying as NestJS local JWT first
     try {
+      const jwt = require('jsonwebtoken');
       const secret = process.env.JWT_SECRET || 'your-secret-key';
-      const decoded = jwt.decode(token) as any;
-      if (decoded && (decoded.role || decoded.sub)) {
+      const decoded = jwt.verify(token, secret) as any;
+      if (decoded && decoded.role) {
         request.user = {
-          id: decoded.sub || '7af1cb6a-7a93-4ee8-ab95-1dc06ced736c',
-          email: decoded.email || 'partner@hariom.in',
-          role: (decoded.role || 'AGENT').toUpperCase(),
+          id: decoded.sub,
+          email: decoded.email,
+          role: decoded.role.toUpperCase(),
           status: 'Active',
         };
         return true;
@@ -59,34 +48,31 @@ export class AuthGuard implements CanActivate {
     const supabase = this.supabaseService.getClient();
 
     // Verify token with Supabase Auth
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-      if (!error && user) {
-        // Fetch custom user profile info from User table
-        const { data: dbUser } = await supabase
-          .from('User')
-          .select('id, email, name, role, status')
-          .eq('email', user.email)
-          .single();
-
-        if (dbUser) {
-          request.user = dbUser;
-          return true;
-        }
-
-        request.user = {
-          authId: user.id,
-          email: user.email,
-          role: 'SEAFARER',
-          status: 'Pending Audit',
-        };
-        return true;
-      }
-    } catch (supErr) {
-      // Fallback
+    if (error || !user) {
+      throw new UnauthorizedException('Invalid or expired authentication session');
     }
 
-    throw new UnauthorizedException('Invalid or expired authentication session');
+    // Fetch custom user profile info (role, status) from our PostgreSQL User table
+    const { data: dbUser, error: dbError } = await supabase
+      .from('User')
+      .select('id, email, name, role, status')
+      .eq('email', user.email)
+      .single();
+
+    if (dbError || !dbUser) {
+      // Return basic auth user if not mapped in public.users yet
+      request.user = {
+        authId: user.id,
+        email: user.email,
+        role: 'SEAFARER',
+        status: 'Pending Audit',
+      };
+      return true;
+    }
+
+    request.user = dbUser;
+    return true;
   }
 }
