@@ -1,0 +1,92 @@
+[
+  {
+    "id": "price-001",
+    "partnerId": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
+    "courseId": "c0000000-0000-0000-0000-000000000001",
+    "courseCode": "BST",
+    "courseName": "Basic Safety Training (BST)",
+    "payableAmount": 10000,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-002",
+    "partnerId": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
+    "courseId": "c0000000-0000-0000-0000-000000000002",
+    "courseCode": "AFF",
+    "courseName": "Advanced Fire Fighting (AFF)",
+    "payableAmount": 6500,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-003",
+    "partnerId": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
+    "courseId": "c0000000-0000-0000-0000-000000000003",
+    "courseCode": "OCTCO",
+    "courseName": "Oil and Chemical Tanker Cargo Operations (OCTCO)",
+    "payableAmount": 5500,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-004",
+    "partnerId": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
+    "courseId": "c0000000-0000-0000-0000-000000000004",
+    "courseCode": "MEDICARE",
+    "courseName": "Medical Care on Board Ships (MEDICARE)",
+    "payableAmount": 22000,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-005",
+    "partnerId": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
+    "courseId": "c0000000-0000-0000-0000-000000000005",
+    "courseCode": "RPST",
+    "courseName": "Refresher PST (RPST)",
+    "payableAmount": 3000,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-006",
+    "partnerId": "default",
+    "courseId": "c0000000-0000-0000-0000-000000000001",
+    "courseCode": "BST",
+    "courseName": "Basic Safety Training (BST)",
+    "payableAmount": 11000,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-007",
+    "partnerId": "default",
+    "courseId": "c0000000-0000-0000-0000-000000000002",
+    "courseCode": "AFF",
+    "courseName": "Advanced Fire Fighting (AFF)",
+    "payableAmount": 7000,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-008",
+    "partnerId": "default",
+    "courseId": "c0000000-0000-0000-0000-000000000003",
+    "courseCode": "OCTCO",
+    "courseName": "Oil and Chemical Tanker Cargo Operations (OCTCO)",
+    "payableAmount": 5800,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-009",
+    "partnerId": "default",
+    "courseId": "c0000000-0000-0000-0000-000000000004",
+    "courseCode": "MEDICARE",
+    "courseName": "Medical Care on Board Ships (MEDICARE)",
+    "payableAmount": 24000,
+    "effectiveStatus": "Active"
+  },
+  {
+    "id": "price-010",
+    "partnerId": "default",
+    "courseId": "c0000000-0000-0000-0000-000000000005",
+    "courseCode": "RPST",
+    "courseName": "Refresher PST (RPST)",
+    "payableAmount": 3200,
+    "effectiveStatus": "Active"
+  }
+]
