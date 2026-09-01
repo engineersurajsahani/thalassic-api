@@ -11,6 +11,7 @@ import { AgentModule } from './modules/agent/agent.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { CompanyModule } from './modules/company/company.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { PartnerPricingModule } from './modules/partner-pricing/partner-pricing.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FinanceModule } from './modules/finance/finance.module';
     InvoicesModule,
     CompanyModule,
     FinanceModule,
+    PartnerPricingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
