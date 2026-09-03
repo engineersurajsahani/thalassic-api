@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common';
 import { PartnerApplicationsService } from './partner-applications.service';
 import { CreatePartnerApplicationDto } from './dto/create-partner-application.dto';
 
@@ -15,4 +15,14 @@ export class PublicPartnerApplicationsController {
       data: result,
     };
   }
+  @Get()
+
+async getApplications() {
+  const result = await this.partnerApplicationsService.getApplications();
+
+  return {
+    success: true,
+    data: result,
+  };
+}
 }
