@@ -1,6 +1,13 @@
 import { Injectable, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
+const SEAFARER_STATUSES = [
+  'Active',
+  'Ongoing',
+  'On Hold',
+  'Completed',
+  'Inactive',
+] as const;
 
 @Injectable()
 export class CompanyService {
@@ -140,8 +147,22 @@ export class CompanyService {
     if (!crew) throw new NotFoundException('Seafarer not found in your company');
 
     if (updateData.status) {
-       await this.db.from('company_crew').update({ status: updateData.status }).eq('user_id', seafarerId).eq('company_id', companyId);
-    }
+  if (!SEAFARER_STATUSES.includes(updateData.status)) {
+    throw new BadRequestException(
+      `Invalid seafarer status. Allowed statuses: ${SEAFARER_STATUSES.join(', ')}`
+    );
+  }
+
+  const { error } = await this.db
+    .from('company_crew')
+    .update({ status: updateData.status })
+    .eq('user_id', seafarerId)
+    .eq('company_id', companyId);
+
+  if (error) {
+    throw new BadRequestException(error.message);
+  }
+}
     
     if (updateData.name || updateData.phone) {
        await this.db.from('users').update({ name: updateData.name, phone: updateData.phone }).eq('id', seafarerId);
