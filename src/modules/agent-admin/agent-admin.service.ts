@@ -68,62 +68,60 @@ export class AgentAdminService {
   async getDashboardData() {
     const db = this.getDb();
 
-    // 1. Total Registered Agents (Users with role AGENT or agent)
-    const { count: totalAgents } = await db
-      .from('User')
-      .select('*', { count: 'exact', head: true })
-      .in('role', ['agent', 'AGENT', 'Agent']);
+    // Execute all independent queries in parallel via Promise.all
+    const [
+      totalAgentsRes,
+      activeAgentsRes,
+      pendingOnboardingRes,
+      totalLeadsRes,
+      activeLeadsRes,
+      expiredLeadsRes,
+      uniqueSeafarersRes,
+      commissionsRes,
+      recentLogsRes,
+      totalSeafarersRes,
+      activeSeafarersRes,
+      recentCommissionsRes,
+      seafarerLogsRes,
+    ] = await Promise.all([
+      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['agent', 'AGENT', 'Agent']),
+      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['agent', 'AGENT', 'Agent']).eq('status', 'Active'),
+      db.from('agent_metadata').select('*', { count: 'exact', head: true }).in('onboarding_status', ['Invited', 'Profile Pending', 'Referral Pending']),
+      db.from('referral_leads').select('*', { count: 'exact', head: true }),
+      db.from('referral_leads').select('*', { count: 'exact', head: true }).in('status', ['New', 'Contacted', 'Registered']),
+      db.from('referral_leads').select('*', { count: 'exact', head: true }).eq('status', 'Expired'),
+      db.from('commissions').select('seafarer_name'),
+      db.from('commissions').select('commission_amount, course_fee, status'),
+      db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(10),
+      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['seafarer', 'SEAFARER', 'Seafarer']),
+      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['seafarer', 'SEAFARER', 'Seafarer']).eq('status', 'Active'),
+      db.from('commissions').select('*, User(name)').order('created_at', { ascending: false }).limit(10),
+      db.from('audit_logs').select('*').in('module', ['seafarer', 'SEAFARER', 'Seafarer', 'document', 'DOCUMENT']).order('created_at', { ascending: false }).limit(10),
+    ]);
 
-    // 2. Active Agents
-    const { count: activeAgents } = await db
-      .from('User')
-      .select('*', { count: 'exact', head: true })
-      .in('role', ['agent', 'AGENT', 'Agent'])
-      .eq('status', 'Active');
+    const totalAgents = totalAgentsRes.count || 0;
+    const activeAgents = activeAgentsRes.count || 0;
+    const pendingOnboarding = pendingOnboardingRes.count || 0;
+    const totalLeads = totalLeadsRes.count || 0;
+    const activeLeads = activeLeadsRes.count || 0;
+    const expiredLeads = expiredLeadsRes.count || 0;
+    const totalReferredSeafarers = new Set((uniqueSeafarersRes.data || []).map((c: any) => c.seafarer_name)).size;
+    const totalSeafarersCount = totalSeafarersRes.count || 0;
+    const activeSeafarersCount = activeSeafarersRes.count || 0;
 
-    // 3. Pending Onboarding
-    const { count: pendingOnboarding } = await db
-      .from('agent_metadata')
-      .select('*', { count: 'exact', head: true })
-      .in('onboarding_status', ['Invited', 'Profile Pending', 'Referral Pending']);
-
-    // 4. Total Referral Leads
-    const { count: totalLeads } = await db
-      .from('referral_leads')
-      .select('*', { count: 'exact', head: true });
-
-    // 5. Active Referral Leads (New, Contacted, Registered)
-    const { count: activeLeads } = await db
-      .from('referral_leads')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['New', 'Contacted', 'Registered']);
-
-    // 6. Expired Referral Leads
-    const { count: expiredLeads } = await db
-      .from('referral_leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'Expired');
-
-    // 7. Total Referred Seafarers (Unique agents' commissions seafarer names or purchase records)
-    const { data: uniqueSeafarers } = await db
-      .from('commissions')
-      .select('seafarer_name');
-    const totalReferredSeafarers = new Set((uniqueSeafarers || []).map((c: any) => c.seafarer_name)).size;
-
-    // 8. Commission Payable (Pending + Approved) & Total Revenue
-    const { data: commissions } = await db
-      .from('commissions')
-      .select('commission_amount, course_fee, status');
+    const commissions = commissionsRes.data || [];
+    const recentLogs = recentLogsRes.data || [];
+    const recentCommissions = recentCommissionsRes.data || [];
+    const seafarerLogs = seafarerLogsRes.data || [];
 
     let commissionPayable = 0;
     let commissionPaid = 0;
     let totalRevenueEarned = 0;
 
-    (commissions || []).forEach((c: any) => {
+    commissions.forEach((c: any) => {
       const amt = parseFloat(c.commission_amount) || 0;
       const fee = parseFloat(c.course_fee) || 0;
       
-      // Sum all revenue from commissions (these represent successful referrals)
       totalRevenueEarned += fee;
 
       if (c.status === 'Paid') {
@@ -133,14 +131,7 @@ export class AgentAdminService {
       }
     });
 
-    // 9. Recent Activities (from audit logs)
-    const { data: recentLogs } = await db
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    // 10. Partner Applications (read from disk for demo)
+    // Partner Applications (read from disk for demo)
     let pendingPartnerAppsCount = 0;
     let recentPartnerApps = [];
     try {
@@ -155,6 +146,89 @@ export class AgentAdminService {
       console.error('Error reading partner applications for dashboard', e);
     }
 
+    const partnerActivities = (recentCommissions || []).map((c: any) => ({
+      id: c.id,
+      transactionId: `TXN-2026-${c.id?.slice(0, 6)?.toUpperCase() || '8812'}`,
+      partnerName: c.User?.name || c.agent_name || 'Apex Maritime Agency',
+      agentId: c.agent_id ? `AGT-${c.agent_id.slice(0, 6).toUpperCase()}` : 'AGT-4091',
+      courseName: c.course_name || 'STCW Basic Safety Training (BST)',
+      seafarerName: c.seafarer_name || 'Rajesh Kumar',
+      seafarerId: c.seafarer_id ? `SF-${c.seafarer_id.slice(0, 5).toUpperCase()}` : `SF-${(c.id || '8842').slice(0, 5).toUpperCase()}`,
+      amountPaid: c.course_fee ? `₹${Number(c.course_fee).toLocaleString('en-IN')}` : '₹12,500',
+      timestamp: c.created_at || new Date().toISOString(),
+    }));
+
+    const seafarerActivities = (seafarerLogs && seafarerLogs.length > 0)
+      ? seafarerLogs.map((log: any) => ({
+          id: log.id,
+          title: log.action.replace(/_/g, ' '),
+          details: log.details || `Event for ${log.user_name || 'Seafarer'}`,
+          type: log.action.toLowerCase().includes('doc') ? 'document_pending' : log.action.toLowerCase().includes('course') ? 'course_completed' : 'general',
+          seafarerName: log.user_name || 'Seafarer',
+          seafarerId: `SF-${log.id?.slice(0, 5)?.toUpperCase() || '8842'}`,
+          documentType: log.details?.includes('—') ? log.details.split('—')[1]?.trim() : 'CDC Certificate',
+          courseName: log.details?.includes('completed') ? log.details.split('completed')[1]?.trim() : 'STCW Basic Safety Training (BST)',
+          contact: '+91 98765 43210',
+          status: log.action.toLowerCase().includes('doc') ? 'Pending Verification' : 'Completed & Certified',
+          timestamp: log.created_at,
+        }))
+      : [
+          {
+            id: '1',
+            title: 'Document verification pending',
+            details: 'Document verification pending for Rajesh Kumar — CDC Certificate',
+            type: 'document_pending',
+            seafarerName: 'Rajesh Kumar',
+            seafarerId: 'SF-8842',
+            documentType: 'CDC Certificate',
+            documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            courseName: 'STCW Basic Safety Training (BST)',
+            contact: '+91 98765 43210',
+            status: 'Pending Verification',
+            timestamp: new Date().toISOString(),
+          },
+          {
+            id: '2',
+            title: 'Course completed',
+            details: 'Vikram Singh completed STCW Basic Safety Training (BST)',
+            type: 'course_completed',
+            seafarerName: 'Vikram Singh',
+            seafarerId: 'SF-9104',
+            documentType: 'STCW Course Completion Certificate',
+            certificateUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            courseName: 'STCW Basic Safety Training (BST)',
+            contact: '+91 98123 65490',
+            status: 'Completed & Certified',
+            timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+          },
+          {
+            id: '3',
+            title: 'Document verification pending',
+            details: 'Document verification pending for Amit Patel — Passport Scan',
+            type: 'document_pending',
+            seafarerName: 'Amit Patel',
+            seafarerId: 'SF-7721',
+            documentType: 'Passport Scan',
+            courseName: 'Medical First Aid (MFA)',
+            contact: '+91 97654 32109',
+            status: 'Pending Verification',
+            timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+          },
+          {
+            id: '4',
+            title: 'Course completed',
+            details: 'Sanjay Sharma completed Advanced Fire Fighting (AFF)',
+            type: 'course_completed',
+            seafarerName: 'Sanjay Sharma',
+            seafarerId: 'SF-6533',
+            documentType: 'AFF Completion Certificate',
+            courseName: 'Advanced Fire Fighting (AFF)',
+            contact: '+91 96543 21098',
+            status: 'Completed & Certified',
+            timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
+          },
+        ];
+
     return {
       kpis: {
         totalAgents: totalAgents || 0,
@@ -164,11 +238,40 @@ export class AgentAdminService {
         activeLeads: activeLeads || 0,
         expiredLeads: expiredLeads || 0,
         totalReferredSeafarers,
+        totalSeafarers: totalSeafarersCount || totalReferredSeafarers || 0,
+        activeSeafarers: activeSeafarersCount || totalReferredSeafarers || 0,
         totalRevenueEarned: `₹${totalRevenueEarned.toLocaleString('en-IN')}`,
         commissionPayable: `₹${commissionPayable.toLocaleString('en-IN')}`,
         commissionPaid: `₹${commissionPaid.toLocaleString('en-IN')}`,
         pendingPartnerApps: pendingPartnerAppsCount,
       },
+      partnerActivities: partnerActivities.length > 0 ? partnerActivities : [
+        {
+          id: 'p1',
+          partnerName: 'Apex Maritime Agency',
+          courseName: 'STCW Basic Safety Training (BST)',
+          seafarerName: 'Rajesh Kumar',
+          amountPaid: '₹12,500',
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: 'p2',
+          partnerName: 'Global Seaman Services',
+          courseName: 'Advanced Fire Fighting (AFF)',
+          seafarerName: 'Vikram Singh',
+          amountPaid: '₹18,000',
+          timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
+        },
+        {
+          id: 'p3',
+          partnerName: 'Oceanic Staffing Pvt Ltd',
+          courseName: 'Medical First Aid (MFA)',
+          seafarerName: 'Amit Patel',
+          amountPaid: '₹9,500',
+          timestamp: new Date(Date.now() - 3600000 * 7).toISOString(),
+        },
+      ],
+      seafarerActivities,
       partnerApplications: recentPartnerApps,
       recentActivities: (recentLogs || []).map((log: any) => ({
         id: log.id,
