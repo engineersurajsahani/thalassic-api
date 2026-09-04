@@ -890,8 +890,21 @@ export class SeafarerService {
     const firstName = profile?.firstName || nameParts[0] || '';
     const lastName = profile?.lastName || nameParts.slice(1).join(' ') || '';
 
+    let onboardingStatus = null;
+    if (user?.role?.toUpperCase() === 'AGENT') {
+      const { data: meta } = await this.db
+        .from('agent_metadata')
+        .select('onboarding_status')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (meta) {
+        onboardingStatus = meta.onboarding_status;
+      }
+    }
+
     return {
       ...(user ?? {}),
+      onboardingStatus,
       firstName,
       lastName,
       email: user?.email,
