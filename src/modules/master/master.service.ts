@@ -220,17 +220,39 @@ export class MasterService {
 
   // --- 3. User Management & Auditing ---
   async getUsers(role?: string) {
-    let query = this.getSupabase().from('User').select('*').order('createdAt', { ascending: false });
+  let query = this.getSupabase()
+    .from('User')
+    .select('id, name, email, phone, role, createdAt, updatedAt')
+    .order('createdAt', { ascending: false });
 
-    if (role) {
-      const normalizedRole = role.toLowerCase() === 'seafarer' ? 'seafarer' : 'master';
-      query = query.eq('role', normalizedRole);
+  if (role) {
+    const roleMap: Record<string, string> = {
+      seafarer: 'SEAFARER',
+      master: 'MASTER',
+      'company-admin': 'COMPANY_ADMIN',
+      company_admin: 'COMPANY_ADMIN',
+      'agent-admin': 'AGENT_ADMIN',
+      agent_admin: 'AGENT_ADMIN',
+      agent: 'AGENT',
+    };
+
+    const dbRole = roleMap[role.toLowerCase()];
+
+    if (!dbRole) {
+      throw new BadRequestException('Invalid user role');
     }
 
-    const { data, error } = await query;
-    if (error) throw new InternalServerErrorException('Error loading users list');
-    return data;
+    query = query.eq('role', dbRole);
   }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new InternalServerErrorException('Error loading users list');
+  }
+
+  return data || [];
+}
 
   async createUser(dto: any) {
     const { randomUUID } = require('crypto');
