@@ -39,6 +39,18 @@ export class SupabaseService implements OnModuleInit {
         console.warn('Remarks column migration skipped:', (migErr as any)?.message);
       }
 
+      // Ensure 'seafarer-documents' bucket exists in Supabase Storage
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const hasBucket = buckets?.some((b: any) => b.name === 'seafarer-documents');
+        if (!hasBucket) {
+          await supabase.storage.createBucket('seafarer-documents', { public: true });
+          console.log("Bucket 'seafarer-documents' ensured.");
+        }
+      } catch (bucketErr) {
+        console.warn('Bucket check skipped:', (bucketErr as any)?.message);
+      }
+
       const bcrypt = require('bcryptjs');
       const hashedPassword = await bcrypt.hash('password123', 10);
       const now = new Date();

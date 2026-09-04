@@ -3,6 +3,127 @@ import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { InvoicesService } from '../invoices/invoices.service';
 
+// ── Centralized Institute Management Configuration (PRD 1.9, 1.10, 5.2, 5.3) ───
+export const CONFIGURED_INSTITUTES = [
+  {
+    id: 'inst-mumbai',
+    name: 'Hari Om Thalassic Maritime Training Academy - Mumbai',
+    code: 'HOT-MUM-01',
+    idtNumber: 'IDT-10294',
+    address: 'Colaba Maritime Training Complex, Marine Drive, Mumbai, Maharashtra 400005',
+    city: 'Mumbai',
+    phone: '+91 22 6123 4567',
+    email: 'mumbai.campus@hariomthalassic.com',
+    schedule: 'Monday - Friday | 09:00 - 17:30 IST',
+    batchDates: ['Batch 1: 1st - 12th of month', 'Batch 2: 15th - 27th of month'],
+    facilities: 'Full-Mission Bridge Simulator, Fire Fighting Mock-up, Survival Craft Davit'
+  },
+  {
+    id: 'inst-chennai',
+    name: 'Hari Om Maritime Institute - Chennai Regional Center',
+    code: 'HOT-CHN-02',
+    idtNumber: 'IDT-10355',
+    address: 'Harbour View Road, Royapuram, Chennai, Tamil Nadu 600013',
+    city: 'Chennai',
+    phone: '+91 44 2598 1122',
+    email: 'chennai.campus@hariomthalassic.com',
+    schedule: 'Monday - Saturday | 08:30 - 16:30 IST',
+    batchDates: ['Batch A: 5th - 17th of month', 'Batch B: 20th - 31st of month'],
+    facilities: 'Tanker Cargo Simulator (OCTCO/GTFC), Advanced Medical Care Ward, Wet PST Pool'
+  },
+  {
+    id: 'inst-kolkata',
+    name: 'Hari Om Thalassic Nautical Institute - Kolkata',
+    code: 'HOT-KOL-03',
+    idtNumber: 'IDT-10488',
+    address: 'Garden Reach Road, Kidderpore Port Area, Kolkata, West Bengal 700024',
+    city: 'Kolkata',
+    phone: '+91 33 2410 8890',
+    email: 'kolkata.campus@hariomthalassic.com',
+    schedule: 'Monday - Friday | 09:00 - 17:00 IST',
+    batchDates: ['Batch 1: 3rd - 15th of month', 'Batch 2: 18th - 30th of month'],
+    facilities: 'Advanced Engine Room Simulator, High Voltage Switchboard Lab, ECDIS Suite'
+  },
+  {
+    id: 'inst-goa',
+    name: 'Hari Om Maritime Academy - Goa Center',
+    code: 'HOT-GOA-04',
+    idtNumber: 'IDT-10512',
+    address: 'Vasco da Gama Port Enclave, Mormugao, Goa 403802',
+    city: 'Goa',
+    phone: '+91 832 251 4400',
+    email: 'goa.campus@hariomthalassic.com',
+    schedule: 'Monday - Saturday | 09:00 - 16:30 IST',
+    batchDates: ['Batch Alpha: 2nd - 14th of month', 'Batch Beta: 16th - 28th of month'],
+    facilities: 'Offshore Survival Platform, Fast Rescue Boat Davits, Helideck Simulator'
+  },
+  {
+    id: 'inst-kochi',
+    name: 'Hari Om Maritime Institute - Kochi Campus',
+    code: 'HOT-KOC-05',
+    idtNumber: 'IDT-10640',
+    address: 'Willingdon Island Maritime Hub, Kochi, Kerala 682003',
+    city: 'Kochi',
+    phone: '+91 484 266 7711',
+    email: 'kochi.campus@hariomthalassic.com',
+    schedule: 'Monday - Friday | 09:00 - 17:30 IST',
+    batchDates: ['Batch 1: 1st - 12th of month', 'Batch 2: 15th - 27th of month'],
+    facilities: 'Ship Maneuvering Simulator, Chemical Tanker Safety Lab, Medical Trauma Bay'
+  }
+];
+
+export function getInstitutesForCourse(courseCode?: string): any[] {
+  const code = (courseCode || '').toUpperCase();
+  if (code.includes('BST')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2], CONFIGURED_INSTITUTES[3], CONFIGURED_INSTITUTES[4]];
+  } else if (code.includes('AFF')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[2], CONFIGURED_INSTITUTES[3]];
+  } else if (code.includes('OCTCO')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[4]];
+  } else if (code.includes('MEDICARE')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[4]];
+  } else if (code.includes('PST') || code.includes('RPST')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2], CONFIGURED_INSTITUTES[3]];
+  } else if (code.includes('STSDSD')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2]];
+  } else if (code.includes('GTFC')) {
+    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1]];
+  }
+  return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2]];
+}
+
+// Helper to decode latin1-garbled UTF-8 filenames (common with multer)
+function cleanDisplayName(rawName?: string, fallback = 'document'): string {
+  if (!rawName) return fallback;
+  try {
+    const fixed = Buffer.from(rawName, 'latin1').toString('utf8');
+    if (!fixed.includes('\ufffd')) {
+      return fixed.trim();
+    }
+  } catch {
+    // fallback
+  }
+  return rawName.trim();
+}
+
+// Helper to produce a 100% S3 and Supabase Storage key-safe filename (ASCII, no spaces, no control characters)
+function sanitizeStorageKey(rawName?: string, fallback = 'document'): string {
+  const clean = cleanDisplayName(rawName, fallback);
+  const lastDot = clean.lastIndexOf('.');
+  const ext = lastDot !== -1 ? clean.substring(lastDot).replace(/[^a-zA-Z0-9.]/g, '') : '';
+  const base = lastDot !== -1 ? clean.substring(0, lastDot) : clean;
+
+  const safeBase = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove diacritics/accents
+    .replace(/[^a-zA-Z0-9_-]/g, '_') // replace spaces and any special characters with underscore
+    .replace(/_+/g, '_') // collapse multiple underscores
+    .replace(/^_|_$/g, '') // trim leading/trailing underscores
+    .slice(0, 80);
+
+  return `${safeBase || 'document'}${ext || '.pdf'}`;
+}
+
 @Injectable()
 export class SeafarerService {
   constructor(
@@ -18,14 +139,51 @@ export class SeafarerService {
   // DASHBOARD
   // ─────────────────────────────────────────────
   async getDashboard(userId: string) {
+    const { data: userRecord } = await this.db
+      .from('User')
+      .select('id, name, email, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isUserOnHold = (userRecord?.status || '').toLowerCase() === 'on hold' || 
+                         (userRecord?.status || '').toLowerCase() === 'on_hold';
+
     const { data: enrollments } = await this.db
       .from('Enrollment')
-      .select('id, status, startDate, createdAt, courseId, Course(name, code, duration)')
+      .select('id, status, progress, startDate, createdAt, courseId, remarks, Course(id, name, code, duration)')
       .eq('userId', userId)
       .order('createdAt', { ascending: false });
 
-    const activeEnrollment = enrollments?.find((e: any) => e.status === 'Processing');
-    const completedCount = enrollments?.filter((e: any) => e.status === 'Completed').length ?? 0;
+    // Accurately separate statuses: Ongoing / Active, On Hold, Completed
+    const parseMeta = (e: any) => {
+      let meta: any = {};
+      try {
+        if (e.remarks && typeof e.remarks === 'string' && e.remarks.startsWith('{')) {
+          meta = JSON.parse(e.remarks);
+        } else if (e.remarks && typeof e.remarks === 'object') {
+          meta = e.remarks;
+        }
+      } catch (err) {
+        meta = {};
+      }
+      return meta;
+    };
+
+    const isHoldEnrollment = (e: any) => {
+      const st = (e.status || '').toLowerCase();
+      return st === 'on hold' || st === 'on_hold' || st === 'onhold' || (isUserOnHold && st !== 'completed');
+    };
+
+    const isOngoingEnrollment = (e: any) => {
+      const st = (e.status || '').toLowerCase();
+      return !isHoldEnrollment(e) && (st === 'processing' || st === 'active' || st === 'ongoing');
+    };
+
+    const activeEnrollment = enrollments?.find(isOngoingEnrollment);
+    const onHoldEnrollment = enrollments?.find(isHoldEnrollment);
+    const completedCount = enrollments?.filter((e: any) => (e.status || '').toLowerCase() === 'completed').length ?? 0;
+    const ongoingCount = enrollments?.filter(isOngoingEnrollment).length ?? 0;
+    const onHoldCount = enrollments?.filter(isHoldEnrollment).length ?? (isUserOnHold && enrollments && enrollments.length > 0 ? enrollments.length : 0);
 
     const { data: profile } = await this.db
       .from('SeafarerProfile')
@@ -56,16 +214,51 @@ export class SeafarerService {
     const fields = [profile?.indosNumber, completedCount > 0, (docs?.length ?? 0) > 0, profile?.dob];
     const profileCompletion = Math.round((fields.filter(Boolean).length / fields.length) * 100);
 
+    let activeCourseData = null;
+    if (activeEnrollment) {
+      const meta = parseMeta(activeEnrollment);
+      const courseCode = (activeEnrollment as any).Course?.code || '';
+      const associatedInsts = getInstitutesForCourse(courseCode);
+      const matchedInst = CONFIGURED_INSTITUTES.find(i => i.id === meta.instituteId || i.name === meta.instituteName) || associatedInsts[0];
+      
+      activeCourseData = {
+        name: (activeEnrollment as any).Course?.name,
+        code: courseCode,
+        status: 'Ongoing',
+        progress: (activeEnrollment as any).progress ?? 35,
+        trainingType: 'Physical / Offline Training',
+        institute: matchedInst,
+        batchSchedule: meta.batchSchedule || matchedInst.schedule,
+      };
+    }
+
+    let onHoldCourseData = null;
+    if (onHoldEnrollment) {
+      const meta = parseMeta(onHoldEnrollment);
+      const courseCode = (onHoldEnrollment as any).Course?.code || '';
+      const associatedInsts = getInstitutesForCourse(courseCode);
+      const matchedInst = CONFIGURED_INSTITUTES.find(i => i.id === meta.instituteId || i.name === meta.instituteName) || associatedInsts[0];
+      
+      onHoldCourseData = {
+        name: (onHoldEnrollment as any).Course?.name,
+        code: courseCode,
+        status: 'On Hold',
+        progress: (onHoldEnrollment as any).progress ?? 0,
+        trainingType: 'Physical / Offline Training',
+        institute: matchedInst,
+        batchSchedule: meta.batchSchedule || matchedInst.schedule,
+        holdReason: 'Administrative / Document Verification on hold. Profile & history are preserved.'
+      };
+    }
+
     return {
       profileCompletion,
+      userStatus: isUserOnHold ? 'On Hold' : (userRecord?.status || 'Active'),
       courses: {
-        active: activeEnrollment
-          ? {
-              name: (activeEnrollment as any).Course?.name,
-              code: (activeEnrollment as any).Course?.code,
-              progress: 40,
-            }
-          : null,
+        active: activeCourseData,
+        onHold: onHoldCourseData,
+        ongoingCount,
+        onHoldCount,
         completedCount,
       },
       certificates,
@@ -159,11 +352,15 @@ export class SeafarerService {
       title:
         e.status === 'Completed'
           ? `✅ Course Completed: ${e.Course?.name}`
+          : e.status === 'On Hold' || e.status === 'on_hold'
+          ? `⚠️ Course On Hold: ${e.Course?.name}`
           : `📋 Enrollment Processing: ${e.Course?.name}`,
       message:
         e.status === 'Completed'
           ? `Your certificate for ${e.Course?.name} has been issued.`
-          : `Your booking for ${e.Course?.name} is being processed.`,
+          : e.status === 'On Hold' || e.status === 'on_hold'
+          ? `Your training for ${e.Course?.name} is on hold pending verification.`
+          : `Your physical training booking for ${e.Course?.name} is confirmed.`,
       isRead: false,
       read: false,
       createdAt: e.createdAt,
@@ -191,13 +388,33 @@ export class SeafarerService {
       console.error('getAllCourses error:', error.message);
       return [];
     }
-    return data ?? [];
+
+    // Attach associated physical training institutes to each course (PRD 5.2, 5.3)
+    return (data ?? []).map((course: any) => {
+      const associatedInstitutes = getInstitutesForCourse(course.code);
+      return {
+        ...course,
+        trainingType: 'Physical / Offline Training',
+        deliveryMode: 'Classroom & Certified Maritime Simulators',
+        institutes: associatedInstitutes,
+        availableInstitutesCount: associatedInstitutes.length,
+      };
+    });
   }
 
   async getMyEnrollments(userId: string) {
+    const { data: userRecord } = await this.db
+      .from('User')
+      .select('id, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const isUserOnHold = (userRecord?.status || '').toLowerCase() === 'on hold' || 
+                         (userRecord?.status || '').toLowerCase() === 'on_hold';
+
     const { data, error } = await this.db
       .from('Enrollment')
-      .select('id, status, progress, startDate, createdAt, Course(id, name, code, category, duration, fees, description)')
+      .select('id, status, progress, startDate, createdAt, remarks, Course(id, name, code, category, duration, fees, description)')
       .eq('userId', userId)
       .order('createdAt', { ascending: false });
 
@@ -205,20 +422,68 @@ export class SeafarerService {
       console.error('getMyEnrollments error:', error.message);
       return [];
     }
-    return (data ?? []).map((e: any) => ({
-      id: e.id,
-      status: e.status?.toLowerCase() === 'completed' ? 'completed' : 'active',
-      purchaseDate: e.startDate ?? e.createdAt,
-      course: e.Course,
-      courseId: e.Course?.id ?? e.courseId,
-      progress: e.progress ?? (e.status?.toLowerCase() === 'completed' ? 100 : 0),
-    }));
+
+    return (data ?? []).map((e: any) => {
+      let meta: any = {};
+      try {
+        if (e.remarks && typeof e.remarks === 'string' && e.remarks.startsWith('{')) {
+          meta = JSON.parse(e.remarks);
+        } else if (e.remarks && typeof e.remarks === 'object') {
+          meta = e.remarks;
+        }
+      } catch (err) {
+        meta = {};
+      }
+
+      const rawStatus = (e.status || '').toLowerCase();
+      let normStatus: 'active' | 'on_hold' | 'completed' = 'active';
+      if (rawStatus === 'completed') {
+        normStatus = 'completed';
+      } else if (rawStatus === 'on hold' || rawStatus === 'on_hold' || rawStatus === 'onhold' || (isUserOnHold && rawStatus !== 'completed')) {
+        normStatus = 'on_hold';
+      } else {
+        normStatus = 'active';
+      }
+
+      const courseCode = e.Course?.code || '';
+      const associatedInstitutes = getInstitutesForCourse(courseCode);
+      const selectedInstitute = 
+        CONFIGURED_INSTITUTES.find(i => i.id === meta.instituteId || i.name === meta.instituteName) ||
+        (associatedInstitutes && associatedInstitutes.length > 0 ? associatedInstitutes[0] : CONFIGURED_INSTITUTES[0]);
+
+      return {
+        id: e.id,
+        status: normStatus,
+        purchaseDate: e.startDate ?? e.createdAt,
+        course: e.Course,
+        courseId: e.Course?.id ?? e.courseId,
+        progress: e.progress ?? (normStatus === 'completed' ? 100 : normStatus === 'on_hold' ? (e.progress || 0) : 35),
+        trainingType: 'Physical / Offline Maritime Training',
+        institute: selectedInstitute,
+        batchSchedule: meta.batchSchedule || selectedInstitute.schedule,
+        enrollmentDetails: {
+          batchId: `BATCH-${(e.id || '').substring(0, 6).toUpperCase()}`,
+          reportingAddress: selectedInstitute.address,
+          coordinatorContact: selectedInstitute.phone,
+          coordinatorEmail: selectedInstitute.email,
+          facilities: selectedInstitute.facilities,
+          onHoldNotice: normStatus === 'on_hold' ? 'Training placed on hold. All profile history & purchases remain intact.' : null
+        }
+      };
+    });
   }
 
-  async enrollInCourse(userId: string, courseId: string, referralCode?: string) {
+  async enrollInCourse(
+    userId: string,
+    courseId: string,
+    referralCode?: string,
+    instituteId?: string,
+    instituteName?: string,
+    batchSchedule?: string,
+  ) {
     const { data: course } = await this.db
       .from('Course')
-      .select('id, fees, name')
+      .select('id, fees, name, code')
       .eq('id', courseId)
       .single();
 
@@ -233,20 +498,51 @@ export class SeafarerService {
 
     if (existing) throw new BadRequestException('Already enrolled in this course');
 
-    const { data, error } = await this.db
+    // Determine institute associated with this course
+    const associatedInstitutes = getInstitutesForCourse(course.code);
+    const chosenInstitute = 
+      CONFIGURED_INSTITUTES.find(i => i.id === instituteId || i.name === instituteName) ||
+      (associatedInstitutes && associatedInstitutes.length > 0 ? associatedInstitutes[0] : CONFIGURED_INSTITUTES[0]);
+
+    const metadataObj = {
+      instituteId: chosenInstitute.id,
+      instituteName: chosenInstitute.name,
+      instituteCode: chosenInstitute.code,
+      idtNumber: chosenInstitute.idtNumber,
+      instituteAddress: chosenInstitute.address,
+      batchSchedule: batchSchedule || chosenInstitute.schedule,
+      trainingType: 'Physical / Offline Training',
+      enrolledAt: new Date().toISOString(),
+    };
+
+    const insertPayload: any = {
+      id: randomUUID(),
+      userId,
+      courseId,
+      status: 'Processing',
+      progress: 0,
+      startDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      remarks: JSON.stringify(metadataObj),
+    };
+
+    let { data, error } = await this.db
       .from('Enrollment')
-      .insert({
-        id: randomUUID(),
-        userId,
-        courseId,
-        status: 'Processing',
-        progress: 0,
-        startDate: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    if (error && error.message?.includes('remarks')) {
+      delete insertPayload.remarks;
+      const retry = await this.db
+        .from('Enrollment')
+        .insert(insertPayload)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) throw new BadRequestException(error.message);
 
@@ -558,7 +854,10 @@ export class SeafarerService {
       .select('*')
       .eq('userId', userId);
 
-    if (error) throw new BadRequestException(error.message);
+    if (error) {
+      console.warn('[getDocuments] Query warning:', error.message);
+      return [];
+    }
     return (data ?? []).map((d: any) => {
       let meta: any = {};
       try {
@@ -622,19 +921,35 @@ export class SeafarerService {
     }
 
     const docId = randomUUID();
-    const originalName = file.originalname || `${docType}-${docId}`;
+    const displayName = cleanDisplayName(file.originalname, `${docType}-${docId}`);
+    const safeFileName = sanitizeStorageKey(file.originalname, `${docType}-${docId}`);
     const mimeType = file.mimetype || 'application/octet-stream';
 
-    // Storage path: userId/docId/originalFilename
-    const storagePath = `${userId}/${docId}/${originalName}`;
+    // Storage path: userId/docId/safeFileName (S3/Supabase key-safe without spaces or control chars)
+    const storagePath = `${userId}/${docId}/${safeFileName}`;
     const BUCKET = 'seafarer-documents';
 
-    const { error: storageError } = await this.db.storage
+    let { error: storageError } = await this.db.storage
       .from(BUCKET)
       .upload(storagePath, file.buffer, {
         contentType: mimeType,
         upsert: true,
       });
+
+    if (storageError && (storageError.message?.toLowerCase().includes('bucket') || storageError.message?.toLowerCase().includes('not found'))) {
+      try {
+        await this.db.storage.createBucket(BUCKET, { public: true });
+        const retry = await this.db.storage
+          .from(BUCKET)
+          .upload(storagePath, file.buffer, {
+            contentType: mimeType,
+            upsert: true,
+          });
+        storageError = retry.error;
+      } catch (e) {
+        // ignore
+      }
+    }
 
     if (storageError) {
       console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
@@ -659,7 +974,7 @@ export class SeafarerService {
       id: docId,
       userId,
       type: docType,
-      name: originalName,
+      name: displayName,
       url: storagePath,
       status: 'Pending',
       expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
@@ -708,18 +1023,34 @@ export class SeafarerService {
     let fileName = existingDoc.name;
 
     if (file && file.buffer && file.buffer.length > 0) {
-      const originalName = file.originalname || `${existingDoc.type}-${docId}`;
+      const displayName = cleanDisplayName(file.originalname, `${existingDoc.type}-${docId}`);
+      const safeFileName = sanitizeStorageKey(file.originalname, `${existingDoc.type}-${docId}`);
       const mimeType = file.mimetype || 'application/octet-stream';
-      storagePath = `${userId}/${docId}/${originalName}`;
-      fileName = originalName;
+      storagePath = `${userId}/${docId}/${safeFileName}`;
+      fileName = displayName;
 
       const BUCKET = 'seafarer-documents';
-      const { error: storageError } = await this.db.storage
+      let { error: storageError } = await this.db.storage
         .from(BUCKET)
         .upload(storagePath, file.buffer, {
           contentType: mimeType,
           upsert: true,
         });
+
+      if (storageError && (storageError.message?.toLowerCase().includes('bucket') || storageError.message?.toLowerCase().includes('not found'))) {
+        try {
+          await this.db.storage.createBucket(BUCKET, { public: true });
+          const retry = await this.db.storage
+            .from(BUCKET)
+            .upload(storagePath, file.buffer, {
+              contentType: mimeType,
+              upsert: true,
+            });
+          storageError = retry.error;
+        } catch (e) {
+          // ignore
+        }
+      }
 
       if (storageError) {
         throw new BadRequestException(`File replacement storage failed: ${storageError.message}`);
