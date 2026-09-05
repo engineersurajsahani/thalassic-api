@@ -135,6 +135,50 @@ export class SeafarerService {
     return this.supabaseService.getClient();
   }
 
+  private isBucketVerified = false;
+
+  private getSafeFileExtension(originalName?: string, mimeType?: string): string {
+    let ext = '';
+    if (originalName && originalName.includes('.')) {
+      const parts = originalName.split('.');
+      const rawExt = parts[parts.length - 1].toLowerCase().trim();
+      const cleanExt = rawExt.replace(/[^a-z0-9]/g, '');
+      if (cleanExt && cleanExt.length <= 5) {
+        ext = `.${cleanExt}`;
+      }
+    }
+    if (!ext && mimeType) {
+      const lower = mimeType.toLowerCase();
+      if (lower.includes('pdf')) ext = '.pdf';
+      else if (lower.includes('jpeg') || lower.includes('jpg')) ext = '.jpg';
+      else if (lower.includes('png')) ext = '.png';
+      else ext = '.bin';
+    }
+    return ext || '.bin';
+  }
+
+  private async ensureBucketExists(bucketName = 'seafarer-documents'): Promise<void> {
+    if (this.isBucketVerified) return;
+    try {
+      const { data: buckets, error } = await this.db.storage.listBuckets();
+      if (!error && buckets) {
+        const found = buckets.some((b) => b.name === bucketName);
+        if (found) {
+          this.isBucketVerified = true;
+          return;
+        }
+      }
+      const { error: createErr } = await this.db.storage.createBucket(bucketName, {
+        public: false,
+      });
+      if (!createErr || createErr.message?.includes('already exists')) {
+        this.isBucketVerified = true;
+      }
+    } catch (e) {
+      console.warn('[ensureBucketExists] Bucket verification warning:', (e as any)?.message);
+    }
+  }
+
   // ─────────────────────────────────────────────
   // DASHBOARD
   // ─────────────────────────────────────────────
@@ -858,6 +902,16 @@ export class SeafarerService {
       console.warn('[getDocuments] Query warning:', error.message);
       return [];
     }
+
+    let profileData: any = null;
+    try {
+      const { data: prof } = await this.db
+        .from('SeafarerProfile')
+        .select('*')
+        .eq('userId', userId)
+        .maybeSingle();
+      profileData = prof;
+    } catch (_) {}
     return (data ?? []).map((d: any) => {
       let meta: any = {};
       try {
@@ -871,18 +925,21 @@ export class SeafarerService {
         meta = {};
       }
 
+      const isPass = d.type?.toLowerCase() === 'passport';
+      const isCdc = d.type?.toLowerCase() === 'cdc';
+
       return {
         id: d.id,
         type: d.type,
         label: d.name ?? d.type,
         status: d.status ?? 'pending',
-        expiryDate: d.expiryDate ?? meta.expiryDate ?? null,
+        expiryDate: d.expiryDate ?? meta.expiryDate ?? (isPass ? (profileData?.passportExpiry || profileData?.passport_expiry) : isCdc ? (profileData?.cdcExpiry || profileData?.cdc_expiry) : null),
         uploadedAt: d.uploadDate ?? d.createdAt ?? null,
         url: d.url,
-        passportNumber: meta.passportNumber ?? d.passportNumber ?? null,
-        cdcNumber: meta.cdcNumber ?? d.cdcNumber ?? null,
-        placeOfIssue: meta.placeOfIssue ?? d.placeOfIssue ?? null,
-        issueDate: meta.issueDate ?? d.issueDate ?? null,
+        passportNumber: meta.passportNumber ?? d.passportNumber ?? (isPass ? (profileData?.passportNum || profileData?.passport_num) : null),
+        cdcNumber: meta.cdcNumber ?? d.cdcNumber ?? (isCdc ? (profileData?.cdcNum || profileData?.cdc_num) : null),
+        placeOfIssue: meta.placeOfIssue ?? d.placeOfIssue ?? (isPass ? (profileData?.passportPlace || profileData?.passport_place) : isCdc ? (profileData?.cdcPlace || profileData?.cdc_place) : null),
+        issueDate: meta.issueDate ?? d.issueDate ?? (isPass ? (profileData?.passportIssue || profileData?.passport_issue) : isCdc ? (profileData?.cdcIssue || profileData?.cdc_issue) : null),
         courseName: meta.courseName ?? d.courseName ?? null,
         courseType: meta.courseType ?? d.courseType ?? null,
         durationFrom: meta.durationFrom ?? d.durationFrom ?? null,
@@ -903,18 +960,27 @@ export class SeafarerService {
       throw new BadRequestException('No file provided or file is empty.');
     }
 
-    const docType = (type || bodyMetadata?.type || 'other').toLowerCase();
+    const docType = (type || bodyMetadata?.type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'document';
+    const BUCKET = 'seafarer-documents';
+
+    // Verify bucket exists once without re-running on every upload
+    await this.ensureBucketExists(BUCKET);
 
     // Business Rule for Passport & CDC: Only ONE active document allowed. Delete pre-existing ones.
     if (docType === 'passport' || docType === 'cdc') {
       const { data: existingDocs } = await this.db
         .from('Document')
-        .select('id')
+        .select('id, url')
         .eq('userId', userId)
         .ilike('type', docType);
 
       if (existingDocs && existingDocs.length > 0) {
         for (const exDoc of existingDocs) {
+          if (exDoc.url && !exDoc.url.startsWith('/uploads/')) {
+            try {
+              await this.db.storage.from(BUCKET).remove([exDoc.url]);
+            } catch (_) {}
+          }
           await this.db.from('Document').delete().eq('id', exDoc.id);
         }
       }
@@ -927,7 +993,6 @@ export class SeafarerService {
 
     // Storage path: userId/docId/safeFileName (S3/Supabase key-safe without spaces or control chars)
     const storagePath = `${userId}/${docId}/${safeFileName}`;
-    const BUCKET = 'seafarer-documents';
 
     let { error: storageError } = await this.db.storage
       .from(BUCKET)
@@ -953,9 +1018,12 @@ export class SeafarerService {
 
     if (storageError) {
       console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
-      throw new BadRequestException(
-        `File storage failed: ${storageError.message}. Ensure '${BUCKET}' bucket exists in Supabase Storage.`,
-      );
+      if (storageError.message?.toLowerCase().includes('bucket not found')) {
+        throw new BadRequestException(
+          `Storage bucket '${BUCKET}' does not exist in Supabase Storage. Please create the '${BUCKET}' bucket.`,
+        );
+      }
+      throw new BadRequestException(`File storage failed: ${storageError.message}`);
     }
 
     const metadataObj = {
@@ -1000,8 +1068,61 @@ export class SeafarerService {
       error = retry.error;
     }
 
-    if (error) throw new BadRequestException(error.message);
-    return { ...data, metadata: metadataObj, message: 'Document uploaded successfully.' };
+    if (error) {
+      // Clean up storage object if database insertion failed
+      try {
+        await this.db.storage.from(BUCKET).remove([storagePath]);
+      } catch (_) {}
+      throw new BadRequestException(error.message);
+    }
+
+    // Sync profile table for passport or cdc if available
+    try {
+      if (docType === 'passport' && bodyMetadata?.passportNumber) {
+        await this.db.from('SeafarerProfile').upsert(
+          {
+            userId,
+            passportNum: bodyMetadata.passportNumber,
+            passport_num: bodyMetadata.passportNumber,
+            passportPlace: bodyMetadata.placeOfIssue,
+            passport_place: bodyMetadata.placeOfIssue,
+            passportIssue: bodyMetadata.issueDate,
+            passport_issue: bodyMetadata.issueDate,
+            passportExpiry: expiryDate || bodyMetadata.expiryDate,
+            passport_expiry: expiryDate || bodyMetadata.expiryDate,
+            updatedAt: new Date().toISOString(),
+          },
+          { onConflict: 'userId' },
+        );
+      } else if (docType === 'cdc' && bodyMetadata?.cdcNumber) {
+        await this.db.from('SeafarerProfile').upsert(
+          {
+            userId,
+            cdcNum: bodyMetadata.cdcNumber,
+            cdc_num: bodyMetadata.cdcNumber,
+            cdcPlace: bodyMetadata.placeOfIssue,
+            cdc_place: bodyMetadata.placeOfIssue,
+            cdcIssue: bodyMetadata.issueDate,
+            cdc_issue: bodyMetadata.issueDate,
+            cdcExpiry: expiryDate || bodyMetadata.expiryDate,
+            cdc_expiry: expiryDate || bodyMetadata.expiryDate,
+            updatedAt: new Date().toISOString(),
+          },
+          { onConflict: 'userId' },
+        );
+      }
+    } catch (_) {}
+
+    return {
+      ...data,
+      metadata: metadataObj,
+      passportNumber: metadataObj.passportNumber,
+      cdcNumber: metadataObj.cdcNumber,
+      placeOfIssue: metadataObj.placeOfIssue,
+      issueDate: metadataObj.issueDate,
+      expiryDate: metadataObj.expiryDate,
+      message: 'Document uploaded successfully.',
+    };
   }
 
   async updateDocument(userId: string, docId: string, bodyMetadata: any, file?: any) {
@@ -1021,6 +1142,7 @@ export class SeafarerService {
 
     let storagePath = existingDoc.url;
     let fileName = existingDoc.name;
+    const BUCKET = 'seafarer-documents';
 
     if (file && file.buffer && file.buffer.length > 0) {
       const displayName = cleanDisplayName(file.originalname, `${existingDoc.type}-${docId}`);
@@ -1029,7 +1151,14 @@ export class SeafarerService {
       storagePath = `${userId}/${docId}/${safeFileName}`;
       fileName = displayName;
 
-      const BUCKET = 'seafarer-documents';
+      // Delete old file if replacing
+      if (existingDoc.url && existingDoc.url !== storagePath && !existingDoc.url.startsWith('/uploads/')) {
+        try {
+          await this.db.storage.from(BUCKET).remove([existingDoc.url]);
+        } catch (_) {}
+      }
+
+      await this.ensureBucketExists(BUCKET);
       let { error: storageError } = await this.db.storage
         .from(BUCKET)
         .upload(storagePath, file.buffer, {
@@ -1186,6 +1315,19 @@ export class SeafarerService {
   }
 
   async deleteDocument(userId: string, docId: string) {
+    const { data: doc } = await this.db
+      .from('Document')
+      .select('id, url, userId')
+      .eq('id', docId)
+      .eq('userId', userId)
+      .maybeSingle();
+
+    if (doc?.url && !doc.url.startsWith('/uploads/')) {
+      try {
+        await this.db.storage.from('seafarer-documents').remove([doc.url]);
+      } catch (_) {}
+    }
+
     const { error } = await this.db
       .from('Document')
       .delete()
@@ -1199,18 +1341,86 @@ export class SeafarerService {
   // ─────────────────────────────────────────────
   // USER PROFILE & SEA SERVICE
   // ─────────────────────────────────────────────
+  async uploadProfilePhoto(userId: string, file: any) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No image file provided for profile photo upload.');
+    }
+
+    const mimeType = file.mimetype || 'image/jpeg';
+    const validMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validMimes.includes(mimeType.toLowerCase())) {
+      throw new BadRequestException('Invalid image format. Only JPG, JPEG, PNG, and WEBP are supported.');
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('Profile photo size exceeds 5MB.');
+    }
+
+    await this.ensureBucketExists('seafarer-documents');
+
+    const ext = this.getSafeFileExtension(file.originalname, mimeType);
+    const photoId = randomUUID();
+    const storagePath = `avatars/${userId}/${photoId}${ext}`;
+
+    const { error: uploadErr } = await this.db.storage
+      .from('seafarer-documents')
+      .upload(storagePath, file.buffer, {
+        contentType: mimeType,
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.error('[uploadProfilePhoto] Storage error:', uploadErr);
+      throw new BadRequestException('Profile photo upload failed. Please try again.');
+    }
+
+    const { data: { publicUrl } } = this.db.storage
+      .from('seafarer-documents')
+      .getPublicUrl(storagePath);
+
+    // Persist immediately to SeafarerProfile record
+    const { data: existingProfile } = await this.db
+      .from('SeafarerProfile')
+      .select('id')
+      .eq('userId', userId)
+      .maybeSingle();
+
+    const profileId = existingProfile?.id || randomUUID();
+    const { error: upsertErr } = await this.db
+      .from('SeafarerProfile')
+      .upsert(
+        {
+          id: profileId,
+          userId,
+          profilePicture: publicUrl,
+          updatedAt: new Date().toISOString(),
+        },
+        { onConflict: 'userId' },
+      );
+
+    if (upsertErr) {
+      console.error('[uploadProfilePhoto] Profile update error:', upsertErr);
+      throw new BadRequestException('Failed to save profile picture to database.');
+    }
+
+    return {
+      success: true,
+      profilePicture: publicUrl,
+    };
+  }
+
   async getUserProfile(userId: string) {
     const { data: user } = await this.db
       .from('User')
       .select('id, name, email, phone, role')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     const { data: profile } = await this.db
       .from('SeafarerProfile')
       .select('*')
       .eq('userId', userId)
-      .single();
+      .maybeSingle();
 
     const { data: seaServiceRecords } = await this.db
       .from('SeaServiceRecord')
@@ -1220,6 +1430,25 @@ export class SeafarerService {
     const nameParts = (user?.name || '').trim().split(' ');
     const firstName = profile?.firstName || nameParts[0] || '';
     const lastName = profile?.lastName || nameParts.slice(1).join(' ') || '';
+
+    let parsedAddress = profile?.address ?? '';
+    let parsedCity = profile?.city ?? '';
+    let parsedState = profile?.state ?? '';
+    let parsedCountry = profile?.country ?? profile?.nationality ?? 'India';
+    let parsedPlaceOfBirth = profile?.placeOfBirth ?? profile?.birthPlace ?? '';
+    let parsedAlternatePhone = profile?.alternatePhone ?? profile?.altPhone ?? '';
+
+    if (profile?.address && typeof profile.address === 'string' && profile.address.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(profile.address);
+        parsedAddress = parsed.address ?? parsedAddress;
+        parsedCity = parsed.city ?? parsedCity;
+        parsedState = parsed.state ?? parsedState;
+        parsedCountry = parsed.country ?? parsedCountry;
+        parsedPlaceOfBirth = parsed.placeOfBirth ?? parsedPlaceOfBirth;
+        parsedAlternatePhone = parsed.alternatePhone ?? parsedAlternatePhone;
+      } catch (_) {}
+    }
 
     let onboardingStatus = null;
     if (user?.role?.toUpperCase() === 'AGENT') {
@@ -1233,6 +1462,8 @@ export class SeafarerService {
       }
     }
 
+    const photoUrl = profile?.profilePicture ?? null;
+
     return {
       ...(user ?? {}),
       onboardingStatus,
@@ -1240,21 +1471,22 @@ export class SeafarerService {
       lastName,
       email: user?.email,
       phone: user?.phone,
+      profilePicture: photoUrl,
       profile: {
         firstName,
         lastName,
         email: user?.email,
         phone: user?.phone,
-        alternatePhone: profile?.alternatePhone ?? profile?.altPhone ?? '',
+        alternatePhone: parsedAlternatePhone,
         dob: profile?.dob ?? '',
-        placeOfBirth: profile?.placeOfBirth ?? profile?.birthPlace ?? '',
-        nationality: profile?.nationality ?? '',
+        placeOfBirth: parsedPlaceOfBirth,
+        nationality: parsedCountry,
         indosNumber: profile?.indosNumber ?? '',
-        address: profile?.address ?? '',
-        city: profile?.city ?? '',
-        state: profile?.state ?? '',
-        country: profile?.country ?? '',
-        profilePicture: profile?.profilePicture ?? null,
+        address: parsedAddress,
+        city: parsedCity,
+        state: parsedState,
+        country: parsedCountry,
+        profilePicture: photoUrl,
         seaService: (seaServiceRecords ?? []).map((r: any) => ({
           id: r.id,
           rpsl: r.company,
@@ -1353,6 +1585,45 @@ export class SeafarerService {
       }
     }
 
+    // Handle profile photo persistence:
+    let profilePictureUrl = profilePicture;
+
+    // If profilePicture is a base64 string, upload to Supabase Storage
+    if (typeof profilePicture === 'string' && profilePicture.startsWith('data:image/')) {
+      try {
+        const matches = profilePicture.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+        if (matches) {
+          const mime = matches[1];
+          const b64Data = matches[2];
+          const buffer = Buffer.from(b64Data, 'base64');
+          const ext = mime.includes('png') ? '.png' : mime.includes('webp') ? '.webp' : '.jpg';
+          const photoId = randomUUID();
+          const storagePath = `avatars/${userId}/${photoId}${ext}`;
+
+          await this.ensureBucketExists('seafarer-documents');
+          const { error: b64UploadErr } = await this.db.storage
+            .from('seafarer-documents')
+            .upload(storagePath, buffer, {
+              contentType: mime,
+              upsert: true,
+            });
+
+          if (b64UploadErr) {
+            console.error('[updateUserProfile] base64 upload error:', b64UploadErr);
+            throw new BadRequestException('Profile photo upload failed. Please try again.');
+          }
+
+          const { data: { publicUrl } } = this.db.storage
+            .from('seafarer-documents')
+            .getPublicUrl(storagePath);
+          profilePictureUrl = publicUrl;
+        }
+      } catch (err: any) {
+        console.error('[updateUserProfile] photo upload exception:', err);
+        throw new BadRequestException(err?.message || 'Profile photo upload failed. Please try again.');
+      }
+    }
+
     // 5. Update User Table
     await this.db
       .from('User')
@@ -1365,28 +1636,47 @@ export class SeafarerService {
       .eq('id', userId);
 
     // 6. Update/Upsert SeafarerProfile Table
-    await this.db
+    const { data: existingProfile } = await this.db
+      .from('SeafarerProfile')
+      .select('id, profilePicture')
+      .eq('userId', userId)
+      .maybeSingle();
+
+    const profileId = existingProfile?.id || randomUUID();
+
+    const finalPhotoUrl = (profilePictureUrl !== undefined)
+      ? (profilePictureUrl === '' ? null : profilePictureUrl)
+      : (existingProfile?.profilePicture ?? null);
+
+    const compositeAddress = JSON.stringify({
+      address: address?.trim() || '',
+      city: city?.trim() || '',
+      state: state?.trim() || '',
+      country: country?.trim() || 'India',
+      placeOfBirth: placeOfBirth?.trim() || '',
+      alternatePhone: alternatePhone?.trim() || '',
+    });
+
+    const { error: profileUpsertErr } = await this.db
       .from('SeafarerProfile')
       .upsert(
         {
+          id: profileId,
           userId,
-          firstName: firstName?.trim(),
-          lastName: lastName?.trim(),
-          alternatePhone: alternatePhone?.trim() ?? null,
-          dob,
-          placeOfBirth: placeOfBirth?.trim(),
-          birthPlace: placeOfBirth?.trim(),
-          address: address?.trim(),
-          city: city?.trim(),
-          state: state?.trim(),
-          country: country?.trim(),
+          dob: dob || null,
           nationality: country?.trim() || 'Indian',
-          indosNumber: indosNumber?.trim(),
-          profilePicture: profilePicture ?? null,
+          indosNumber: indosNumber?.trim() || null,
+          address: compositeAddress,
+          profilePicture: finalPhotoUrl,
           updatedAt: new Date().toISOString(),
         },
         { onConflict: 'userId' },
       );
+
+    if (profileUpsertErr) {
+      console.error('[updateUserProfile] SeafarerProfile upsert error:', profileUpsertErr);
+      throw new BadRequestException(`Failed to save profile details: ${profileUpsertErr.message}`);
+    }
 
     // 7. Audit Log Entry
     try {

@@ -555,7 +555,10 @@ export class AgentService {
       .single();
 
     const docId = existingDoc?.id || randomUUID();
-    const storagePath = `${agentId}/${docId}/${originalName}`;
+    const docType = (type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'document';
+    const ext = file.originalname?.includes('.') ? '.' + file.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') : '.bin';
+    const safeStorageKey = `${docId}${ext}`;
+    const storagePath = `${docType}/${agentId}/${safeStorageKey}`;
     const BUCKET = 'seafarer-documents';
 
     // Delete old file from storage if replacing
