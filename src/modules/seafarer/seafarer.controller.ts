@@ -138,6 +138,12 @@ export class SeafarerController {
     return this.seafarerService.getUserProfile(this.uid(req));
   }
 
+  @Post('users/profile/photo')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadProfilePhoto(@Req() req: Request, @UploadedFile() file: any) {
+    return this.seafarerService.uploadProfilePhoto(this.uid(req), file);
+  }
+
   @Put('users/profile')
   updateUserProfile(@Req() req: Request, @Body() details: any) {
     return this.seafarerService.updateUserProfile(this.uid(req), details);

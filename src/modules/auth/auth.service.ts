@@ -119,7 +119,7 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const { name, firstName, lastName, email, password, phone, role = 'seafarer', referralCode } = registerDto;
+    const { name, firstName, lastName, email, password, phone, role = 'seafarer', referralCode, indosNumber } = registerDto;
     const supabase = this.supabaseService.getClient();
 
     let resolvedName = name;
@@ -168,6 +168,24 @@ export class AuthService {
       throw new BadRequestException(
         error?.message ?? 'Registration failed. Please try again.',
       );
+    }
+
+    // Create SeafarerProfile if role is seafarer
+    if (dbRole === 'SEAFARER') {
+      try {
+        await supabase.from('SeafarerProfile').upsert(
+          {
+            userId: newUser.id,
+            firstName: firstName?.trim() || null,
+            lastName: lastName?.trim() || null,
+            indosNumber: indosNumber?.trim() || null,
+            updatedAt: new Date().toISOString(),
+          },
+          { onConflict: 'userId' },
+        );
+      } catch (profErr: any) {
+        console.warn('SeafarerProfile creation skipped on register:', profErr?.message);
+      }
     }
 
     // If a referral code was provided, register/update referral lead
@@ -260,13 +278,23 @@ export class AuthService {
     }
 
     if (decoded.email === 'seafarer@test.com') {
+      const seafarerUserId = decoded.sub || '36032b6a-60c8-4417-a928-83c44400506c';
+      const supabase = this.supabaseService.getClient();
+      const { data: userRec } = await supabase.from('User').select('*').eq('id', seafarerUserId).maybeSingle();
+      const { data: profileRec } = await supabase.from('SeafarerProfile').select('*').eq('userId', seafarerUserId).maybeSingle();
+      const photo = profileRec?.profilePicture ?? null;
       return {
-        id: decoded.sub || '36032b6a-60c8-4417-a928-83c44400506c',
-        name: 'Test Seafarer',
-        email: 'seafarer@test.com',
-        role: 'SEAFARER',
-        phone: '+91 98765 43210',
+        id: seafarerUserId,
+        name: userRec?.name || 'Test Seafarer',
+        email: userRec?.email || 'seafarer@test.com',
+        role: userRec?.role || 'SEAFARER',
+        phone: userRec?.phone || '+91 98765 43210',
         onboardingStatus: null,
+        profilePicture: photo,
+        profile: {
+          ...(profileRec || {}),
+          profilePicture: photo,
+        },
       };
     }
 

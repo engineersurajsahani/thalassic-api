@@ -34,6 +34,10 @@ export class RegisterDto {
 
   @IsString()
   @IsOptional()
+  indosNumber?: string;
+
+  @IsString()
+  @IsOptional()
   role?: string;
 
   @IsString()
