@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcryptjs';
-// Import ROLES from auth service for consistent role strings
-import { ROLES } from '../auth/auth.service';
+// Import ROLES from common decorators to prevent circular dependency
+import { ROLES } from '../../common/decorators/roles.decorator';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
