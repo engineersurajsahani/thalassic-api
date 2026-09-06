@@ -7,6 +7,19 @@ import { AuthGuard } from '../auth/auth.guard';
 export class AgentAdminController {
   constructor(private readonly agentAdminService: AgentAdminService) {}
 
+  // Helper to get authenticated admin info — throws if not authenticated
+  // ISSUE-056: No more fallback to 'system' — auth guard ensures user exists
+  private getAdminInfo(req: any): { id: string; name: string } {
+    const user = req.user;
+    if (!user || !user.id) {
+      throw new Error('Authenticated admin user required');
+    }
+    return {
+      id: user.id,
+      name: user.name || 'Admin',
+    };
+  }
+
   @Get('dashboard')
   getDashboard() {
     return this.agentAdminService.getDashboardData();
@@ -19,15 +32,13 @@ export class AgentAdminController {
 
   @Post('agents')
   createAgent(@Req() req: any, @Body() dto: any) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.createAgent(dto, adminId, adminName);
   }
 
   @Patch('agents/:id/status')
   updateAgentStatus(@Req() req: any, @Param('id') id: string, @Body('status') status: string) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.updateAgentStatus(id, status, adminId, adminName);
   }
 
@@ -38,8 +49,7 @@ export class AgentAdminController {
     @Body('generalCommission') generalCommission: number,
     @Body('courseCommissions') courseCommissions: Record<string, number>,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.updateAgentCommission(
       id,
       generalCommission,
@@ -51,8 +61,7 @@ export class AgentAdminController {
 
   @Post('agents/:id/reset-password')
   resetAgentPassword(@Req() req: any, @Param('id') id: string, @Body() passwordDto: any) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.resetAgentPassword(id, passwordDto, adminId, adminName);
   }
 
@@ -92,8 +101,7 @@ export class AgentAdminController {
     @Param('id') id: string,
     @Body() dto: any,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.updateAgentDetails(id, dto, adminId, adminName);
   }
 
@@ -105,8 +113,7 @@ export class AgentAdminController {
     @Body('status') status: string,
     @Body('remarks') remarks: string,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.verifyAgentDocument(id, docId, status, remarks, adminId, adminName);
   }
 
@@ -122,8 +129,7 @@ export class AgentAdminController {
     @Body('approvedAgentId') approvedAgentId: string,
     @Body('remarks') remarks: string,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.resolveConflict(purchaseId, approvedAgentId, remarks, adminId, adminName);
   }
 
@@ -135,8 +141,7 @@ export class AgentAdminController {
     @Body('status') status: string,
     @Body('reason') reason: string,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.updateCommissionStatus(id, status, reason, adminId, adminName);
   }
 
@@ -147,8 +152,7 @@ export class AgentAdminController {
 
   @Post('settlements')
   createSettlementBatch(@Req() req: any, @Body() dto: any) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.createSettlementBatch(dto, adminId, adminName);
   }
 
@@ -159,8 +163,7 @@ export class AgentAdminController {
 
   @Patch('settlements/:id/pay')
   paySettlement(@Req() req: any, @Param('id') id: string) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.paySettlement(id, adminId, adminName);
   }
 
@@ -175,8 +178,7 @@ export class AgentAdminController {
     @Param('id') id: string,
     @Body('message') message: string,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.addTicketReply(id, message, adminId, adminName);
   }
 
@@ -186,8 +188,7 @@ export class AgentAdminController {
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Agent Admin';
+    const { id: adminId, name: adminName } = this.getAdminInfo(req);
     return this.agentAdminService.updateTicketStatus(id, status, adminId, adminName);
   }
 }

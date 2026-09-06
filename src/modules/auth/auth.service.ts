@@ -7,14 +7,24 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
-// Map frontend role slugs → DB enum values
+// ISSUE-035: Centralized role constants to prevent inconsistency across codebase
+export const ROLES = {
+  MASTER: 'MASTER',
+  SEAFARER: 'SEAFARER',
+  AGENT: 'AGENT',
+  AGENT_ADMIN: 'AGENT_ADMIN',
+  COMPANY_ADMIN: 'COMPANY_ADMIN',
+} as const;
+
+export type UserRole = (typeof ROLES)[keyof typeof ROLES];
+
 const ROLE_MAP: Record<string, string> = {
-  seafarer: 'SEAFARER',
-  'company-admin': 'COMPANY_ADMIN',
-  master: 'MASTER',
-  'agent-admin': 'AGENT_ADMIN',
-  agent_admin: 'AGENT_ADMIN',
-  agent: 'AGENT',
+  seafarer: ROLES.SEAFARER,
+  'company-admin': ROLES.COMPANY_ADMIN,
+  master: ROLES.MASTER,
+  'agent-admin': ROLES.AGENT_ADMIN,
+  agent_admin: ROLES.AGENT_ADMIN,
+  agent: ROLES.AGENT,
 };
 
 @Injectable()
@@ -23,44 +33,23 @@ export class AuthService {
     private supabaseService: SupabaseService,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) { }
+  ) {
+    // ISSUE-015: Fail fast if JWT_SECRET is not configured — no weak default fallback
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET environment variable is required. Please configure it in your .env file.');
+    }
+  }
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    // 1. Support company designated credentials
-    if (cleanEmail === 'master@gmail.com' && (password === 'master@12' || password === 'master@123')) {
-      const user = {
-        id: 'a0000000-0000-0000-0000-000000000000',
-        name: 'Master Administrator',
-        email: 'master@gmail.com',
-        role: 'MASTER',
-        phone: '+91 22 12345678',
-      };
-      const token = this.jwtService.sign(
-        { sub: user.id, email: user.email, role: user.role },
-        { secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key', expiresIn: '24h' }
-      );
-      return { token, user: { ...user, onboardingStatus: null } };
-    }
+    // ISSUE-013: REMOVED hardcoded master credentials (master@gmail.com / master@12)
+    // ISSUE-013: REMOVED hardcoded test credentials (seafarer@test.com / seafarer@123)
+    // These bypasses are security vulnerabilities — all authentication now goes through the database
 
-    if (cleanEmail === 'seafarer@test.com' && (password === 'seafarer@123' || password === 'seafarer@12')) {
-      const user = {
-        id: '36032b6a-60c8-4417-a928-83c44400506c',
-        name: 'Test Seafarer',
-        email: 'seafarer@test.com',
-        role: 'SEAFARER',
-        phone: '+91 98765 43210',
-      };
-      const token = this.jwtService.sign(
-        { sub: user.id, email: user.email, role: user.role },
-        { secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key', expiresIn: '24h' }
-      );
-      return { token, user: { ...user, onboardingStatus: null } };
-    }
-
-    // 2. Query User table from public schema
+    // Query User table from public schema
     const supabase = this.supabaseService.getClient();
     const { data: user, error } = await supabase
       .from('User')
@@ -80,7 +69,7 @@ export class AuthService {
 
     // Retrieve onboarding status for agent users
     let onboardingStatus = null;
-    if (user.role?.toUpperCase() === 'AGENT') {
+    if (user.role?.toUpperCase() === ROLES.AGENT) {
       const { data: meta } = await supabase
         .from('agent_metadata')
         .select('onboarding_status')
@@ -93,7 +82,7 @@ export class AuthService {
       }
     }
 
-    // Generate JWT token
+    // Generate JWT token — ISSUE-015: Uses required JWT_SECRET, no fallback
     const payload = {
       sub: user.id,
       email: user.email,
@@ -101,7 +90,7 @@ export class AuthService {
     };
 
     const token = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
+      secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: '24h',
     });
 
@@ -120,6 +109,8 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     const { name, firstName, lastName, email, password, phone, role = 'seafarer', referralCode, indosNumber } = registerDto;
+    // ISSUE-060: Normalize email to lowercase for consistent case-insensitive handling
+    const cleanEmail = (email || '').trim().toLowerCase();
     const supabase = this.supabaseService.getClient();
 
     let resolvedName = name;
@@ -130,14 +121,17 @@ export class AuthService {
       resolvedName = email.split('@')[0];
     }
 
-    // Map frontend role slug to DB enum value
-    const dbRole = ROLE_MAP[role] ?? 'SEAFARER';
+    // ISSUE-016: Registration restricted to SEAFARER only — prevents privilege escalation
+    // The role parameter is ignored in register; only seafarer registration is allowed publicly
+    // Other roles (MASTER, AGENT_ADMIN, etc.) must be created by existing admins via admin endpoints
+    const dbRole = ROLES.SEAFARER; // Always SEAFARER for public registration
 
-    // Check if user already exists
+    // Check if user already exists (case-insensitive email match)
+    // ISSUE-060: Use ilike for consistent case-insensitive email checks
     const { data: existing } = await supabase
       .from('User')
       .select('id')
-      .eq('email', email)
+      .ilike('email', cleanEmail)
       .single();
 
     if (existing) {
@@ -154,7 +148,7 @@ export class AuthService {
       .insert({
         id: userId,
         name: resolvedName,
-        email,
+        email: cleanEmail,
         password: hashedPassword,
         phone: phone ?? null,
         role: dbRole,
@@ -171,7 +165,7 @@ export class AuthService {
     }
 
     // Create SeafarerProfile if role is seafarer
-    if (dbRole === 'SEAFARER') {
+    if (dbRole === ROLES.SEAFARER) {
       try {
         await supabase.from('SeafarerProfile').upsert(
           {
@@ -183,8 +177,8 @@ export class AuthService {
           },
           { onConflict: 'userId' },
         );
-      } catch (profErr: any) {
-        console.warn('SeafarerProfile creation skipped on register:', profErr?.message);
+      } catch (profErr) {
+        console.warn('SeafarerProfile creation skipped on register:', (profErr as any)?.message);
       }
     }
 
@@ -203,7 +197,7 @@ export class AuthService {
           const { data: existingLead } = await supabase
             .from('referral_leads')
             .select('id')
-            .eq('email', email)
+            .eq('email', cleanEmail)
             .maybeSingle();
 
           if (existingLead) {
@@ -222,7 +216,7 @@ export class AuthService {
                 id: randomUUID(),
                 agent_id: agentMeta.user_id,
                 name: resolvedName,
-                email,
+                email: cleanEmail,
                 phone: phone || '',
                 status: 'Registered',
                 remarks: `Registered with referral code ${cleanRef}`,
@@ -236,10 +230,10 @@ export class AuthService {
       }
     }
 
-    // Generate JWT
+    // Generate JWT — ISSUE-015: Uses required JWT_SECRET, no fallback
     const payload = { sub: newUser.id, email: newUser.email, role: newUser.role };
     const token = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
+      secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: '24h',
     });
 
@@ -256,47 +250,22 @@ export class AuthService {
   }
 
   async getProfile(token: string) {
-    const jwt = require('jsonwebtoken');
-    const secret = this.configService.get<string>('JWT_SECRET') || 'your-secret-key';
+    // ISSUE-015: Uses required JWT_SECRET, no fallback — require() replaced with proper JwtService.verify
+    const secret = this.configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required.');
+    }
 
     let decoded: any;
     try {
-      decoded = jwt.verify(token, secret);
+      decoded = this.jwtService.verify(token, { secret });
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    if (decoded.email === 'master@gmail.com') {
-      return {
-        id: decoded.sub || 'a0000000-0000-0000-0000-000000000000',
-        name: 'Master Administrator',
-        email: 'master@gmail.com',
-        role: 'MASTER',
-        phone: '+91 22 12345678',
-        onboardingStatus: null,
-      };
-    }
-
-    if (decoded.email === 'seafarer@test.com') {
-      const seafarerUserId = decoded.sub || '36032b6a-60c8-4417-a928-83c44400506c';
-      const supabase = this.supabaseService.getClient();
-      const { data: userRec } = await supabase.from('User').select('*').eq('id', seafarerUserId).maybeSingle();
-      const { data: profileRec } = await supabase.from('SeafarerProfile').select('*').eq('userId', seafarerUserId).maybeSingle();
-      const photo = profileRec?.profilePicture ?? null;
-      return {
-        id: seafarerUserId,
-        name: userRec?.name || 'Test Seafarer',
-        email: userRec?.email || 'seafarer@test.com',
-        role: userRec?.role || 'SEAFARER',
-        phone: userRec?.phone || '+91 98765 43210',
-        onboardingStatus: null,
-        profilePicture: photo,
-        profile: {
-          ...(profileRec || {}),
-          profilePicture: photo,
-        },
-      };
-    }
+    // ISSUE-013: REMOVED hardcoded master@gmail.com mock return
+    // ISSUE-013: REMOVED hardcoded seafarer@test.com mock return
+    // All profile data now comes from the database
 
     const supabase = this.supabaseService.getClient();
     const { data: user, error } = await supabase
@@ -320,7 +289,7 @@ export class AuthService {
     }
 
     let onboardingStatus = null;
-    if (user.role?.toUpperCase() === 'AGENT') {
+    if (user.role?.toUpperCase() === ROLES.AGENT) {
       const { data: meta } = await supabase
         .from('agent_metadata')
         .select('onboarding_status')

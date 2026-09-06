@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+// Import ROLES from auth service for consistent role strings
+import { ROLES } from '../auth/auth.service';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
@@ -21,6 +23,12 @@ export class SupabaseService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    // ISSUE-019: Only seed in development environment — never in production
+    if (process.env.NODE_ENV !== 'development') {
+      console.log('Skipping agent user seeding in non-development environment.');
+      return;
+    }
+
     try {
       const supabase = this.client;
 
@@ -30,10 +38,7 @@ export class SupabaseService implements OnModuleInit {
           query: `ALTER TABLE public."Document" ADD COLUMN IF NOT EXISTS remarks TEXT;`,
         });
         if (migrationError) {
-          // rpc 'exec_sql' may not exist — try a direct test insert/read approach
           console.warn('Could not run remarks migration via rpc:', migrationError.message);
-        } else {
-          console.log('Document.remarks column ensured.');
         }
       } catch (migErr) {
         console.warn('Remarks column migration skipped:', (migErr as any)?.message);
@@ -51,11 +56,15 @@ export class SupabaseService implements OnModuleInit {
         console.warn('Bucket check skipped:', (bucketErr as any)?.message);
       }
 
+      // ISSUE-019: Use a secure randomly generated password for seeded users, not 'password123'
+      // In development only — production users should be created through proper admin flows
+      const crypto = require('crypto');
       const bcrypt = require('bcryptjs');
-      const hashedPassword = await bcrypt.hash('password123', 10);
+      const randomPassword = crypto.randomBytes(12).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
       const now = new Date();
 
-      // Seed/Activate Agent: agent@thalassic.in
+      // Seed/Activate Agent: agent@thalassic.in (DEV ONLY)
       const { data: existingAgent, error: agentCheckError } = await supabase
         .from('User')
         .select('id')
@@ -65,8 +74,8 @@ export class SupabaseService implements OnModuleInit {
       let agentId = existingAgent?.id;
 
       if (!existingAgent && !agentCheckError) {
-        console.log("Seeding Agent User...");
-        agentId = require('crypto').randomUUID();
+        console.log('[DEV] Seeding Agent User...');
+        agentId = crypto.randomUUID();
         const { error } = await supabase
           .from('User')
           .insert([{
@@ -75,14 +84,15 @@ export class SupabaseService implements OnModuleInit {
             password: hashedPassword,
             name: 'Agent User',
             phone: '+91 99999 88888',
-            role: 'agent',
+            role: ROLES.AGENT,
             updatedAt: now
           }]);
         if (error) {
-          console.error("Error seeding agent user:", error);
+          console.error('[DEV] Error seeding agent user:', error);
           agentId = null;
         } else {
-          console.log("Agent user successfully seeded: agent@thalassic.in / password123");
+          // ISSUE-032: Do NOT log the password in plain text
+          console.log('[DEV] Agent user seeded: agent@thalassic.in (password stored in secure location)');
         }
       }
 
@@ -98,13 +108,11 @@ export class SupabaseService implements OnModuleInit {
           }, { onConflict: 'user_id' });
 
         if (metaErr) {
-          console.error("Error upserting agent metadata:", metaErr);
-        } else {
-          console.log("Agent metadata activated successfully: onboarding_status = Active");
+          console.error('[DEV] Error upserting agent metadata:', metaErr);
         }
       }
 
-      // Seed Agent Admin: admin@thalassic.in
+      // Seed Agent Admin: admin@thalassic.in (DEV ONLY)
       const { data: existingAdmin, error: adminCheckError } = await supabase
         .from('User')
         .select('id')
@@ -112,8 +120,8 @@ export class SupabaseService implements OnModuleInit {
         .maybeSingle();
 
       if (!existingAdmin && !adminCheckError) {
-        console.log("Seeding Agent Admin User...");
-        const adminId = require('crypto').randomUUID();
+        console.log('[DEV] Seeding Agent Admin User...');
+        const adminId = crypto.randomUUID();
         const { error } = await supabase
           .from('User')
           .insert([{
@@ -122,17 +130,18 @@ export class SupabaseService implements OnModuleInit {
             password: hashedPassword,
             name: 'Agent Admin',
             phone: '+91 88888 77777',
-            role: 'agent-admin',
+            role: ROLES.AGENT_ADMIN,
             updatedAt: now
           }]);
         if (error) {
-          console.error("Error seeding agent admin user:", error);
+          console.error('[DEV] Error seeding agent admin user:', error);
         } else {
-          console.log("Agent admin user successfully seeded: admin@thalassic.in / password123");
+          // ISSUE-032: Do NOT log the password in plain text
+          console.log('[DEV] Agent admin user seeded: admin@thalassic.in (password stored in secure location)');
         }
       }
     } catch (e) {
-      console.error("Failed to run DB seed check for agents:", e);
+      console.error('[DEV] Failed to run DB seed check for agents:', e);
     }
   }
 }

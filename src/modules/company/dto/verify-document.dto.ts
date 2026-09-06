@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsIn, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsIn, IsOptional, MaxLength } from 'class-validator';
 
 export class VerifyDocumentDto {
   @IsString()
@@ -8,5 +8,6 @@ export class VerifyDocumentDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(1000)
   remarks?: string;
 }

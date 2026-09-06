@@ -111,7 +111,8 @@ export class PartnerApplicationsService {
         updated_at: newApp.updatedAt,
       });
     } catch (e) {
-      // Fallback silently if table does not exist
+      // ISSUE-031: Log the error instead of silently swallowing
+      console.warn('Could not insert partner application into Supabase (table may not exist):', (e as any)?.message);
     }
 
     // Always maintain local persisted store
@@ -214,7 +215,10 @@ Hari Om Thalassic Maritime Career Partners
         .from('partner_applications')
         .update({ status, updated_at: now })
         .eq('id', id);
-    } catch (e) {}
+    } catch (e) {
+      // ISSUE-031: Log the error instead of silently swallowing
+      console.warn('Could not update partner application in Supabase:', (e as any)?.message);
+    }
 
     // Audit log
     try {
@@ -229,7 +233,10 @@ Hari Om Thalassic Maritime Career Partners
         ip_address: '127.0.0.1',
         created_at: now,
       });
-    } catch (e) {}
+    } catch (e) {
+      // ISSUE-031: Log the error instead of silently swallowing
+      console.warn('Could not log partner application status update to audit_logs:', (e as any)?.message);
+    }
 
     if (!app) {
       throw new NotFoundException(`Partner application with ID ${id} not found`);

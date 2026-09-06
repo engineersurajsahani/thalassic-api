@@ -1,6 +1,7 @@
-import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { PartnerApplicationsService } from './partner-applications.service';
 import { CreatePartnerApplicationDto } from './dto/create-partner-application.dto';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('partner-applications')
 export class PublicPartnerApplicationsController {
@@ -15,14 +16,16 @@ export class PublicPartnerApplicationsController {
       data: result,
     };
   }
+
+  // ISSUE-024: Added AuthGuard to prevent public access to partner applications list
   @Get()
+  @UseGuards(AuthGuard)
+  async getApplications() {
+    const result = await this.partnerApplicationsService.getApplications();
 
-async getApplications() {
-  const result = await this.partnerApplicationsService.getApplications();
-
-  return {
-    success: true,
-    data: result,
-  };
-}
+    return {
+      success: true,
+      data: result,
+    };
+  }
 }

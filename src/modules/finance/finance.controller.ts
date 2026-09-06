@@ -44,6 +44,18 @@ export class FinanceController {
 
   @Get('preview')
   async getDashboardHtmlPreview(@Res() res: Response) {
+    // ISSUE-023: Helper function to escape HTML and prevent XSS
+    const escapeHtml = (text: string | undefined | null): string => {
+      if (text == null) return '';
+      // Escape HTML special characters to prevent XSS
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
     const overview = await this.financeService.getOverview();
     const dailyRev = await this.financeService.getDailyRevenue({});
     const invoices = await this.financeService.getInvoiceSummary({});
@@ -217,9 +229,9 @@ export class FinanceController {
         <div class="section-header">
           <div class="section-title">📊 Daily & Monthly Revenue Insights</div>
           <div class="export-btns">
-            <a href="/api/finance/reports/export?reportType=revenue_daily&format=csv&token=mock-master-token" class="btn-export btn-csv">📥 Export CSV</a>
-            <a href="/api/finance/reports/export?reportType=revenue_daily&format=xlsx&token=mock-master-token" class="btn-export btn-xlsx">📊 Excel (XLSX)</a>
-            <a href="/api/finance/reports/export?reportType=revenue_daily&format=pdf&token=mock-master-token" target="_blank" class="btn-export btn-pdf">📄 PDF Data</a>
+            <button class="btn-export btn-csv" onclick="exportReport('revenue_daily','csv')">📥 Export CSV</button>
+            <button class="btn-export btn-xlsx" onclick="exportReport('revenue_daily','xlsx')">📊 Excel (XLSX)</button>
+            <button class="btn-export btn-pdf" onclick="exportReport('revenue_daily','pdf')">📄 PDF Data</button>
           </div>
         </div>
         <div class="table-container">
@@ -238,13 +250,13 @@ export class FinanceController {
             <tbody>
               ${dailyRev.breakdown.map((item: any) => `
                 <tr>
-                  <td><strong>${item.period}</strong></td>
-                  <td><span class="code-tag">${item.transactionCount} bookings</span></td>
-                  <td>₹${item.grossRevenue.toLocaleString('en-IN')}</td>
-                  <td>₹${item.discountAmount.toLocaleString('en-IN')}</td>
-                  <td><strong style="color:var(--accent-emerald)">₹${item.netRevenue.toLocaleString('en-IN')}</strong></td>
-                  <td>₹${item.averageTicketSize.toLocaleString('en-IN')}</td>
-                  <td>${item.growthRatePercent ? `<span style="color:var(--accent-emerald);font-weight:700">+${item.growthRatePercent}%</span>` : '<span style="color:var(--text-muted)">Baseline</span>'}</td>
+                  <td><strong>${escapeHtml(item.period)}</strong></td>
+                  <td><span class="code-tag">${escapeHtml(item.transactionCount + ' bookings')}</span></td>
+                  <td>₹${escapeHtml(item.grossRevenue.toLocaleString('en-IN'))}</td>
+                  <td>₹${escapeHtml(item.discountAmount.toLocaleString('en-IN'))}</td>
+                  <td><strong style="color:var(--accent-emerald)">₹${escapeHtml(item.netRevenue.toLocaleString('en-IN'))}</strong></td>
+                  <td>₹${escapeHtml(item.averageTicketSize.toLocaleString('en-IN'))}</td>
+                  <td>${item.growthRatePercent ? `<span style="color:var(--accent-emerald);font-weight:700">+${escapeHtml(String(item.growthRatePercent))}%</span>` : '<span style="color:var(--text-muted)">Baseline</span>'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -259,9 +271,9 @@ export class FinanceController {
         <div class="section-header">
           <div class="section-title">💳 Platform Payment Transactions (${payments.payments.length} records)</div>
           <div class="export-btns">
-            <a href="/api/finance/reports/export?reportType=payments_successful&format=csv&token=mock-master-token" class="btn-export btn-csv">📥 Export CSV</a>
-            <a href="/api/finance/reports/export?reportType=payments_successful&format=xlsx&token=mock-master-token" class="btn-export btn-xlsx">📊 Excel (XLSX)</a>
-            <a href="/api/finance/reports/export?reportType=payments_successful&format=pdf&token=mock-master-token" target="_blank" class="btn-export btn-pdf">📄 PDF Data</a>
+            <button class="btn-export btn-csv" onclick="exportReport('payments_successful','csv')">📥 Export CSV</button>
+            <button class="btn-export btn-xlsx" onclick="exportReport('payments_successful','xlsx')">📊 Excel (XLSX)</button>
+            <button class="btn-export btn-pdf" onclick="exportReport('payments_successful','pdf')">📄 PDF Data</button>
           </div>
         </div>
         <div class="table-container">
@@ -280,13 +292,13 @@ export class FinanceController {
             <tbody>
               ${payments.payments.map((p: any) => `
                 <tr>
-                  <td><span class="code-tag">${p.transactionId}</span></td>
-                  <td><strong>${p.customerName}</strong><br><small style="color:var(--text-muted)">${p.customerEmail}</small></td>
-                  <td>${p.courseName}</td>
-                  <td><strong>₹${p.amount.toLocaleString('en-IN')}</strong></td>
-                  <td>${p.paymentGateway}<br><small style="color:var(--text-muted)">${p.paymentMethod}</small></td>
-                  <td><span class="status-badge ${p.status === 'Successful' ? 'status-successful' : p.status === 'Failed' ? 'status-failed' : 'status-pending'}">${p.status}</span></td>
-                  <td><small style="color:var(--text-muted)">${new Date(p.createdAt).toLocaleString('en-IN')}</small></td>
+                  <td><span class="code-tag">${escapeHtml(p.transactionId)}</span></td>
+                  <td><strong>${escapeHtml(p.customerName)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(p.customerEmail)}</small></td>
+                  <td>${escapeHtml(p.courseName)}</td>
+                  <td><strong>₹${escapeHtml(p.amount.toLocaleString('en-IN'))}</strong></td>
+                  <td>${escapeHtml(p.paymentGateway)}<br><small style="color:var(--text-muted)">${escapeHtml(p.paymentMethod)}</small></td>
+                  <td><span class="status-badge ${p.status === 'Successful' ? 'status-successful' : p.status === 'Failed' ? 'status-failed' : 'status-pending'}">${escapeHtml(p.status)}</span></td>
+                  <td><small style="color:var(--text-muted)">${escapeHtml(new Date(p.createdAt).toLocaleString('en-IN'))}</small></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -301,9 +313,9 @@ export class FinanceController {
         <div class="section-header">
           <div class="section-title">🤝 Partner Commission Ledger (${commissions.commissions.length} records)</div>
           <div class="export-btns">
-            <a href="/api/finance/reports/export?reportType=commissions_consolidated&format=csv&token=mock-master-token" class="btn-export btn-csv">📥 Export CSV</a>
-            <a href="/api/finance/reports/export?reportType=commissions_consolidated&format=xlsx&token=mock-master-token" class="btn-export btn-xlsx">📊 Excel (XLSX)</a>
-            <a href="/api/finance/reports/export?reportType=commissions_consolidated&format=pdf&token=mock-master-token" target="_blank" class="btn-export btn-pdf">📄 PDF Data</a>
+            <button class="btn-export btn-csv" onclick="exportReport('commissions_consolidated','csv')">📥 Export CSV</button>
+            <button class="btn-export btn-xlsx" onclick="exportReport('commissions_consolidated','xlsx')">📊 Excel (XLSX)</button>
+            <button class="btn-export btn-pdf" onclick="exportReport('commissions_consolidated','pdf')">📄 PDF Data</button>
           </div>
         </div>
         <div class="table-container">
@@ -322,13 +334,13 @@ export class FinanceController {
             <tbody>
               ${commissions.commissions.map((c: any) => `
                 <tr>
-                  <td><strong>${c.agentName}</strong><br><small style="color:var(--text-muted)">${c.referralCode || 'REFAGENT123'}</small></td>
-                  <td>${c.seafarerName}</td>
-                  <td>${c.courseName}</td>
-                  <td>₹${c.courseFee.toLocaleString('en-IN')}</td>
-                  <td><span class="code-tag">${c.commissionRate}%</span></td>
-                  <td><strong style="color:var(--accent-emerald)">₹${c.commissionAmount.toLocaleString('en-IN')}</strong></td>
-                  <td><span class="status-badge ${c.status === 'Paid' ? 'status-paid' : 'status-pending'}">${c.status}</span></td>
+                  <td><strong>${escapeHtml(c.agentName)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(c.referralCode || 'REFAGENT123')}</small></td>
+                  <td>${escapeHtml(c.seafarerName)}</td>
+                  <td>${escapeHtml(c.courseName)}</td>
+                  <td>₹${escapeHtml(c.courseFee.toLocaleString('en-IN'))}</td>
+                  <td><span class="code-tag">${escapeHtml(c.commissionRate + '%')}</span></td>
+                  <td><strong style="color:var(--accent-emerald)">₹${escapeHtml(c.commissionAmount.toLocaleString('en-IN'))}</strong></td>
+                  <td><span class="status-badge ${c.status === 'Paid' ? 'status-paid' : 'status-pending'}">${escapeHtml(c.status)}</span></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -343,9 +355,9 @@ export class FinanceController {
         <div class="section-header">
           <div class="section-title">📑 Invoices Ledger (${invoices.invoices.length} records)</div>
           <div class="export-btns">
-            <a href="/api/finance/reports/export?reportType=invoices_summary&format=csv&token=mock-master-token" class="btn-export btn-csv">📥 Export CSV</a>
-            <a href="/api/finance/reports/export?reportType=invoices_summary&format=xlsx&token=mock-master-token" class="btn-export btn-xlsx">📊 Excel (XLSX)</a>
-            <a href="/api/finance/reports/export?reportType=invoices_summary&format=pdf&token=mock-master-token" target="_blank" class="btn-export btn-pdf">📄 PDF Data</a>
+            <button class="btn-export btn-csv" onclick="exportReport('invoices_summary','csv')">📥 Export CSV</button>
+            <button class="btn-export btn-xlsx" onclick="exportReport('invoices_summary','xlsx')">📊 Excel (XLSX)</button>
+            <button class="btn-export btn-pdf" onclick="exportReport('invoices_summary','pdf')">📄 PDF Data</button>
           </div>
         </div>
         <div class="table-container">
@@ -365,13 +377,13 @@ export class FinanceController {
             <tbody>
               ${invoices.invoices.map((inv: any) => `
                 <tr>
-                  <td><span class="code-tag">${inv.invoiceNumber}</span></td>
-                  <td><span class="status-badge ${inv.invoiceType === 'HOC' ? 'status-hoc' : 'status-hac'}">${inv.invoiceType}</span></td>
-                  <td><strong>${inv.customerName}</strong><br><small style="color:var(--text-muted)">${inv.customerEmail}</small></td>
-                  <td>${inv.courseName}</td>
-                  <td><strong>₹${inv.finalAmount.toLocaleString('en-IN')}</strong></td>
-                  <td>₹${inv.taxAmount.toLocaleString('en-IN')}</td>
-                  <td><span class="code-tag">${inv.transactionId}</span></td>
+                  <td><span class="code-tag">${escapeHtml(inv.invoiceNumber)}</span></td>
+                  <td><span class="status-badge ${inv.invoiceType === 'HOC' ? 'status-hoc' : 'status-hac'}">${escapeHtml(inv.invoiceType)}</span></td>
+                  <td><strong>${escapeHtml(inv.customerName)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(inv.customerEmail)}</small></td>
+                  <td>${escapeHtml(inv.courseName)}</td>
+                  <td><strong>₹${escapeHtml(inv.finalAmount.toLocaleString('en-IN'))}</strong></td>
+                  <td>₹${escapeHtml(inv.taxAmount.toLocaleString('en-IN'))}</td>
+                  <td><span class="code-tag">${escapeHtml(inv.transactionId)}</span></td>
                   <td><span class="status-badge status-paid">Paid</span></td>
                 </tr>
               `).join('')}
@@ -387,9 +399,9 @@ export class FinanceController {
         <div class="section-header">
           <div class="section-title">💰 Settlement Batches & Disbursement History</div>
           <div class="export-btns">
-            <a href="/api/finance/reports/export?reportType=settlements_history&format=csv&token=mock-master-token" class="btn-export btn-csv">📥 Export CSV</a>
-            <a href="/api/finance/reports/export?reportType=settlements_history&format=xlsx&token=mock-master-token" class="btn-export btn-xlsx">📊 Excel (XLSX)</a>
-            <a href="/api/finance/reports/export?reportType=settlements_history&format=pdf&token=mock-master-token" target="_blank" class="btn-export btn-pdf">📄 PDF Data</a>
+            <button class="btn-export btn-csv" onclick="exportReport('settlements_history','csv')">📥 Export CSV</button>
+            <button class="btn-export btn-xlsx" onclick="exportReport('settlements_history','xlsx')">📊 Excel (XLSX)</button>
+            <button class="btn-export btn-pdf" onclick="exportReport('settlements_history','pdf')">📄 PDF Data</button>
           </div>
         </div>
         <div class="table-container">
@@ -407,12 +419,12 @@ export class FinanceController {
             <tbody>
               ${settlements.settlements.map((s: any) => `
                 <tr>
-                  <td><span class="code-tag">${s.settlementNumber}</span></td>
-                  <td><strong>${s.agentName}</strong></td>
-                  <td><span class="code-tag">${s.hacInvoiceNumber || 'N/A'}</span></td>
-                  <td><strong style="color:var(--accent-emerald)">₹${s.totalAmount.toLocaleString('en-IN')}</strong></td>
-                  <td><span class="status-badge status-paid">${s.status}</span></td>
-                  <td>${s.paidAt ? new Date(s.paidAt).toLocaleDateString('en-IN') : 'Pending'}</td>
+                  <td><span class="code-tag">${escapeHtml(s.settlementNumber)}</span></td>
+                  <td><strong>${escapeHtml(s.agentName)}</strong></td>
+                  <td><span class="code-tag">${escapeHtml(s.hacInvoiceNumber || 'N/A')}</span></td>
+                  <td><strong style="color:var(--accent-emerald)">₹${escapeHtml(s.totalAmount.toLocaleString('en-IN'))}</strong></td>
+                  <td><span class="status-badge status-paid">${escapeHtml(s.status)}</span></td>
+                  <td>${s.paidAt ? escapeHtml(new Date(s.paidAt).toLocaleDateString('en-IN')) : 'Pending'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -447,13 +459,13 @@ export class FinanceController {
             <tbody>
               ${auditLogs.logs.map((log: any) => `
                 <tr>
-                  <td><small style="color:var(--text-muted)">${new Date(log.created_at).toLocaleString('en-IN')}</small></td>
-                  <td><strong>${log.user_name || 'System'}</strong></td>
-                  <td><span class="code-tag" style="color:var(--accent-emerald)">${log.action}</span></td>
-                  <td>${log.module}</td>
-                  <td><span class="code-tag">${log.entity_id || 'N/A'}</span></td>
-                  <td>${log.details || ''}</td>
-                  <td><small style="color:var(--text-muted)">${log.ip_address || '127.0.0.1'}</small></td>
+                  <td><small style="color:var(--text-muted)">${escapeHtml(new Date(log.created_at).toLocaleString('en-IN'))}</small></td>
+                  <td><strong>${escapeHtml(log.user_name || 'System')}</strong></td>
+                  <td><span class="code-tag" style="color:var(--accent-emerald)">${escapeHtml(log.action)}</span></td>
+                  <td>${escapeHtml(log.module)}</td>
+                  <td><span class="code-tag">${escapeHtml(log.entity_id || 'N/A')}</span></td>
+                  <td>${escapeHtml(log.details || '')}</td>
+                  <td><small style="color:var(--text-muted)">${escapeHtml(log.ip_address || '127.0.0.1')}</small></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -465,9 +477,42 @@ export class FinanceController {
     <footer>
       Hari Om Thalassic Maritime Training Institute | Centralized Financial Control Center (Chapter 7) | Confidential
     </footer>
-  </div>
+  </div>    <script>
+    // ISSUE-023: Export function uses proper auth header instead of token in URL
+    function exportReport(reportType, format) {
+      const token = document.querySelector('meta[name="auth-token"]')?.getAttribute('content');
+      if (!token) {
+        alert('Authentication required. Please login again.');
+        return;
+      }
+      const url = '/api/finance/reports/export?reportType=' + reportType + '&format=' + format;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'report.' + format + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(err => console.error('Export failed:', err));
+    }
 
-  <script>
+    function escapeHtml(text) {
+      if (text == null) return '';
+      const div = document.createElement('div');
+      div.textContent = String(text);
+      return div.innerHTML;
+    }
+
     function switchTab(btn, tabId) {
       document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));

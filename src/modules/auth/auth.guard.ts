@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { ROLES } from './auth.service';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -8,35 +9,34 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
-    const queryToken = request.query?.token || request.query?.auth;
+
+    // ISSUE-018: REMOVED query string token support (?token= or ?auth=)
+    // Tokens should ONLY be passed via Authorization header for security
 
     let token = '';
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
-    } else if (typeof queryToken === 'string' && queryToken.length > 0) {
-      token = queryToken;
     }
 
     if (!token) {
-      throw new UnauthorizedException('Missing or invalid Authorization header or query token');
+      throw new UnauthorizedException('Missing or invalid Authorization header');
     }
 
-    // Local developer test token bypass
-    if (token === 'mock-master-token') {
-      request.user = {
-        id: 'a0000000-0000-0000-0000-000000000001', // Raj's ID or similar
-        email: 'master@hariomthalassic.com',
-        name: 'Master Admin',
-        role: 'MASTER',
-        status: 'Active',
-      };
-      return true;
-    }
+    // ISSUE-014: REMOVED mock-master-token bypass entirely
+    // No magic strings or hardcoded bypasses allowed
 
     // Try verifying as NestJS local JWT first
     try {
+      // ISSUE-015: Use required JWT_SECRET from config, no fallback to weak default
+      // Access config through process.env directly (or inject ConfigService)
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new UnauthorizedException('JWT_SECRET not configured');
+      }
+
+      // Use jsonwebtoken with the required secret
+      // ISSUE-030: Use require() only when necessary (this is a guard, not a service)
       const jwt = require('jsonwebtoken');
-      const secret = process.env.JWT_SECRET || 'your-secret-key';
       const decoded = jwt.verify(token, secret) as any;
       if (decoded && decoded.role) {
         request.user = {
@@ -72,7 +72,7 @@ export class AuthGuard implements CanActivate {
       request.user = {
         id: user.id,
         email: user.email,
-        role: 'SEAFARER',
+        role: ROLES.SEAFARER,
         status: 'Pending Audit',
       };
       return true;

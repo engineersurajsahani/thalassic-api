@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: thalassic-api/package-lock.json
+
+      - name: Install dependencies
+        run: cd thalassic-api && npm ci
+
+      - name: Build
+        run: cd thalassic-api && npm run build
+        env:
+          JWT_SECRET: test-jwt-secret-for-ci
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-key
+          NODE_ENV: test
+
+      - name: Run unit tests
+        run: cd thalassic-api && npm run test
+        env:
+          JWT_SECRET: test-jwt-secret-for-ci
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-key
+          NODE_ENV: test
+
+      - name: Run lint
+        run: cd thalassic-api && npm run lint
+
+      - name: Security audit
+        run: cd thalassic-api && npm audit --audit-level=moderate

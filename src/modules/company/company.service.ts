@@ -248,10 +248,13 @@ export class CompanyService {
 
     await this.logAudit(adminId, companyId, 'WALK_IN_REGISTRATION', `Registered new seafarer ${dto.email}`);
     
+    // ISSUE-021, ISSUE-058: NEVER return passwords in API responses
+    // Only return the user ID and a note that credentials were sent via email (in production)
     return {
       message: 'Walk-in registration successful',
       userId,
-      credentials: { email: dto.email, password: dto.password }
+      // Password is NOT returned — it was already sent to Supabase Auth for email verification
+      note: 'Credentials have been sent to the registered email address.',
     };
   }
 

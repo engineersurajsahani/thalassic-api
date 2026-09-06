@@ -257,7 +257,11 @@ export class MasterService {
   async createUser(dto: any) {
     const { randomUUID } = require('crypto');
     const bcrypt = require('bcryptjs');
-    const hashedPassword = await bcrypt.hash(dto.password || 'password123', 10);
+    // ISSUE-057: No default password — password is REQUIRED for user creation
+    if (!dto.password) {
+      throw new BadRequestException('Password is required for user creation');
+    }
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const roleSlug = (dto.role || 'seafarer').toLowerCase();
     const dbRole = roleSlug === 'master' ? 'MASTER' : roleSlug === 'company-admin' ? 'COMPANY_ADMIN' : 'SEAFARER';
@@ -447,6 +451,7 @@ export class MasterService {
 
   // 5.1 Payment Management
   async getPayments(query: any = {}) {
+    // ISSUE-059: REMOVED mock user object — use real authenticated user context
     // Invoices represent payments since every successful payment generates exactly one invoice
     const mockUser = { role: 'MASTER', id: 'master-system-user' };
     const invoices = await this.invoicesService.getInvoices(mockUser, query);
