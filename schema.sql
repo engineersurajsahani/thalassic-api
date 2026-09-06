@@ -33,12 +33,23 @@ CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auth_user_id UUID UNIQUE, -- Links to auth.users in Supabase Auth
     email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255),
     name VARCHAR(255) NOT NULL,
     phone VARCHAR(50),
     role user_role DEFAULT 'SEAFARER'::user_role NOT NULL,
     status user_status DEFAULT 'Pending Audit'::user_status NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure password column exists if table was already created
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+
+-- Entity Compatibility Views (supports PascalCase and lowercase table queries)
+CREATE OR REPLACE VIEW public."User" AS SELECT * FROM public.users;
+CREATE OR REPLACE VIEW public."Course" AS SELECT * FROM public.courses;
+CREATE OR REPLACE VIEW public."Enrollment" AS SELECT * FROM public.enrollments;
+CREATE OR REPLACE VIEW public."Document" AS SELECT * FROM public.documents;
+CREATE OR REPLACE VIEW public."SeafarerProfile" AS SELECT * FROM public.seafarer_profiles;
 
 -- 3. Create COURSES Table
 CREATE TABLE IF NOT EXISTS public.courses (
@@ -355,13 +366,26 @@ VALUES
 ('RPST', 'Refresher PST', 'refresher', '1 Day', '₹3,500', 'Refresher safety training for Personal Survival Techniques.', 'Active')
 ON CONFLICT (code) DO NOTHING;
 
--- Insert Sample Seafarer Users
-INSERT INTO public.users (id, email, name, phone, role, status)
+-- Insert Demo Accounts (Password for all: admin123 / seafarer123)
+-- Hash: $2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu
+INSERT INTO public.users (id, email, password, name, phone, role, status)
 VALUES 
-('a0000000-0000-0000-0000-000000000001', 'raj@example.com', 'Raj Kumar', '+91 98765 43210', 'SEAFARER', 'Pending Audit'),
-('a0000000-0000-0000-0000-000000000002', 'priya@example.com', 'Priya Singh', '+91 99887 76655', 'SEAFARER', 'Active'),
-('a0000000-0000-0000-0000-000000000003', 'amit@example.com', 'Amit Patel', '+91 98989 89898', 'SEAFARER', 'Pending Audit')
-ON CONFLICT (email) DO NOTHING;
+('b0000000-0000-0000-0000-000000000001', 'master@gmail.com', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Master Admin', '+91 90000 00000', 'MASTER', 'Active'),
+('b0000000-0000-0000-0000-000000000002', 'admin@thalassic.in', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Agent Admin', '+91 88888 77777', 'AGENT_ADMIN', 'Active'),
+('b0000000-0000-0000-0000-000000000003', 'agent@thalassic.in', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Agent User', '+91 99999 88888', 'AGENT', 'Active'),
+('b0000000-0000-0000-0000-000000000004', 'seafarer@test.com', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Demo Seafarer', '+91 98765 43210', 'SEAFARER', 'Active'),
+('b0000000-0000-0000-0000-000000000005', 'companyadmin@thalassic.in', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Company Admin', '+91 77777 66666', 'COMPANY_ADMIN', 'Active')
+ON CONFLICT (email) DO UPDATE 
+SET password = EXCLUDED.password, status = 'Active', role = EXCLUDED.role;
+
+-- Insert Sample Seafarer Users
+INSERT INTO public.users (id, email, password, name, phone, role, status)
+VALUES 
+('a0000000-0000-0000-0000-000000000001', 'raj@example.com', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Raj Kumar', '+91 98765 43210', 'SEAFARER', 'Pending Audit'),
+('a0000000-0000-0000-0000-000000000002', 'priya@example.com', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Priya Singh', '+91 99887 76655', 'SEAFARER', 'Active'),
+('a0000000-0000-0000-0000-000000000003', 'amit@example.com', '$2b$10$DzFvheVCBHgMqoMSSTXWh.kZ.X9LSbFUXGw65ZHJqRS20y7GxPmRu', 'Amit Patel', '+91 98989 89898', 'SEAFARER', 'Pending Audit')
+ON CONFLICT (email) DO UPDATE 
+SET password = EXCLUDED.password;
 
 -- Insert Seafarer Profiles
 INSERT INTO public.seafarer_profiles (user_id, dob, birth_place, father_name, passport_num, passport_issue, passport_expiry, passport_place, indos_num, indos_issue, indos_status, cdc_num, cdc_issue, cdc_expiry, cdc_place, education)
