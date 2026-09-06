@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Patch, Body, Req, Query, Param, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 import { RegisterWalkInDto } from './dto/register-walk-in.dto';
 import { VerifyDocumentDto } from './dto/verify-document.dto';
 import { UpdateSeafarerDto } from './dto/update-seafarer.dto';
@@ -8,7 +10,8 @@ import { GenerateInvoiceDto } from './dto/generate-invoice.dto';
 import { PaginationDto } from './dto/pagination.dto';
 
 @Controller('company')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
+@Roles(ROLES.COMPANY_ADMIN, ROLES.MASTER)
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 

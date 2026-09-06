@@ -1,4 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcryptjs';
 import { SupabaseService } from '../supabase/supabase.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { AgentAdminService } from '../agent-admin/agent-admin.service';
@@ -169,9 +171,8 @@ export class MasterService {
   }
 
   async createCourse(dto: any) {
-    const { randomUUID } = require('crypto');
     const payload = {
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       code: dto.code,
       name: dto.name,
       category: dto.category,
@@ -255,8 +256,6 @@ export class MasterService {
 }
 
   async createUser(dto: any) {
-    const { randomUUID } = require('crypto');
-    const bcrypt = require('bcryptjs');
     // ISSUE-057: No default password — password is REQUIRED for user creation
     if (!dto.password) {
       throw new BadRequestException('Password is required for user creation');
@@ -267,7 +266,7 @@ export class MasterService {
     const dbRole = roleSlug === 'master' ? 'MASTER' : roleSlug === 'company-admin' ? 'COMPANY_ADMIN' : 'SEAFARER';
 
     const payload = {
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       name: dto.name,
       email: dto.email,
       password: hashedPassword,
@@ -431,7 +430,6 @@ export class MasterService {
       updateData.name = dto.name;
     }
     if (dto.password) {
-      const bcrypt = require('bcryptjs');
       updateData.password = await bcrypt.hash(dto.password, 10);
     }
     if (Object.keys(updateData).length === 0) return { success: true };

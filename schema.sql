@@ -290,7 +290,7 @@ CREATE TABLE IF NOT EXISTS public.settlements (
 -- 24. Create AUDIT LOGS Table (Merged Columns)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES public."User"(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
     user_name VARCHAR(255),
     action VARCHAR(255) NOT NULL,
     module VARCHAR(255) DEFAULT 'General' NOT NULL,
@@ -300,3 +300,68 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     ip_address VARCHAR(50),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- 25. Create ENROLLMENTS Table
+CREATE TABLE IF NOT EXISTS public.enrollments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    course_id UUID REFERENCES public.courses(id) ON DELETE CASCADE NOT NULL,
+    status VARCHAR(50) DEFAULT 'Enrolled' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 26. Create PARTNER APPLICATIONS Table
+CREATE TABLE IF NOT EXISTS public.partner_applications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_name VARCHAR(255) NOT NULL,
+    contact_person VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
+    company_type VARCHAR(100),
+    fleet_size VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'Pending' NOT NULL,
+    message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 27. Create SUPPORT TICKETS Table
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'Open' NOT NULL,
+    priority VARCHAR(50) DEFAULT 'Normal' NOT NULL,
+    admin_response TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 28. Create NOTIFICATIONS Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'unread' NOT NULL,
+    link VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 29. PERFORMANCE INDEXES (ISSUE-006)
+CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
+CREATE INDEX IF NOT EXISTS idx_users_status ON public.users(status);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user ON public.enrollments(user_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_course ON public.enrollments(course_id);
+CREATE INDEX IF NOT EXISTS idx_commissions_agent ON public.commissions(agent_id);
+CREATE INDEX IF NOT EXISTS idx_commissions_status ON public.commissions(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_invoice_number ON public.invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_user ON public.invoices(user_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON public.invoices(status);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON public.audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON public.audit_logs(module);
+CREATE INDEX IF NOT EXISTS idx_referral_leads_agent ON public.referral_leads(agent_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON public.support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id);
+

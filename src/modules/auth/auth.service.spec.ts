@@ -120,13 +120,14 @@ describe('AuthService', () => {
     });
 
     it('should create user with SEAFARER role by default', async () => {
-      mockSupabaseClient.single.mockResolvedValue({ data: null, error: null });
+      mockSupabaseClient.single
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({
+          data: { id: 'new-id', email: 'new@example.com', name: 'New User', role: ROLES.SEAFARER, phone: null },
+          error: null,
+        });
       mockSupabaseClient.insert.mockReturnThis();
       mockSupabaseClient.select.mockReturnThis();
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'new-id', email: 'new@example.com', name: 'New User', role: ROLES.SEAFARER, phone: null },
-        error: null,
-      });
 
       const result = await service.register({
         name: 'New User',
@@ -139,13 +140,14 @@ describe('AuthService', () => {
     });
 
     it('should normalize email to lowercase', async () => {
-      mockSupabaseClient.single.mockResolvedValue({ data: null, error: null });
+      mockSupabaseClient.single
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({
+          data: { id: 'new-id', email: 'test@example.com', name: 'Test User', role: ROLES.SEAFARER, phone: null },
+          error: null,
+        });
       mockSupabaseClient.insert.mockReturnThis();
       mockSupabaseClient.select.mockReturnThis();
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'new-id', email: 'new@example.com', name: 'New User', role: ROLES.SEAFARER, phone: null },
-        error: null,
-      });
 
       await service.register({
         name: 'Test User',

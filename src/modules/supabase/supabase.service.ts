@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as crypto from 'crypto';
+import * as bcrypt from 'bcryptjs';
 // Import ROLES from auth service for consistent role strings
 import { ROLES } from '../auth/auth.service';
 
@@ -58,8 +60,6 @@ export class SupabaseService implements OnModuleInit {
 
       // ISSUE-019: Use a secure randomly generated password for seeded users, not 'password123'
       // In development only — production users should be created through proper admin flows
-      const crypto = require('crypto');
-      const bcrypt = require('bcryptjs');
       const randomPassword = crypto.randomBytes(12).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
       const now = new Date();

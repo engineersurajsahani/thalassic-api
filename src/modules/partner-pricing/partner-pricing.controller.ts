@@ -1,9 +1,12 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { PartnerPricingService } from './partner-pricing.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller('partner/pricing')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
+@Roles(ROLES.MASTER, ROLES.AGENT_ADMIN, ROLES.AGENT)
 export class PartnerPricingController {
   constructor(private readonly partnerPricingService: PartnerPricingService) {}
 

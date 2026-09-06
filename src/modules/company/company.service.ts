@@ -133,7 +133,7 @@ export class CompanyService {
     const { data } = await this.db.from('company_crew').select('status').eq('company_id', companyId).eq('user_id', seafarerId).single();
     if (!data) throw new NotFoundException('Seafarer not found in your company');
 
-    const { data: user } = await this.db.from('users').select('*').eq('id', seafarerId).single();
+    const { data: user } = await this.db.from('users').select('id, email, name, phone, role, status, created_at').eq('id', seafarerId).single();
     const { data: profile } = await this.db.from('seafarer_profiles').select('*').eq('user_id', seafarerId).single();
     
     return { ...user, profile };

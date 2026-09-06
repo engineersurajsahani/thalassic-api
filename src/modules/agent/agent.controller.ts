@@ -1,15 +1,18 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, ForbiddenException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, UseInterceptors, UploadedFile, ForbiddenException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AgentService } from './agent.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller('agent')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
+@Roles(ROLES.AGENT, ROLES.MASTER)
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   private checkRole(req: any) {
-    if (req.user?.role !== 'AGENT') {
+    if (req.user?.role !== 'AGENT' && req.user?.role !== 'MASTER') {
       throw new ForbiddenException('Access restricted to Manning Agents.');
     }
   }

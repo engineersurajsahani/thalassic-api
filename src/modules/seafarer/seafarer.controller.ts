@@ -17,9 +17,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { SeafarerService } from './seafarer.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
+@Roles(ROLES.SEAFARER, ROLES.MASTER)
 export class SeafarerController {
   constructor(private seafarerService: SeafarerService) {}
 

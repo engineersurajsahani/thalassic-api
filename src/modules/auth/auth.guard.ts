@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import * as jwt from 'jsonwebtoken';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ROLES } from './auth.service';
 
@@ -34,9 +35,6 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('JWT_SECRET not configured');
       }
 
-      // Use jsonwebtoken with the required secret
-      // ISSUE-030: Use require() only when necessary (this is a guard, not a service)
-      const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, secret) as any;
       if (decoded && decoded.role) {
         request.user = {

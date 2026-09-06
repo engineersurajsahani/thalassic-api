@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { MasterService } from './master.service';
 import { AuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller('master')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
+@Roles(ROLES.MASTER)
 export class MasterController {
   constructor(private readonly masterService: MasterService) {}
 
@@ -73,62 +76,43 @@ export class MasterController {
 
   @Patch('profile')
   updateProfile(@Req() req: any, @Body() dto: any) {
-    const authHeader = req.headers.authorization ?? '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    const jwt = require('jsonwebtoken');
-    const secret = process.env.JWT_SECRET || 'your-secret-key';
-    const decoded = jwt.verify(token, secret) as any;
-    const adminId = decoded.sub;
+    const adminId = req.user?.id || req.user?.sub;
     return this.masterService.updateAdminProfile(adminId, dto);
   }
 
   // --- 5. Finance Module APIs (Master Only) ---
-
-  private verifyMasterRole(req: any) {
-    if (!req.user || req.user.role !== 'MASTER') {
-      throw new ForbiddenException('Access denied. Master role required.');
-    }
-  }
-
   @Get('finance/payments')
   getPayments(@Req() req: any, @Query() query: any) {
-    this.verifyMasterRole(req);
     return this.masterService.getPayments(query);
   }
 
   @Get('finance/invoices')
   getInvoices(@Req() req: any, @Query() query: any) {
-    this.verifyMasterRole(req);
     return this.masterService.getInvoices(req.user, query);
   }
 
   @Get('finance/invoices/:id/pdf')
   getInvoicePdf(@Req() req: any, @Param('id') id: string) {
-    this.verifyMasterRole(req);
     return this.masterService.getInvoicePdf(id, req.user);
   }
 
   @Post('finance/invoices/:id/resend')
   resendInvoice(@Req() req: any, @Param('id') id: string) {
-    this.verifyMasterRole(req);
     return this.masterService.resendInvoice(id, req.user);
   }
 
   @Get('finance/commissions')
   getCommissions(@Req() req: any) {
-    this.verifyMasterRole(req);
     return this.masterService.getCommissionsOverview();
   }
 
   @Get('finance/settlements')
   getSettlements(@Req() req: any) {
-    this.verifyMasterRole(req);
     return this.masterService.getSettlements();
   }
 
   @Post('finance/settlements/:id/approve')
   approveSettlement(@Req() req: any, @Param('id') id: string) {
-    this.verifyMasterRole(req);
     const adminId = req.user?.id || 'system';
     const adminName = req.user?.name || 'Master Admin';
     return this.masterService.approveSettlement(id, adminId, adminName);
@@ -136,7 +120,6 @@ export class MasterController {
 
   @Post('finance/settlements/:id/pay')
   paySettlement(@Req() req: any, @Param('id') id: string) {
-    this.verifyMasterRole(req);
     const adminId = req.user?.id || 'system';
     const adminName = req.user?.name || 'Master Admin';
     return this.masterService.paySettlement(id, adminId, adminName);
