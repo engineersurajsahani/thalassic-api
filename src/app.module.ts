@@ -73,12 +73,12 @@ const ALL_ENTITIES = [
       { name: 'medium', ttl: 60000, limit: 100 },
       { name: 'long', ttl: 3600000, limit: 1000 },
     ]),
-    // TypeORM configuration with graceful connection & pooler support
+    // TypeORM configuration with DATABASE_URL support for Render / Supabase
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const dbUrl = configService.get<string>('DATABASE_URL');
-        if (dbUrl) {
+        if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'))) {
           return {
             type: 'postgres',
             url: dbUrl,
@@ -86,8 +86,8 @@ const ALL_ENTITIES = [
             synchronize: false,
             logging: configService.get('NODE_ENV') === 'development',
             ssl: { rejectUnauthorized: false },
-            retryAttempts: 2,
-            retryDelay: 2000,
+            retryAttempts: 3,
+            retryDelay: 3000,
             extra: {
               max: 20,
               connectionTimeoutMillis: 10000,
@@ -96,27 +96,26 @@ const ALL_ENTITIES = [
           };
         }
 
-        const projectRef = configService.get('SUPABASE_URL')?.replace('https://', '').split('.')[0] || 'expzlbadryzwvsxfmads';
-        const host = configService.get('DB_HOST') || `aws-0-ap-south-1.pooler.supabase.com`;
-        const password = configService.get('SUPABASE_DB_PASSWORD') || configService.get('DB_PASSWORD') || '';
+        const host = configService.get<string>('DB_HOST') || '127.0.0.1';
+        const password = configService.get<string>('SUPABASE_DB_PASSWORD') || configService.get<string>('DB_PASSWORD') || 'postgres';
 
         return {
           type: 'postgres',
           host,
-          port: parseInt(configService.get('DB_PORT') || '6543', 10),
-          username: configService.get('DB_USER') || `postgres.${projectRef}`,
+          port: parseInt(configService.get('DB_PORT') || '5432', 10),
+          username: configService.get('DB_USER') || 'postgres',
           password,
           database: configService.get('DB_NAME') || 'postgres',
           entities: ALL_ENTITIES,
           synchronize: false,
-          logging: configService.get('NODE_ENV') === 'development',
-          ssl: { rejectUnauthorized: false },
+          logging: false,
+          ssl: false,
           retryAttempts: 1,
           retryDelay: 1000,
           extra: {
-            max: 10,
-            connectionTimeoutMillis: 5000,
-            idleTimeoutMillis: 15000,
+            max: 5,
+            connectionTimeoutMillis: 3000,
+            idleTimeoutMillis: 10000,
           },
         };
       },
