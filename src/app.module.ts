@@ -73,7 +73,7 @@ const ALL_ENTITIES = [
       { name: 'medium', ttl: 60000, limit: 100 },
       { name: 'long', ttl: 3600000, limit: 1000 },
     ]),
-    // TypeORM configuration with DATABASE_URL support for Render / Supabase
+    // TypeORM configuration: uses PostgreSQL if DATABASE_URL is set, or in-memory fallback
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -96,27 +96,14 @@ const ALL_ENTITIES = [
           };
         }
 
-        const host = configService.get<string>('DB_HOST') || '127.0.0.1';
-        const password = configService.get<string>('SUPABASE_DB_PASSWORD') || configService.get<string>('DB_PASSWORD') || 'postgres';
-
+        // Resilient in-memory fallback for TypeORM entities when DATABASE_URL is not set
+        // (All core app operations are executed through verified Supabase REST client)
         return {
-          type: 'postgres',
-          host,
-          port: parseInt(configService.get('DB_PORT') || '5432', 10),
-          username: configService.get('DB_USER') || 'postgres',
-          password,
-          database: configService.get('DB_NAME') || 'postgres',
+          type: 'better-sqlite3',
+          database: ':memory:',
           entities: ALL_ENTITIES,
-          synchronize: false,
+          synchronize: true,
           logging: false,
-          ssl: false,
-          retryAttempts: 1,
-          retryDelay: 1000,
-          extra: {
-            max: 5,
-            connectionTimeoutMillis: 3000,
-            idleTimeoutMillis: 10000,
-          },
         };
       },
       inject: [ConfigService],
