@@ -23,7 +23,7 @@
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/data-source.ts",
     "schema:sync": "typeorm-ts-node-commonjs schema:sync -d src/data-source.ts",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
