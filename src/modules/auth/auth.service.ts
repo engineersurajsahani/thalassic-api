@@ -1,8 +1,6 @@
-import { Injectable, BadRequestException, ConflictException, UnauthorizedException, Optional } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -10,7 +8,6 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { User, SeafarerProfile, AgentMetadata, ReferralLead } from '../../entities';
 
 // ISSUE-035: Centralized role constants to prevent inconsistency across codebase
 export const ROLES = {
@@ -39,10 +36,6 @@ export class AuthService {
     private supabaseService: SupabaseService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    @Optional() @InjectRepository(User) private userRepository?: Repository<User>,
-    @Optional() @InjectRepository(SeafarerProfile) private profileRepository?: Repository<SeafarerProfile>,
-    @Optional() @InjectRepository(AgentMetadata) private agentMetaRepository?: Repository<AgentMetadata>,
-    @Optional() @InjectRepository(ReferralLead) private referralLeadRepository?: Repository<ReferralLead>,
   ) {
     // ISSUE-015: Fail fast if JWT_SECRET is not configured — no weak default fallback
     const jwtSecret = this.configService.get<string>('JWT_SECRET');
@@ -66,32 +59,17 @@ export class AuthService {
       );
     }
 
-    // Query User table from database
-    let user: any = null;
-    if (this.userRepository) {
-      try {
-        user = await this.userRepository.findOne({
-          where: { email: cleanEmail },
-          select: { id: true, email: true, password: true, name: true, role: true, phone: true },
-        });
-      } catch {
-        // Fallback to Supabase client if TypeORM repository query fails
-      }
-    }
+    // Query User table from Supabase Cloud
+    const supabase = this.supabaseService.getClient();
+    const { data: user, error } = await supabase
+      .from('User')
+      .select('id, email, password, name, role, phone')
+      .ilike('email', cleanEmail)
+      .maybeSingle();
 
-    if (!user) {
-      const supabase = this.supabaseService.getClient();
-      const { data, error } = await supabase
-        .from('User')
-        .select('id, email, password, name, role, phone')
-        .ilike('email', cleanEmail)
-        .maybeSingle();
-
-      if (error || !data) {
-        this.recordFailedAttempt(cleanEmail);
-        throw new BadRequestException('Invalid email or password');
-      }
-      user = data;
+    if (error || !user) {
+      this.recordFailedAttempt(cleanEmail);
+      throw new BadRequestException('Invalid email or password');
     }
 
     // Compare password with bcrypt hash
@@ -107,7 +85,6 @@ export class AuthService {
     // Retrieve onboarding status for agent users
     let onboardingStatus: string | null = null;
     if (user.role?.toUpperCase() === ROLES.AGENT) {
-      const supabase = this.supabaseService.getClient();
       const { data: meta } = await supabase
         .from('agent_metadata')
         .select('onboarding_status')
@@ -378,7 +355,7 @@ export class AuthService {
 
     return {
       message: 'Password reset link generated successfully.',
-      resetToken, // Returned for dev/testing; in production this is sent via email
+      resetToken,
     };
   }
 
