@@ -73,7 +73,7 @@ const ALL_ENTITIES = [
       { name: 'medium', ttl: 60000, limit: 100 },
       { name: 'long', ttl: 3600000, limit: 1000 },
     ]),
-    // TypeORM configuration with DATABASE_URL & Connection Pooling for Render / Cloud
+    // TypeORM configuration with graceful connection & pooler support
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -86,6 +86,8 @@ const ALL_ENTITIES = [
             synchronize: false,
             logging: configService.get('NODE_ENV') === 'development',
             ssl: { rejectUnauthorized: false },
+            retryAttempts: 2,
+            retryDelay: 2000,
             extra: {
               max: 20,
               connectionTimeoutMillis: 10000,
@@ -93,28 +95,28 @@ const ALL_ENTITIES = [
             },
           };
         }
+
+        const projectRef = configService.get('SUPABASE_URL')?.replace('https://', '').split('.')[0] || 'expzlbadryzwvsxfmads';
+        const host = configService.get('DB_HOST') || `aws-0-ap-south-1.pooler.supabase.com`;
+        const password = configService.get('SUPABASE_DB_PASSWORD') || configService.get('DB_PASSWORD') || '';
+
         return {
           type: 'postgres',
-          host:
-            configService.get('DB_HOST') ||
-            (configService.get('SUPABASE_URL')
-              ? `db.${configService.get('SUPABASE_URL').replace('https://', '').split('.')[0]}.supabase.co`
-              : 'localhost'),
-          port: parseInt(configService.get('DB_PORT') || '5432', 10),
-          username: configService.get('DB_USER') || 'postgres',
-          password:
-            configService.get('SUPABASE_DB_PASSWORD') ||
-            configService.get('DB_PASSWORD') ||
-            'postgres',
+          host,
+          port: parseInt(configService.get('DB_PORT') || '6543', 10),
+          username: configService.get('DB_USER') || `postgres.${projectRef}`,
+          password,
           database: configService.get('DB_NAME') || 'postgres',
           entities: ALL_ENTITIES,
           synchronize: false,
           logging: configService.get('NODE_ENV') === 'development',
-          ssl: configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+          ssl: { rejectUnauthorized: false },
+          retryAttempts: 1,
+          retryDelay: 1000,
           extra: {
-            max: 20,
-            connectionTimeoutMillis: 10000,
-            idleTimeoutMillis: 30000,
+            max: 10,
+            connectionTimeoutMillis: 5000,
+            idleTimeoutMillis: 15000,
           },
         };
       },
