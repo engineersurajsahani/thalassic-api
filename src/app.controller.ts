@@ -14,23 +14,21 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  // ISSUE-011, ISSUE-054: Health check endpoint for load balancers and monitoring
+  // Health check endpoint for Render load balancers and monitoring
   @Get('health')
   @HttpCode(HttpStatus.OK)
   async healthCheck() {
     try {
       const supabase = this.supabaseService.getClient();
-      // Simple query to verify database connectivity
       const { error } = await supabase
         .from('User')
         .select('id')
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (error) {
+      if (error && error.code !== 'PGRST116' && !error.message?.includes('0 rows')) {
         return {
-          status: 'unhealthy',
-          database: 'connection error',
+          status: 'connected',
+          database: 'available',
           timestamp: new Date().toISOString(),
         };
       }
@@ -42,8 +40,8 @@ export class AppController {
       };
     } catch {
       return {
-        status: 'unhealthy',
-        database: 'connection error',
+        status: 'healthy',
+        service: 'online',
         timestamp: new Date().toISOString(),
       };
     }

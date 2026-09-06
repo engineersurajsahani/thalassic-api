@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -40,54 +40,85 @@ import {
   PlatformSettings,
 } from './entities';
 
+const ALL_ENTITIES = [
+  User,
+  SeafarerProfile,
+  Document,
+  Enrollment,
+  Course,
+  SeaServiceRecord,
+  AgentMetadata,
+  Company,
+  CompanyAdmin,
+  CompanyCrew,
+  ReferralLead,
+  Commission,
+  CommissionStatusHistory,
+  Invoice,
+  Payment,
+  Settlement,
+  AuditLog,
+  PartnerApplication,
+  SupportTicket,
+  Notification,
+  PlatformSettings,
+];
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // ISSUE-020: Rate limiting module configuration
+    // Rate limiting module configuration
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 10 },
       { name: 'medium', ttl: 60000, limit: 100 },
       { name: 'long', ttl: 3600000, limit: 1000 },
     ]),
-    // ISSUE-001, ISSUE-010: TypeORM configuration for PostgreSQL with connection pooling
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.SUPABASE_URL?.replace('https://', '').split('.')[0] || 'db.xxxxxx.supabase.co',
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-      username: process.env.DB_USER || 'postgres',
-      password: process.env.SUPABASE_DB_PASSWORD || process.env.SUPABASE_SERVICE_ROLE_KEY || 'postgres',
-      database: process.env.DB_NAME || 'postgres',
-      entities: [
-        User,
-        SeafarerProfile,
-        Document,
-        Enrollment,
-        Course,
-        SeaServiceRecord,
-        AgentMetadata,
-        Company,
-        CompanyAdmin,
-        CompanyCrew,
-        ReferralLead,
-        Commission,
-        CommissionStatusHistory,
-        Invoice,
-        Payment,
-        Settlement,
-        AuditLog,
-        PartnerApplication,
-        SupportTicket,
-        Notification,
-        PlatformSettings,
-      ],
-      synchronize: false,
-      logging: process.env.NODE_ENV === 'development',
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-      extra: {
-        max: 20,
-        connectionTimeoutMillis: 5000,
-        idleTimeoutMillis: 30000,
+    // TypeORM configuration with DATABASE_URL & Connection Pooling for Render / Cloud
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        const dbUrl = configService.get<string>('DATABASE_URL');
+        if (dbUrl) {
+          return {
+            type: 'postgres',
+            url: dbUrl,
+            entities: ALL_ENTITIES,
+            synchronize: false,
+            logging: configService.get('NODE_ENV') === 'development',
+            ssl: { rejectUnauthorized: false },
+            extra: {
+              max: 20,
+              connectionTimeoutMillis: 10000,
+              idleTimeoutMillis: 30000,
+            },
+          };
+        }
+        return {
+          type: 'postgres',
+          host:
+            configService.get('DB_HOST') ||
+            (configService.get('SUPABASE_URL')
+              ? `db.${configService.get('SUPABASE_URL').replace('https://', '').split('.')[0]}.supabase.co`
+              : 'localhost'),
+          port: parseInt(configService.get('DB_PORT') || '5432', 10),
+          username: configService.get('DB_USER') || 'postgres',
+          password:
+            configService.get('SUPABASE_DB_PASSWORD') ||
+            configService.get('DB_PASSWORD') ||
+            'postgres',
+          database: configService.get('DB_NAME') || 'postgres',
+          entities: ALL_ENTITIES,
+          synchronize: false,
+          logging: configService.get('NODE_ENV') === 'development',
+          ssl: configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+          extra: {
+            max: 20,
+            connectionTimeoutMillis: 10000,
+            idleTimeoutMillis: 30000,
+          },
+        };
       },
+      inject: [ConfigService],
     }),
     SupabaseModule,
     AuthModule,
@@ -103,16 +134,14 @@ import {
   controllers: [AppController],
   providers: [
     AppService,
-    // ISSUE-020: Global rate limiting guard
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
-    // ISSUE-062: Global exception filter for consistent error handling
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
