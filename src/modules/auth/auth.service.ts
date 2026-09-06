@@ -223,12 +223,14 @@ export class AuthService {
       throw new BadRequestException('Registration failed. Please try again.');
     }
 
+    const validUser: any = createdUser;
+
     // Create SeafarerProfile if role is seafarer
     if (dbRole === ROLES.SEAFARER) {
       try {
         await supabase.from('SeafarerProfile').upsert(
           {
-            userId: newUser.id,
+            userId: validUser.id,
             firstName: firstName?.trim() || null,
             lastName: lastName?.trim() || null,
             indosNumber: indosNumber?.trim() || null,
@@ -289,7 +291,7 @@ export class AuthService {
     }
 
     // Generate JWT
-    const payload = { sub: newUser.id, email: newUser.email, role: newUser.role };
+    const payload = { sub: validUser.id, email: validUser.email, role: validUser.role };
     const token = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
       expiresIn: '24h',
@@ -298,11 +300,11 @@ export class AuthService {
     return {
       token,
       user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        phone: newUser.phone,
+        id: validUser.id,
+        name: validUser.name,
+        email: validUser.email,
+        role: validUser.role,
+        phone: validUser.phone,
       },
     };
   }
