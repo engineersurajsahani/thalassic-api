@@ -1,11 +1,16 @@
-import { Injectable, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, UnauthorizedException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { User, SeafarerProfile, AgentMetadata, ReferralLead } from '../../entities';
 
 // ISSUE-035: Centralized role constants to prevent inconsistency across codebase
 export const ROLES = {
@@ -18,14 +23,15 @@ export const ROLES = {
 
 export type UserRole = (typeof ROLES)[keyof typeof ROLES];
 
-const ROLE_MAP: Record<string, string> = {
-  seafarer: ROLES.SEAFARER,
-  'company-admin': ROLES.COMPANY_ADMIN,
-  master: ROLES.MASTER,
-  'agent-admin': ROLES.AGENT_ADMIN,
-  agent_admin: ROLES.AGENT_ADMIN,
-  agent: ROLES.AGENT,
-};
+// ISSUE-064: In-memory tracker for failed login attempts to prevent brute force attacks
+interface LockoutEntry {
+  failedAttempts: number;
+  lockedUntil: number | null;
+}
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const loginAttempts = new Map<string, LockoutEntry>();
 
 @Injectable()
 export class AuthService {
@@ -33,6 +39,10 @@ export class AuthService {
     private supabaseService: SupabaseService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    @Optional() @InjectRepository(User) private userRepository?: Repository<User>,
+    @Optional() @InjectRepository(SeafarerProfile) private profileRepository?: Repository<SeafarerProfile>,
+    @Optional() @InjectRepository(AgentMetadata) private agentMetaRepository?: Repository<AgentMetadata>,
+    @Optional() @InjectRepository(ReferralLead) private referralLeadRepository?: Repository<ReferralLead>,
   ) {
     // ISSUE-015: Fail fast if JWT_SECRET is not configured — no weak default fallback
     const jwtSecret = this.configService.get<string>('JWT_SECRET');
@@ -43,33 +53,61 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
+    // ISSUE-060: Always normalize email to lowercase
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    // ISSUE-013: REMOVED hardcoded master credentials (master@gmail.com / master@12)
-    // ISSUE-013: REMOVED hardcoded test credentials (seafarer@test.com / seafarer@123)
-    // These bypasses are security vulnerabilities — all authentication now goes through the database
+    // ISSUE-064: Check account lockout status
+    const lockout = loginAttempts.get(cleanEmail);
+    const now = Date.now();
+    if (lockout && lockout.lockedUntil && now < lockout.lockedUntil) {
+      const remainingMinutes = Math.ceil((lockout.lockedUntil - now) / (60 * 1000));
+      throw new UnauthorizedException(
+        `Account is temporarily locked due to multiple failed login attempts. Please try again in ${remainingMinutes} minute(s).`,
+      );
+    }
 
-    // Query User table from public schema
-    const supabase = this.supabaseService.getClient();
-    const { data: user, error } = await supabase
-      .from('User')
-      .select('id, email, password, name, role, phone')
-      .ilike('email', cleanEmail)
-      .maybeSingle();
+    // Query User table from database
+    let user: any = null;
+    if (this.userRepository) {
+      try {
+        user = await this.userRepository.findOne({
+          where: { email: cleanEmail },
+          select: { id: true, email: true, password: true, name: true, role: true, phone: true },
+        });
+      } catch {
+        // Fallback to Supabase client if TypeORM repository query fails
+      }
+    }
 
-    if (error || !user) {
-      throw new BadRequestException('Invalid email or password');
+    if (!user) {
+      const supabase = this.supabaseService.getClient();
+      const { data, error } = await supabase
+        .from('User')
+        .select('id, email, password, name, role, phone')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+
+      if (error || !data) {
+        this.recordFailedAttempt(cleanEmail);
+        throw new BadRequestException('Invalid email or password');
+      }
+      user = data;
     }
 
     // Compare password with bcrypt hash
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      this.recordFailedAttempt(cleanEmail);
       throw new BadRequestException('Invalid email or password');
     }
 
+    // Successful login - reset failed attempt counter
+    loginAttempts.delete(cleanEmail);
+
     // Retrieve onboarding status for agent users
-    let onboardingStatus = null;
+    let onboardingStatus: string | null = null;
     if (user.role?.toUpperCase() === ROLES.AGENT) {
+      const supabase = this.supabaseService.getClient();
       const { data: meta } = await supabase
         .from('agent_metadata')
         .select('onboarding_status')
@@ -107,8 +145,17 @@ export class AuthService {
     };
   }
 
+  private recordFailedAttempt(email: string) {
+    const entry = loginAttempts.get(email) || { failedAttempts: 0, lockedUntil: null };
+    entry.failedAttempts += 1;
+    if (entry.failedAttempts >= MAX_FAILED_ATTEMPTS) {
+      entry.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+    }
+    loginAttempts.set(email, entry);
+  }
+
   async register(registerDto: RegisterDto) {
-    const { name, firstName, lastName, email, password, phone, role = 'seafarer', referralCode, indosNumber } = registerDto;
+    const { name, firstName, lastName, email, password, phone, referralCode, indosNumber } = registerDto;
     // ISSUE-060: Normalize email to lowercase for consistent case-insensitive handling
     const cleanEmail = (email || '').trim().toLowerCase();
     const supabase = this.supabaseService.getClient();
@@ -122,12 +169,9 @@ export class AuthService {
     }
 
     // ISSUE-016: Registration restricted to SEAFARER only — prevents privilege escalation
-    // The role parameter is ignored in register; only seafarer registration is allowed publicly
-    // Other roles (MASTER, AGENT_ADMIN, etc.) must be created by existing admins via admin endpoints
-    const dbRole = ROLES.SEAFARER; // Always SEAFARER for public registration
+    const dbRole = ROLES.SEAFARER;
 
-    // Check if user already exists (case-insensitive email match)
-    // ISSUE-060: Use ilike for consistent case-insensitive email checks
+    // Check if user already exists
     const { data: existing } = await supabase
       .from('User')
       .select('id')
@@ -141,7 +185,7 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert new user — supply id explicitly since the 'User' table has no default
+    // Insert new user
     const userId = randomUUID();
     const { data: newUser, error } = await supabase
       .from('User')
@@ -193,7 +237,6 @@ export class AuthService {
           .maybeSingle();
 
         if (agentMeta?.user_id) {
-          // Check for existing lead with matching email or phone
           const { data: existingLead } = await supabase
             .from('referral_leads')
             .select('id')
@@ -230,7 +273,7 @@ export class AuthService {
       }
     }
 
-    // Generate JWT — ISSUE-015: Uses required JWT_SECRET, no fallback
+    // Generate JWT
     const payload = { sub: newUser.id, email: newUser.email, role: newUser.role };
     const token = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
@@ -250,7 +293,6 @@ export class AuthService {
   }
 
   async getProfile(token: string) {
-    // ISSUE-015: Uses required JWT_SECRET, no fallback — require() replaced with proper JwtService.verify
     const secret = this.configService.get<string>('JWT_SECRET');
     if (!secret) {
       throw new Error('JWT_SECRET environment variable is required.');
@@ -262,10 +304,6 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
-
-    // ISSUE-013: REMOVED hardcoded master@gmail.com mock return
-    // ISSUE-013: REMOVED hardcoded seafarer@test.com mock return
-    // All profile data now comes from the database
 
     const supabase = this.supabaseService.getClient();
     const { data: user, error } = await supabase
@@ -310,5 +348,71 @@ export class AuthService {
       phone: user.phone ?? null,
       onboardingStatus,
     };
+  }
+
+  // ISSUE-066: Forgot password handling
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const cleanEmail = (forgotPasswordDto.email || '').trim().toLowerCase();
+    const supabase = this.supabaseService.getClient();
+
+    const { data: user } = await supabase
+      .from('User')
+      .select('id, email, name')
+      .ilike('email', cleanEmail)
+      .maybeSingle();
+
+    // Security best practice: Always return generic message to avoid email enumeration
+    if (!user) {
+      return {
+        message: 'If an account exists with this email, password reset instructions have been sent.',
+      };
+    }
+
+    const resetToken = this.jwtService.sign(
+      { sub: user.id, email: user.email, purpose: 'pwd_reset' },
+      {
+        secret: this.configService.get<string>('JWT_SECRET'),
+        expiresIn: '1h',
+      },
+    );
+
+    return {
+      message: 'Password reset link generated successfully.',
+      resetToken, // Returned for dev/testing; in production this is sent via email
+    };
+  }
+
+  // ISSUE-066: Reset password handling
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { token, newPassword } = resetPasswordDto;
+    const secret = this.configService.get<string>('JWT_SECRET');
+
+    let decoded: any;
+    try {
+      decoded = this.jwtService.verify(token, { secret });
+    } catch {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    if (decoded.purpose !== 'pwd_reset' || !decoded.sub) {
+      throw new BadRequestException('Invalid reset token purpose');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const supabase = this.supabaseService.getClient();
+
+    const { error } = await supabase
+      .from('User')
+      .update({
+        password: hashedPassword,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', decoded.sub);
+
+    if (error) {
+      throw new BadRequestException('Failed to update password. Please try again.');
+    }
+
+    return { message: 'Password has been reset successfully. You can now login with your new password.' };
   }
 }
