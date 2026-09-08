@@ -905,67 +905,6 @@ export class AgentService {
             signedUrl: signedData2.signedUrl,
             fileName: doc.name || matchingFile.name,
           };
-    const db = this.getDb();
-    const { data: doc, error } = await db
-      .from('Document')
-      .select('id, url, name, userId, type')
-      .eq('id', docId)
-      .single();
-
-    if (error || !doc) {
-      throw new NotFoundException('Document not found.');
-    }
-
-    if (doc.userId !== agentId) {
-      throw new ForbiddenException('Access denied. You do not have permission to download this document.');
-    }
-
-    const storedUrl: string = doc.url || '';
-    const BUCKET = 'seafarer-documents';
-    let storagePath = storedUrl;
-
-    const publicPathMarker = `/object/public/${BUCKET}/`;
-    const signedPathMarker = `/object/sign/${BUCKET}/`;
-
-    if (storedUrl.includes(publicPathMarker)) {
-      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(publicPathMarker) + publicPathMarker.length));
-    } else if (storedUrl.includes(signedPathMarker)) {
-      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(signedPathMarker) + signedPathMarker.length));
-    }
-
-    if (storagePath && !storagePath.startsWith('/uploads/')) {
-      const { data: signedData } = await db.storage
-        .from(BUCKET)
-        .createSignedUrl(storagePath, 60);
-      if (signedData?.signedUrl) {
-        return {
-          signedUrl: signedData.signedUrl,
-          fileName: doc.name || `Document_${doc.type || 'file'}`,
-        };
-      }
-    }
-
-    // Fallback: search bucket
-    const { data: bucketFiles } = await db.storage.from(BUCKET).list('', { limit: 100 });
-    if (bucketFiles && bucketFiles.length > 0) {
-      const matchingFile = bucketFiles.find(f =>
-        (doc.userId && f.name.includes(doc.userId)) ||
-        (doc.id && f.name.includes(doc.id)) ||
-        (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase()))
-      ) || bucketFiles.find(f => f.name.endsWith('.pdf') || f.name.endsWith('.png') || f.name.endsWith('.jpg'));
-
-      if (matchingFile) {
-        storagePath = matchingFile.name;
-        await db.from('Document').update({ url: storagePath }).eq('id', doc.id);
-
-        const { data: signedData2 } = await db.storage
-          .from(BUCKET)
-          .createSignedUrl(storagePath, 60);
-        if (signedData2?.signedUrl) {
-          return {
-            signedUrl: signedData2.signedUrl,
-            fileName: doc.name || matchingFile.name,
-          };
         }
       }
     }
