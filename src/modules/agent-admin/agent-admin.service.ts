@@ -1021,10 +1021,12 @@ export class AgentAdminService {
       const utr = s.reference_number || s.referenceNumber || s.utr || 'UTR-8492049182';
       const agent = s.agent_name || s.agentName || s.User?.name || 'Kishan Manning Agency';
 
-      const total = Number(s.total_amount ?? s.totalAmount ?? s.amount_payable ?? s.amountPayable ?? s.amount ?? 45000);
-      const paid = Number(s.paid_amount ?? s.paidAmount ?? s.amount_settled ?? s.amountSettled ?? (s.status === 'Completed' || s.status === 'Paid' ? total : 0));
-      const remaining = Number(s.remaining_amount ?? s.remainingAmount ?? s.pending_amount ?? s.pendingAmount ?? Math.max(0, total - paid));
       const statusStr = s.status || 'Pending';
+      const isDone = statusStr === 'Completed' || statusStr === 'Paid' || statusStr === 'Settled';
+
+      const total = Number(s.total_amount ?? s.totalAmount ?? s.amount_payable ?? s.amountPayable ?? s.amount ?? 45000);
+      const paid = isDone ? total : Number(s.paid_amount ?? s.paidAmount ?? s.amount_settled ?? s.amountSettled ?? 0);
+      const remaining = isDone ? 0 : Number(s.remaining_amount ?? s.remainingAmount ?? s.pending_amount ?? s.pendingAmount ?? Math.max(0, total - paid));
       const createdDate = s.created_at || s.createdAt || s.settlement_date || s.payment_date || new Date().toISOString();
 
       return {
@@ -1363,11 +1365,23 @@ export class AgentAdminService {
     const isCompleting = ['Completed', 'Paid', 'Approved'].includes(targetStatus);
     const newStatus = isCompleting ? 'Completed' : 'Pending';
 
+    const totAmount = Number(settlement.totalAmount ?? settlement.total_amount ?? settlement.amountPayable ?? settlement.amount_payable ?? 0);
+    const newPaidAmount = isCompleting ? totAmount : 0;
+    const newRemainingAmount = isCompleting ? 0 : totAmount;
+
     // --- Update in Supabase ---
     try {
       await db
         .from('settlements')
-        .update({ status: newStatus, updated_at: nowIso, ...(isCompleting ? { paid_at: nowIso } : { paid_amount: 0 }) })
+        .update({
+          status: newStatus,
+          paid_amount: newPaidAmount,
+          paidAmount: newPaidAmount,
+          remaining_amount: newRemainingAmount,
+          remainingAmount: newRemainingAmount,
+          updated_at: nowIso,
+          ...(isCompleting ? { paid_at: nowIso } : { paid_at: null }),
+        })
         .eq('id', settlementId);
     } catch (e) {
       console.warn('Supabase settlement update warning:', e);
@@ -1380,9 +1394,21 @@ export class AgentAdminService {
         const diskSettlements = JSON.parse(fs.readFileSync(diskPath, 'utf8'));
         const diskMatch = diskSettlements.find((s: any) => s.id === settlementId);
         if (diskMatch) {
+          const itemTot = Number(diskMatch.totalAmount ?? diskMatch.total_amount ?? totAmount);
           diskMatch.status = newStatus;
           diskMatch.updated_at = nowIso;
-          if (isCompleting) diskMatch.paid_at = nowIso;
+          diskMatch.updatedAt = nowIso;
+          diskMatch.paidAmount = isCompleting ? itemTot : 0;
+          diskMatch.paid_amount = isCompleting ? itemTot : 0;
+          diskMatch.remainingAmount = isCompleting ? 0 : itemTot;
+          diskMatch.remaining_amount = isCompleting ? 0 : itemTot;
+          if (isCompleting) {
+            diskMatch.paid_at = nowIso;
+            diskMatch.paidAt = nowIso;
+          } else {
+            diskMatch.paid_at = null;
+            diskMatch.paidAt = null;
+          }
           fs.writeFileSync(diskPath, JSON.stringify(diskSettlements, null, 2), 'utf8');
         }
       }
@@ -1391,8 +1417,14 @@ export class AgentAdminService {
     // --- Update in-memory ---
     const inMemMatch = this.inMemorySettlements.find((s: any) => s.id === settlementId);
     if (inMemMatch) {
+      const itemTot = Number(inMemMatch.totalAmount ?? inMemMatch.total_amount ?? totAmount);
       inMemMatch.status = newStatus;
       inMemMatch.updated_at = nowIso;
+      inMemMatch.updatedAt = nowIso;
+      inMemMatch.paidAmount = isCompleting ? itemTot : 0;
+      inMemMatch.paid_amount = isCompleting ? itemTot : 0;
+      inMemMatch.remainingAmount = isCompleting ? 0 : itemTot;
+      inMemMatch.remaining_amount = isCompleting ? 0 : itemTot;
       if (isCompleting) inMemMatch.paid_at = nowIso;
     }
 
