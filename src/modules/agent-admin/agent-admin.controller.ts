@@ -170,6 +170,17 @@ export class AgentAdminController {
     return this.agentAdminService.paySettlement(id, adminId, adminName);
   }
 
+  @Patch('settlements/:id/status')
+  updateSettlementStatus(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Agent Admin';
+    return this.agentAdminService.updateSettlementStatus(id, status, adminId, adminName);
+  }
+
   @Get('tickets')
   getTickets() {
     return this.agentAdminService.getTickets();
