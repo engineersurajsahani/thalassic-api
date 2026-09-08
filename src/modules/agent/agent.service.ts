@@ -42,111 +42,60 @@ export class AgentService {
 
   // --- 1. Dashboard ---
   async getDashboard(agentId: string) {
-    const db = this.getDb();
+    const purchases = await this.getPurchases(agentId);
+    const settlements = await this.getSettlements(agentId);
 
-    // 1. Total Leads
-    const { count: totalLeads } = await db
-      .from('referral_leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('agent_id', agentId);
+    const totalPurchases = purchases.length;
+    const pendingPurchases = purchases.filter(
+      (p: any) => p.settlementStatus === 'Pending' || p.settlementStatus === 'Partial' || p.settlementStatus === 'Submitted'
+    ).length;
 
-    // 2. Active Leads (status in ['New', 'Contacted', 'Registered'] and expiry_at > NOW())
-    const nowIso = new Date().toISOString();
-    const { count: activeLeads } = await db
-      .from('referral_leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .in('status', ['New', 'Contacted', 'Registered'])
-      .gt('expiry_at', nowIso);
+    let totalPayable = 0;
+    let amountSettled = 0;
+    let outstandingAmount = 0;
 
-    // 3. Converted Leads
-    const { count: convertedLeads } = await db
-      .from('referral_leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .eq('status', 'Converted');
+    purchases.forEach((p: any) => {
+      const origFee = Number(p.originalCourseFee || p.payableAmount || 16500);
+      const paid = Number(p.paidAmount || 0);
+      const rem = Number(p.remainingAmount ?? (origFee - paid));
 
-    // 4. Commissions Data
-    const { data: commissions, error: commErr } = await db
-      .from('commissions')
-      .select('commission_amount, status')
-      .eq('agent_id', agentId);
-
-    if (commErr) throw new BadRequestException(commErr.message);
-
-    let totalEarned = 0;
-    let pendingCommission = 0;
-    let paidCommission = 0;
-    let totalPurchases = commissions?.length || 0;
-
-    (commissions || []).forEach((c: any) => {
-      const amt = Number(c.commission_amount) || 0;
-      if (c.status !== 'Cancelled') {
-        totalEarned += amt;
-      }
-      if (c.status === 'Pending') {
-        pendingCommission += amt;
-      } else if (c.status === 'Paid') {
-        paidCommission += amt;
-      }
+      totalPayable += origFee;
+      amountSettled += paid;
+      outstandingAmount += rem;
     });
 
-    // 5. Recent Activity
-    const { data: recentLeads } = await db
-      .from('referral_leads')
-      .select('name, created_at, status')
-      .eq('agent_id', agentId)
-      .order('created_at', { ascending: false })
-      .limit(3);
+    const pendingSettlements = settlements.filter(
+      (s: any) => s.status === 'Pending' || s.status === 'Submitted' || s.status === 'Under Verification'
+    ).length;
 
-    const { data: recentCommissions } = await db
-      .from('commissions')
-      .select('seafarer_name, course_name, created_at, status, commission_amount')
-      .eq('agent_id', agentId)
-      .order('created_at', { ascending: false })
-      .limit(3);
-
-    const activities: any[] = [];
-    (recentLeads || []).forEach((l: any) => {
-      activities.push({
-        id: `lead-${l.created_at}`,
-        type: 'lead',
-        title: 'New Lead Registered',
-        message: `Seafarer ${l.name} registered under your code (Status: ${l.status}).`,
-        timestamp: l.created_at,
-      });
-    });
-
-    (recentCommissions || []).forEach((c: any) => {
-      activities.push({
-        id: `comm-${c.created_at}`,
-        type: 'commission',
-        title: 'Commission Updated',
-        message: `Earned ₹${c.commission_amount} for ${c.seafarer_name}'s purchase of ${c.course_name} (Status: ${c.status}).`,
-        timestamp: c.created_at,
-      });
-    });
-
-    activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    const { data: meta } = await db
-      .from('agent_metadata')
-      .select('referral_code')
-      .eq('user_id', agentId)
-      .maybeSingle();
+    const recentPurchases = purchases.slice(0, 5);
+    const recentSettlements = settlements.slice(0, 5);
 
     return {
       stats: {
-        totalLeads: totalLeads || 0,
-        activeLeads: activeLeads || 0,
-        convertedLeads: convertedLeads || 0,
         totalPurchases,
-        totalEarned,
-        pendingCommission,
-        paidCommission,
+        pendingPurchases,
+        totalPayable,
+        amountSettled,
+        outstandingAmount,
+        pendingSettlements,
+        totalLeads: totalPurchases,
+        activeLeads: pendingPurchases,
+        convertedLeads: purchases.filter((p: any) => p.settlementStatus === 'Settled' || p.settlementStatus === 'Completed').length,
+        totalEarned: amountSettled,
+        pendingCommission: outstandingAmount,
+        paidCommission: amountSettled,
       },
-      recentActivities: activities.slice(0, 5),
-      referralCode: meta?.referral_code || 'PENDING'
+      recentPurchases,
+      recentSettlements,
+      recentActivities: purchases.map((p: any) => ({
+        id: `act-${p.id}`,
+        type: 'purchase',
+        title: 'Course Purchased',
+        message: `Purchased ${p.courseName} for ${p.seafarerName} (₹${p.payableAmount})`,
+        timestamp: p.purchaseDate || new Date().toISOString(),
+      })),
+      referralCode: 'HARIOM-PARTNER-882'
     };
   }
 
