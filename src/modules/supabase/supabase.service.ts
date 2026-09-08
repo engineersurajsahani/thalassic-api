@@ -26,17 +26,22 @@ export class SupabaseService implements OnModuleInit {
 
       // Auto-migration: Add 'remarks' column to Document table if missing
       try {
-        const { error: migrationError } = await supabase.rpc('exec_sql', {
+        await supabase.rpc('exec_sql', {
           query: `ALTER TABLE public."Document" ADD COLUMN IF NOT EXISTS remarks TEXT;`,
         });
-        if (migrationError) {
-          // rpc 'exec_sql' may not exist — try a direct test insert/read approach
-          console.warn('Could not run remarks migration via rpc:', migrationError.message);
-        } else {
-          console.log('Document.remarks column ensured.');
-        }
       } catch (migErr) {
-        console.warn('Remarks column migration skipped:', (migErr as any)?.message);
+        // migration skipped silently if offline or rpc unavailable
+      }
+
+      // Ensure 'seafarer-documents' bucket exists in Supabase Storage
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const hasBucket = buckets?.some((b: any) => b.name === 'seafarer-documents');
+        if (!hasBucket) {
+          await supabase.storage.createBucket('seafarer-documents', { public: true });
+        }
+      } catch (bucketErr) {
+        // bucket check skipped silently if offline
       }
 
       const bcrypt = require('bcryptjs');
@@ -44,83 +49,68 @@ export class SupabaseService implements OnModuleInit {
       const now = new Date();
 
       // Seed/Activate Agent: agent@thalassic.in
-      const { data: existingAgent, error: agentCheckError } = await supabase
-        .from('User')
-        .select('id')
-        .eq('email', 'agent@thalassic.in')
-        .maybeSingle();
-
-      let agentId = existingAgent?.id;
-
-      if (!existingAgent && !agentCheckError) {
-        console.log("Seeding Agent User...");
-        agentId = require('crypto').randomUUID();
-        const { error } = await supabase
+      try {
+        const { data: existingAgent, error: agentCheckError } = await supabase
           .from('User')
-          .insert([{
-            id: agentId,
-            email: 'agent@thalassic.in',
-            password: hashedPassword,
-            name: 'Agent User',
-            phone: '+91 99999 88888',
-            role: 'agent',
-            updatedAt: now
-          }]);
-        if (error) {
-          console.error("Error seeding agent user:", error);
-          agentId = null;
-        } else {
-          console.log("Agent user successfully seeded: agent@thalassic.in / password123");
-        }
-      }
+          .select('id')
+          .eq('email', 'agent@thalassic.in')
+          .maybeSingle();
 
-      if (agentId) {
-        const { error: metaErr } = await supabase
-          .from('agent_metadata')
-          .upsert({
-            user_id: agentId,
-            referral_code: 'REFAGENT123',
-            onboarding_status: 'Active',
-            general_commission: 5.0,
-            updated_at: now
-          }, { onConflict: 'user_id' });
+        let agentId = existingAgent?.id;
 
-        if (metaErr) {
-          console.error("Error upserting agent metadata:", metaErr);
-        } else {
-          console.log("Agent metadata activated successfully: onboarding_status = Active");
+        if (!existingAgent && !agentCheckError) {
+          agentId = require('crypto').randomUUID();
+          await supabase
+            .from('User')
+            .insert([{
+              id: agentId,
+              email: 'agent@thalassic.in',
+              password: hashedPassword,
+              name: 'Agent User',
+              phone: '+91 99999 88888',
+              role: 'agent',
+              updatedAt: now
+            }]);
         }
-      }
+
+        if (agentId) {
+          await supabase
+            .from('agent_metadata')
+            .upsert({
+              user_id: agentId,
+              referral_code: 'REFAGENT123',
+              onboarding_status: 'Active',
+              general_commission: 5.0,
+              updated_at: now
+            }, { onConflict: 'user_id' });
+        }
+      } catch (agentErr) {}
 
       // Seed Agent Admin: admin@thalassic.in
-      const { data: existingAdmin, error: adminCheckError } = await supabase
-        .from('User')
-        .select('id')
-        .eq('email', 'admin@thalassic.in')
-        .maybeSingle();
-
-      if (!existingAdmin && !adminCheckError) {
-        console.log("Seeding Agent Admin User...");
-        const adminId = require('crypto').randomUUID();
-        const { error } = await supabase
+      try {
+        const { data: existingAdmin, error: adminCheckError } = await supabase
           .from('User')
-          .insert([{
-            id: adminId,
-            email: 'admin@thalassic.in',
-            password: hashedPassword,
-            name: 'Agent Admin',
-            phone: '+91 88888 77777',
-            role: 'agent-admin',
-            updatedAt: now
-          }]);
-        if (error) {
-          console.error("Error seeding agent admin user:", error);
-        } else {
-          console.log("Agent admin user successfully seeded: admin@thalassic.in / password123");
+          .select('id')
+          .eq('email', 'admin@thalassic.in')
+          .maybeSingle();
+
+        if (!existingAdmin && !adminCheckError) {
+          const adminId = require('crypto').randomUUID();
+          await supabase
+            .from('User')
+            .insert([{
+              id: adminId,
+              email: 'admin@thalassic.in',
+              password: hashedPassword,
+              name: 'Agent Admin',
+              phone: '+91 88888 77777',
+              role: 'agent-admin',
+              updatedAt: now
+            }]);
         }
-      }
+      } catch (adminErr) {}
     } catch (e) {
-      console.error("Failed to run DB seed check for agents:", e);
+      console.warn("Skipping DB seed check:", (e as any)?.message);
     }
   }
 }

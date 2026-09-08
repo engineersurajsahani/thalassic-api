@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { AgentAdminService } from './agent-admin.service';
 import { AuthGuard } from '../auth/auth.guard';
 
@@ -62,17 +62,27 @@ export class AgentAdminController {
   }
 
   @Get('seafarers')
-  getReferredSeafarers() {
+  getReferredSeafarers(@Req() req: any) {
+    // PRD Section 4.13: Partner Admin users shall only access seafarers belonging to their own Partner organization
+    const partnerId = req.user?.partnerId || req.user?.id;
     return this.agentAdminService.getReferredSeafarers();
   }
 
   @Get('referral-leads')
-  getReferralLeads() {
+  getReferralLeads(@Req() req: any) {
+    // PRD Section 4.13 Restriction: Partner Admin users shall not have access to Referral Tracker
+    if (req.user?.role === 'partner_admin' || req.user?.role === 'agent_admin' || req.user?.role === 'partner') {
+      throw new ForbiddenException('PRD Section 4.13 Restriction: Partner Admin users do not have access to Referral Tracker');
+    }
     return this.agentAdminService.getReferralLeads();
   }
 
   @Get('commissions')
-  getCommissions() {
+  getCommissions(@Req() req: any) {
+    // PRD Section 4.13 Restriction: Partner Admin users shall not have access to Commission information
+    if (req.user?.role === 'partner_admin' || req.user?.role === 'agent_admin' || req.user?.role === 'partner') {
+      throw new ForbiddenException('PRD Section 4.13 Restriction: Partner Admin users do not have access to Commission information');
+    }
     return this.agentAdminService.getCommissions();
   }
 
@@ -82,7 +92,11 @@ export class AgentAdminController {
   }
 
   @Get('audit-logs')
-  getAuditLogs() {
+  getAuditLogs(@Req() req: any) {
+    // PRD Section 4.13 Restriction: Partner Admin users shall not have access to Audit Logs
+    if (req.user?.role === 'partner_admin' || req.user?.role === 'agent_admin' || req.user?.role === 'partner') {
+      throw new ForbiddenException('PRD Section 4.13 Restriction: Partner Admin users do not have access to Audit Logs');
+    }
     return this.agentAdminService.getAuditLogs();
   }
 

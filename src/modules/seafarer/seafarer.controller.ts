@@ -68,8 +68,19 @@ export class SeafarerController {
     @Req() req: Request,
     @Param('id') courseId: string,
     @Body('referralCode') referralCode?: string,
+    @Body('instituteId') instituteId?: string,
+    @Body('instituteName') instituteName?: string,
+    @Body('batchSchedule') batchSchedule?: string,
+    @Body() body?: any,
   ) {
-    return this.seafarerService.enrollInCourse(this.uid(req), courseId, referralCode);
+    return this.seafarerService.enrollInCourse(
+      this.uid(req),
+      courseId,
+      referralCode || body?.referralCode,
+      instituteId || body?.instituteId,
+      instituteName || body?.instituteName,
+      batchSchedule || body?.batchSchedule,
+    );
   }
 
   @Put('courses/:id/progress')
@@ -125,6 +136,12 @@ export class SeafarerController {
   @Get('users/profile')
   getUserProfile(@Req() req: Request) {
     return this.seafarerService.getUserProfile(this.uid(req));
+  }
+
+  @Post('users/profile/photo')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadProfilePhoto(@Req() req: Request, @UploadedFile() file: any) {
+    return this.seafarerService.uploadProfilePhoto(this.uid(req), file);
   }
 
   @Put('users/profile')
