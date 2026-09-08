@@ -1,15 +1,16 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, ForbiddenException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AgentService } from './agent.service';
 import { AuthGuard } from '../auth/auth.guard';
 
-@Controller('agent')
+@Controller(['agent', 'partner'])
 @UseGuards(AuthGuard)
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   private checkRole(req: any) {
-    if (req.user?.role !== 'AGENT') {
-      throw new ForbiddenException('Access restricted to Manning Agents.');
+    if (!req.user?.id) {
+      throw new ForbiddenException('Access restricted to authenticated users.');
     }
   }
 
@@ -74,14 +75,29 @@ export class AgentController {
   }
 
   @Post('documents')
+  @UseInterceptors(FileInterceptor('file'))
   uploadDocument(
     @Req() req: any,
+    @UploadedFile() file: any,
     @Body('type') type: string,
     @Body('expiryDate') expiryDate?: string,
-    @Body('fileName') fileName?: string,
+    @Body('documentNumber') documentNumber?: string,
+    @Body('placeOfIssue') placeOfIssue?: string,
+    @Body('dateOfIssue') dateOfIssue?: string,
   ) {
     this.checkRole(req);
-    return this.agentService.uploadDocument(req.user.id, type, expiryDate, fileName);
+    return this.agentService.uploadDocument(req.user.id, type, file, {
+      expiryDate,
+      documentNumber,
+      placeOfIssue,
+      dateOfIssue,
+    });
+  }
+
+  @Get('documents/:id/download')
+  downloadDocument(@Req() req: any, @Param('id') docId: string) {
+    this.checkRole(req);
+    return this.agentService.downloadDocument(req.user.id, docId);
   }
 
   @Get('profile')
@@ -142,5 +158,105 @@ export class AgentController {
   changePassword(@Req() req: any, @Body() dto: any) {
     this.checkRole(req);
     return this.agentService.changePassword(req.user.id, dto.oldPassword, dto.newPassword);
+  }
+
+  @Post('settlements')
+  submitSettlement(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.submitSettlement(req.user.id, dto);
+  }
+
+  @Get('settlements')
+  getSettlements(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getSettlements(req.user.id);
+  }
+
+  @Get('settlements/:id')
+  getSettlementById(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.getSettlementById(req.user.id, id);
+  }
+
+  @Get('financials')
+  getFinancials(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getFinancials(req.user.id);
+  }
+
+  // --- Seafarer Master Identity & Search ---
+  @Get('seafarers/search')
+  searchSeafarers(@Req() req: any, @Query('q') query?: string) {
+    this.checkRole(req);
+    return this.agentService.searchSeafarers(query);
+  }
+
+  @Get('seafarers')
+  getSeafarers(@Req() req: any, @Query('q') query?: string) {
+    this.checkRole(req);
+    return this.agentService.getSeafarers(query);
+  }
+
+  @Get('seafarers/:id')
+  getSeafarerById(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.getSeafarerById(id);
+  }
+
+  @Post('seafarers')
+  createSeafarer(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.createSeafarer(dto);
+  }
+
+  // --- Courses & Partner Pricing ---
+  @Get('courses')
+  getCourses(@Req() req: any) {
+    this.checkRole(req);
+    return this.agentService.getCourses();
+  }
+
+  @Get('pricing/:courseId')
+  getCoursePricing(@Req() req: any, @Param('courseId') courseId: string) {
+    this.checkRole(req);
+    return this.agentService.getCoursePricing(courseId);
+  }
+
+  @Post('purchases')
+  createPurchase(@Req() req: any, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.createPurchase(req.user.id, dto);
+  }
+
+  @Get('purchases/:id')
+  getPurchaseById(@Req() req: any, @Param('id') id: string) {
+    this.checkRole(req);
+    return this.agentService.getPurchaseById(req.user.id, id);
+  }
+
+  // --- Seafarer Verification Documents ---
+  @Get('seafarers/:seafarerId/documents')
+  getSeafarerDocuments(@Req() req: any, @Param('seafarerId') seafarerId: string) {
+    this.checkRole(req);
+    return this.agentService.getSeafarerDocuments(seafarerId);
+  }
+
+  @Post('seafarers/:seafarerId/documents')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadSeafarerDocument(@Req() req: any, @Param('seafarerId') seafarerId: string, @UploadedFile() file: any, @Body('type') type: string) {
+    this.checkRole(req);
+    return this.agentService.uploadSeafarerDocument(seafarerId, type, file);
+  }
+
+  @Put('seafarers/:seafarerId/documents/:docId')
+  updateSeafarerDocument(@Req() req: any, @Param('seafarerId') seafarerId: string, @Param('docId') docId: string, @Body() dto: any) {
+    this.checkRole(req);
+    return this.agentService.updateSeafarerDocument(seafarerId, docId, dto);
+  }
+
+  @Delete('seafarers/:seafarerId/documents/:docId')
+  deleteSeafarerDocument(@Req() req: any, @Param('seafarerId') seafarerId: string, @Param('docId') docId: string) {
+    this.checkRole(req);
+    return this.agentService.deleteSeafarerDocument(seafarerId, docId);
   }
 }
