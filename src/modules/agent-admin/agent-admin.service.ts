@@ -1336,10 +1336,10 @@ export class AgentAdminService {
         relatedPurchases = existingRP.map((p: any) => ({
           id: p.id || p.purchase_id || `pur-${s.id}`,
           invoice_number: p.invoice_number || p.invoiceNumber || `HAC-2026-${(p.id || s.id || '').substring(0, 6).toUpperCase()}`,
-          customer_name: p.customer_name || p.seafarerName || p.seafarer_name || (total === 10500 ? 'Kishan Vishwakarma' : (total === 13000 ? 'Rajesh Kumar Sharma' : 'Capt. Vikramaditya Singh')),
-          seafarerName: p.customer_name || p.seafarerName || p.seafarer_name || (total === 10500 ? 'Kishan Vishwakarma' : (total === 13000 ? 'Rajesh Kumar Sharma' : 'Capt. Vikramaditya Singh')),
-          course_name: p.course_name || p.courseName || p.course || (total === 10500 ? 'STCW Basic Safety Training (BST)' : (total === 13000 ? 'Advanced Firefighting (AFF)' : 'Advanced Oil Tanker Cargo Operations (TASCO)')),
-          courseName: p.course_name || p.courseName || p.course || (total === 10500 ? 'STCW Basic Safety Training (BST)' : (total === 13000 ? 'Advanced Firefighting (AFF)' : 'Advanced Oil Tanker Cargo Operations (TASCO)')),
+          customer_name: p.customer_name || p.seafarerName || p.seafarer_name || (total === 10500 ? 'Amitabh Sharma' : (total === 13000 ? 'Rajesh Kumar Sharma' : 'Capt. Vikramaditya Singh')),
+          seafarerName: p.customer_name || p.seafarerName || p.seafarer_name || (total === 10500 ? 'Amitabh Sharma' : (total === 13000 ? 'Rajesh Kumar Sharma' : 'Capt. Vikramaditya Singh')),
+          course_name: p.course_name || p.courseName || p.course || (total === 10500 ? 'Advanced Fire Fighting (AFF)' : (total === 13000 ? 'Advanced Firefighting (AFF)' : 'Advanced Oil Tanker Cargo Operations (TASCO)')),
+          courseName: p.course_name || p.courseName || p.course || (total === 10500 ? 'Advanced Fire Fighting (AFF)' : (total === 13000 ? 'Advanced Firefighting (AFF)' : 'Advanced Oil Tanker Cargo Operations (TASCO)')),
           hariom_payable: Number(p.hariom_payable || p.payableAmount || p.final_amount || total),
           payableAmount: Number(p.hariom_payable || p.payableAmount || p.final_amount || total),
           date: p.date || (p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '09 Sept 2026'),
@@ -1377,15 +1377,15 @@ export class AgentAdminService {
       if (!relatedPurchases || relatedPurchases.length === 0) {
         const defaultSeafarer =
           total === 10500
-            ? 'Kishan Vishwakarma'
+            ? 'Amitabh Sharma'
             : total === 13000
               ? 'Rajesh Kumar Sharma'
               : total === 8500
-                ? 'Amitabh Sharma'
+                ? 'Amitabh Deshmukh'
                 : 'Capt. Vikramaditya Singh';
         const defaultCourse =
           total === 10500
-            ? 'STCW Basic Safety Training (BST)'
+            ? 'Advanced Fire Fighting (AFF)'
             : total === 13000
               ? 'Advanced Firefighting (AFF)'
               : total === 8500

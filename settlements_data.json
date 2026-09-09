@@ -46,10 +46,10 @@
       {
         "id": "pur-stl-675630",
         "invoice_number": "HAC-2026-000025",
-        "customer_name": "Kishan Vishwakarma",
-        "seafarerName": "Kishan Vishwakarma",
-        "course_name": "STCW Basic Safety Training (BST)",
-        "courseName": "STCW Basic Safety Training (BST)",
+        "customer_name": "Amitabh Sharma",
+        "seafarerName": "Amitabh Sharma",
+        "course_name": "Advanced Fire Fighting (AFF)",
+        "courseName": "Advanced Fire Fighting (AFF)",
         "hariom_payable": 10500,
         "payableAmount": 10500,
         "date": "09 Sept 2026"
