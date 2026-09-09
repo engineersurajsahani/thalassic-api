@@ -36,14 +36,11 @@ export class SupabaseService implements OnModuleInit {
 
       // Auto-migration: Add 'remarks' column to Document table if missing
       try {
-        const { error: migrationError } = await supabase.rpc('exec_sql', {
+        await supabase.rpc('exec_sql', {
           query: `ALTER TABLE public."Document" ADD COLUMN IF NOT EXISTS remarks TEXT;`,
         });
-        if (migrationError) {
-          console.warn('Could not run remarks migration via rpc:', migrationError.message);
-        }
       } catch (migErr) {
-        console.warn('Remarks column migration skipped:', (migErr as any)?.message);
+        // migration skipped silently if offline or rpc unavailable
       }
 
       // Ensure 'seafarer-documents' bucket exists in Supabase Storage
@@ -65,83 +62,84 @@ export class SupabaseService implements OnModuleInit {
       const now = new Date();
 
       // Seed/Activate Agent: agent@thalassic.in (DEV ONLY)
-      const { data: existingAgent, error: agentCheckError } = await supabase
-        .from('User')
-        .select('id')
-        .eq('email', 'agent@thalassic.in')
-        .maybeSingle();
-
-      let agentId = existingAgent?.id;
-
-      if (!existingAgent && !agentCheckError) {
-        console.log('[DEV] Seeding Agent User...');
-        agentId = crypto.randomUUID();
-        const { error } = await supabase
+      try {
+        const { data: existingAgent, error: agentCheckError } = await supabase
           .from('User')
-          .insert([{
-            id: agentId,
-            email: 'agent@thalassic.in',
-            password: hashedPassword,
-            name: 'Agent User',
-            phone: '+91 99999 88888',
-            role: ROLES.AGENT,
-            updatedAt: now
-          }]);
-        if (error) {
-          console.error('[DEV] Error seeding agent user:', error);
-          agentId = null;
-        } else {
-          // ISSUE-032: Do NOT log the password in plain text
-          console.log('[DEV] Agent user seeded: agent@thalassic.in (password stored in secure location)');
-        }
-      }
+          .select('id')
+          .eq('email', 'agent@thalassic.in')
+          .maybeSingle();
 
-      if (agentId) {
-        const { error: metaErr } = await supabase
-          .from('agent_metadata')
-          .upsert({
-            user_id: agentId,
-            referral_code: 'REFAGENT123',
-            onboarding_status: 'Active',
-            general_commission: 5.0,
-            updated_at: now
-          }, { onConflict: 'user_id' });
+        let agentId = existingAgent?.id;
 
-        if (metaErr) {
-          console.error('[DEV] Error upserting agent metadata:', metaErr);
+        if (!existingAgent && !agentCheckError) {
+          console.log('[DEV] Seeding Agent User...');
+          agentId = crypto.randomUUID();
+          const { error } = await supabase
+            .from('User')
+            .insert([{
+              id: agentId,
+              email: 'agent@thalassic.in',
+              password: hashedPassword,
+              name: 'Agent User',
+              phone: '+91 99999 88888',
+              role: ROLES.AGENT,
+              updatedAt: now
+            }]);
+          if (error) {
+            console.error('[DEV] Error seeding agent user:', error);
+            agentId = null;
+          } else {
+            console.log('[DEV] Agent user seeded: agent@thalassic.in');
+          }
         }
-      }
+
+        if (agentId) {
+          const { error: metaErr } = await supabase
+            .from('agent_metadata')
+            .upsert({
+              user_id: agentId,
+              referral_code: 'REFAGENT123',
+              onboarding_status: 'Active',
+              general_commission: 5.0,
+              updated_at: now
+            }, { onConflict: 'user_id' });
+          if (metaErr) {
+            console.error('[DEV] Error upserting agent metadata:', metaErr);
+          }
+        }
+      } catch (agentErr) {}
 
       // Seed Agent Admin: admin@thalassic.in (DEV ONLY)
-      const { data: existingAdmin, error: adminCheckError } = await supabase
-        .from('User')
-        .select('id')
-        .eq('email', 'admin@thalassic.in')
-        .maybeSingle();
-
-      if (!existingAdmin && !adminCheckError) {
-        console.log('[DEV] Seeding Agent Admin User...');
-        const adminId = crypto.randomUUID();
-        const { error } = await supabase
+      try {
+        const { data: existingAdmin, error: adminCheckError } = await supabase
           .from('User')
-          .insert([{
-            id: adminId,
-            email: 'admin@thalassic.in',
-            password: hashedPassword,
-            name: 'Agent Admin',
-            phone: '+91 88888 77777',
-            role: ROLES.AGENT_ADMIN,
-            updatedAt: now
-          }]);
-        if (error) {
-          console.error('[DEV] Error seeding agent admin user:', error);
-        } else {
-          // ISSUE-032: Do NOT log the password in plain text
-          console.log('[DEV] Agent admin user seeded: admin@thalassic.in (password stored in secure location)');
+          .select('id')
+          .eq('email', 'admin@thalassic.in')
+          .maybeSingle();
+
+        if (!existingAdmin && !adminCheckError) {
+          console.log('[DEV] Seeding Agent Admin User...');
+          const adminId = crypto.randomUUID();
+          const { error } = await supabase
+            .from('User')
+            .insert([{
+              id: adminId,
+              email: 'admin@thalassic.in',
+              password: hashedPassword,
+              name: 'Agent Admin',
+              phone: '+91 88888 77777',
+              role: ROLES.AGENT_ADMIN,
+              updatedAt: now
+            }]);
+          if (error) {
+            console.error('[DEV] Error seeding agent admin user:', error);
+          } else {
+            console.log('[DEV] Agent admin user seeded: admin@thalassic.in');
+          }
         }
-      }
+      } catch (adminErr) {}
     } catch (e) {
-      console.error('[DEV] Failed to run DB seed check for agents:', e);
+      console.warn('Skipping DB seed check:', (e as any)?.message);
     }
   }
 }

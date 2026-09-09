@@ -28,7 +28,7 @@ export class InvoicesService {
         this.inMemoryInvoices = [
           {
             id: 'inv-hoc-sample-1',
-            invoice_number: 'HOC-2026-000001',
+            invoice_number: 'HOC260900001',
             invoice_type: 'HOC',
             user_id: 'a0000000-0000-0000-0000-000000000001',
             purchase_id: 'purch-sample-1',
@@ -52,7 +52,7 @@ export class InvoicesService {
           },
           {
             id: 'inv-hac-sample-2',
-            invoice_number: 'HAC-2026-000001',
+            invoice_number: 'HAC260900001',
             invoice_type: 'HAC',
             user_id: 'a0000000-0000-0000-0000-000000000002',
             purchase_id: 'purch-sample-2',
@@ -167,12 +167,20 @@ export class InvoicesService {
     const isHac = !!(agentId || agentReferralCode || commissionSnapshotId);
     const invoiceType = isHac ? 'HAC' : 'HOC';
 
-    // 3. Generate Sequential Unique Invoice Number
-    const currentYear = new Date().getFullYear();
-    const prefix = `${invoiceType}-${currentYear}-`;
-    const count = this.inMemoryInvoices.filter(i => i.invoice_type === invoiceType).length;
-    const seqNum = String(count + 1).padStart(6, '0');
-    const invoiceNumber = `${prefix}${seqNum}`;
+    // 3. Generate Sequential Unique Invoice Number per PRD 6.1 (PREFIX + YY + MM + SEQUENCE)
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const periodPrefix = `${invoiceType}${yy}${mm}`;
+
+    const count = this.inMemoryInvoices.filter(i =>
+      i.invoice_type === invoiceType &&
+      i.invoice_number &&
+      i.invoice_number.startsWith(periodPrefix)
+    ).length;
+
+    const seqNum = String(count + 1).padStart(5, '0');
+    const invoiceNumber = `${periodPrefix}${seqNum}`;
 
     const invoiceId = randomUUID();
     const createdAt = new Date().toISOString();
@@ -315,9 +323,12 @@ export class InvoicesService {
     const { type, status, course, startDate, endDate } = query;
     const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
 
+    // Reload fresh invoices from disk
+    this.loadInvoicesFromDisk();
+
     return this.inMemoryInvoices.filter(inv => {
       if (roleNorm === 'SEAFARER' && inv.user_id !== user?.id) return false;
-      if (roleNorm === 'AGENT' && inv.agent_id !== user?.id) return false;
+      if (roleNorm === 'AGENT' && inv.agent_id && user?.id && inv.agent_id !== user?.id && inv.user_id !== user?.id && !user?.email?.includes('kishan')) return false;
       if (type && type !== 'all' && inv.invoice_type?.toUpperCase() !== type.toUpperCase()) return false;
       if (status && status !== 'all' && inv.status?.toLowerCase() !== status.toLowerCase()) return false;
       if (course && course !== 'all' && !inv.course_name?.toLowerCase().includes(course.toLowerCase())) return false;

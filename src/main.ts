@@ -7,6 +7,13 @@ import { Request, Response, NextFunction } from 'express';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { createLogger } from './common/logger';
 
+process.on('unhandledRejection', (reason: any) => {
+  console.warn('Unhandled Rejection caught:', reason?.message || reason);
+});
+process.on('uncaughtException', (err: any) => {
+  console.warn('Uncaught Exception caught:', err?.message || err);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   
