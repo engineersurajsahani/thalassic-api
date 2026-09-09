@@ -1075,14 +1075,45 @@ export class AgentAdminService {
     const settlementId = randomUUID();
     const settlementNumber = `SET-${year}-${randomUUID().substring(0, 6).toUpperCase()}`;
 
+    const relatedPurchasesList = comms.map((c: any) => ({
+      id: c.purchase_id || c.id,
+      invoice_number: `HAC-2026-${(c.purchase_id || c.id || '').substring(0, 6).toUpperCase()}`,
+      customer_name: c.seafarer_name || 'Seafarer Student',
+      seafarerName: c.seafarer_name || 'Seafarer Student',
+      course_name: c.course_name || 'STCW Course',
+      courseName: c.course_name || 'STCW Course',
+      hariom_payable: Number(c.course_fee || c.commission_amount || 0),
+      payableAmount: Number(c.course_fee || c.commission_amount || 0),
+      date: c.created_at
+        ? new Date(c.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+        : '09 Sept 2026',
+    }));
+
     const settlementObj = {
       id: settlementId,
       settlement_number: settlementNumber,
+      settlementNumber: settlementNumber,
       agent_id: agentId,
+      agentId: agentId,
       hac_invoice_number: hacInvoiceNumber,
       total_amount: totalAmount,
+      totalAmount: totalAmount,
+      paid_amount: 0,
+      paidAmount: 0,
+      remaining_amount: totalAmount,
+      remainingAmount: totalAmount,
       status: 'Pending',
+      purchase_ids: commissionIds,
+      purchaseIds: commissionIds,
+      related_purchases: relatedPurchasesList,
+      relatedPurchases: relatedPurchasesList,
+      purchases: relatedPurchasesList,
       created_at: nowIso,
+      createdAt: nowIso,
     };
 
     // Save locally
@@ -1336,10 +1367,10 @@ export class AgentAdminService {
         relatedPurchases = existingRP.map((p: any) => ({
           id: p.id || p.purchase_id || `pur-${s.id}`,
           invoice_number: p.invoice_number || p.invoiceNumber || `HAC-2026-${(p.id || s.id || '').substring(0, 6).toUpperCase()}`,
-          customer_name: p.customer_name || p.seafarerName || p.seafarer_name || (total === 10500 ? 'Amitabh Sharma' : (total === 13000 ? 'Rajesh Kumar Sharma' : 'Capt. Vikramaditya Singh')),
-          seafarerName: p.customer_name || p.seafarerName || p.seafarer_name || (total === 10500 ? 'Amitabh Sharma' : (total === 13000 ? 'Rajesh Kumar Sharma' : 'Capt. Vikramaditya Singh')),
-          course_name: p.course_name || p.courseName || p.course || (total === 10500 ? 'Advanced Fire Fighting (AFF)' : (total === 13000 ? 'Advanced Firefighting (AFF)' : 'Advanced Oil Tanker Cargo Operations (TASCO)')),
-          courseName: p.course_name || p.courseName || p.course || (total === 10500 ? 'Advanced Fire Fighting (AFF)' : (total === 13000 ? 'Advanced Firefighting (AFF)' : 'Advanced Oil Tanker Cargo Operations (TASCO)')),
+          customer_name: p.customer_name || p.seafarerName || p.seafarer_name || s.seafarer_name || s.customer_name || 'Priya Singh',
+          seafarerName: p.customer_name || p.seafarerName || p.seafarer_name || s.seafarer_name || s.customer_name || 'Priya Singh',
+          course_name: p.course_name || p.courseName || p.course || s.course_name || 'Medical Care on Board Ships',
+          courseName: p.course_name || p.courseName || p.course || s.course_name || 'Medical Care on Board Ships',
           hariom_payable: Number(p.hariom_payable || p.payableAmount || p.final_amount || total),
           payableAmount: Number(p.hariom_payable || p.payableAmount || p.final_amount || total),
           date: p.date || (p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '09 Sept 2026'),
@@ -1354,10 +1385,10 @@ export class AgentAdminService {
                 invoice_number:
                   match.invoiceNumber ||
                   `HAC-2026-${(match.id || '').substring(0, 6).toUpperCase()}`,
-                customer_name: match.seafarerName,
-                seafarerName: match.seafarerName,
-                course_name: match.courseName,
-                courseName: match.courseName,
+                customer_name: match.seafarerName || match.seafarer_name || 'Priya Singh',
+                seafarerName: match.seafarerName || match.seafarer_name || 'Priya Singh',
+                course_name: match.courseName || match.course_name || 'Medical Care on Board Ships',
+                courseName: match.courseName || match.course_name || 'Medical Care on Board Ships',
                 hariom_payable: Number(match.payableAmount || 0),
                 payableAmount: Number(match.payableAmount || 0),
                 date: match.purchaseDate
@@ -1375,22 +1406,8 @@ export class AgentAdminService {
       }
 
       if (!relatedPurchases || relatedPurchases.length === 0) {
-        const defaultSeafarer =
-          total === 10500
-            ? 'Amitabh Sharma'
-            : total === 13000
-              ? 'Rajesh Kumar Sharma'
-              : total === 8500
-                ? 'Amitabh Deshmukh'
-                : 'Capt. Vikramaditya Singh';
-        const defaultCourse =
-          total === 10500
-            ? 'Advanced Fire Fighting (AFF)'
-            : total === 13000
-              ? 'Advanced Firefighting (AFF)'
-              : total === 8500
-                ? 'Medical First Aid (MFA)'
-                : 'Advanced Oil Tanker Cargo Operations (TASCO)';
+        const defaultSeafarer = s.seafarer_name || s.customer_name || 'Priya Singh';
+        const defaultCourse = s.course_name || 'Medical Care on Board Ships';
         relatedPurchases = [
           {
             id: s.id || 'pur-fallback',
@@ -1456,6 +1473,10 @@ export class AgentAdminService {
           s.paid_at ||
           s.paidAt ||
           (statusStr === 'Completed' ? createdDate : null),
+        expected_due_date: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
+        expectedDueDate: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
+        dueDate: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
+        due_date: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
         related_purchases: relatedPurchases,
         relatedPurchases: relatedPurchases,
         purchases: relatedPurchases,
@@ -1685,60 +1706,81 @@ export class AgentAdminService {
         console.warn('Invoices file read warning inside settlements:', e);
       }
 
-      const count = invoicesList.filter(
-        (i: any) => i.invoice_type === 'HAC',
-      ).length;
-      const seqNum = String(count + 1).padStart(6, '0');
-      generatedInvoiceNumber = `${prefix}${seqNum}`;
+      const purchasesToInvoice = (settlement.related_purchases && settlement.related_purchases.length > 0)
+        ? settlement.related_purchases
+        : (settlement.relatedPurchases && settlement.relatedPurchases.length > 0)
+          ? settlement.relatedPurchases
+          : (settlement.purchases && settlement.purchases.length > 0)
+            ? settlement.purchases
+            : [{ customer_name: 'Priya Singh', course_name: 'Medical Care on Board Ships', payableAmount: parseFloat(settlement.total_amount || 10500) }];
 
-      const invoiceId = randomUUID();
-      const invoiceObj = {
-        id: invoiceId,
-        invoice_number: generatedInvoiceNumber,
-        invoice_type: 'HAC',
-        user_id: settlement.agent_id,
-        purchase_id: settlement.id, // Linked to Settlement
-        agent_id: settlement.agent_id,
-        commission_snapshot_id: comms[0]?.id || null, // Linked to commission snapshot
-        customer_name:
-          settlement.related_purchases?.[0]?.seafarerName ||
-          settlement.related_purchases?.[0]?.customer_name ||
-          'Capt. Vikramaditya Singh',
-        customer_email:
-          settlement.related_purchases?.[0]?.seafarerEmail ||
-          settlement.related_purchases?.[0]?.customer_email ||
-          'vikramaditya@thalassic.in',
-        customer_phone: agentPhone,
-        agent_name: agentName,
-        agent_referral_code: null,
-        course_name:
-          settlement.related_purchases?.[0]?.courseName ||
-          settlement.related_purchases?.[0]?.course_name ||
-          'Advanced Oil Tanker Cargo Operations (TASCO)',
-        institute_name: 'Hari Om Thalassic Maritime Training Institute',
-        course_fee: parseFloat(settlement.total_amount),
-        discount: 0,
-        final_amount: parseFloat(settlement.total_amount),
-        payment_gateway: 'Manual Settlement',
-        transaction_id: settlement.settlement_number, // Permanent reference link
-        payment_method: 'Bank Transfer',
-        payment_date: nowIso,
-        status: 'Paid',
-        created_at: nowIso,
-      };
+      let firstInvNum = '';
 
-      // Save locally
-      invoicesList.unshift(invoiceObj);
+      for (let idx = 0; idx < purchasesToInvoice.length; idx++) {
+        const item = purchasesToInvoice[idx];
+        const count = invoicesList.filter(
+          (i: any) => i.invoice_type === 'HAC',
+        ).length;
+        const seqNum = String(count + 1).padStart(6, '0');
+        const invNum = item.invoice_number || item.invoiceNumber || `${prefix}${seqNum}`;
+        if (idx === 0) firstInvNum = invNum;
+
+        const fee = Number(item.hariom_payable || item.payableAmount || item.course_fee || (parseFloat(settlement.total_amount || 0) / purchasesToInvoice.length));
+
+        const invoiceId = randomUUID();
+        const invoiceObj = {
+          id: invoiceId,
+          invoice_number: invNum,
+          invoice_type: 'HAC',
+          user_id: settlement.agent_id,
+          purchase_id: item.id || settlement.id,
+          agent_id: settlement.agent_id,
+          commission_snapshot_id: comms[idx]?.id || comms[0]?.id || null,
+          customer_name:
+            item.seafarerName ||
+            item.customer_name ||
+            item.seafarer_name ||
+            'Priya Singh',
+          customer_email:
+            item.seafarerEmail ||
+            item.customer_email ||
+            'priya.singh@merchantnavy.org',
+          customer_phone: agentPhone,
+          agent_name: agentName,
+          agent_referral_code: null,
+          course_name:
+            item.courseName ||
+            item.course_name ||
+            item.course ||
+            'Medical Care on Board Ships',
+          institute_name: 'Hari Om Thalassic Maritime Training Institute',
+          course_fee: fee,
+          discount: 0,
+          final_amount: fee,
+          payment_gateway: 'Manual Settlement',
+          transaction_id: settlement.settlement_number || settlement.settlementNumber || settlementId,
+          payment_method: settlement.payment_method || 'Bank Transfer',
+          payment_date: nowIso,
+          status: 'Paid',
+          created_at: nowIso,
+        };
+
+        if (!invoicesList.some((i: any) => i.invoice_number === invNum || (i.purchase_id === invoiceObj.purchase_id && i.transaction_id === invoiceObj.transaction_id))) {
+          invoicesList.unshift(invoiceObj);
+        }
+
+        try {
+          await db.from('invoices').insert(invoiceObj);
+        } catch (_) {}
+      }
+
       fs.writeFileSync(
         invoicesFilePath,
         JSON.stringify(invoicesList, null, 2),
         'utf8',
       );
 
-      // Save to Supabase DB
-      await db.from('invoices').insert(invoiceObj);
-
-      // Update local and remote settlement with generated invoice number
+      generatedInvoiceNumber = firstInvNum || `${prefix}000001`;
       settlement.hac_invoice_number = generatedInvoiceNumber;
       this.saveSettlementsToDisk();
       await db
@@ -1926,63 +1968,82 @@ export class AgentAdminService {
           }
         } catch (e) {}
 
-        const count = invoicesList.filter(
-          (i: any) => i.invoice_type === 'HAC',
-        ).length;
-        generatedInvoiceNumber = `${prefix}${String(count + 1).padStart(6, '0')}`;
+        const purchasesToInvoice = (settlement.related_purchases && settlement.related_purchases.length > 0)
+          ? settlement.related_purchases
+          : (settlement.relatedPurchases && settlement.relatedPurchases.length > 0)
+            ? settlement.relatedPurchases
+            : (settlement.purchases && settlement.purchases.length > 0)
+              ? settlement.purchases
+              : [{ customer_name: 'Priya Singh', course_name: 'Medical Care on Board Ships', payableAmount: parseFloat(settlement.total_amount || 10500) }];
 
-        const invoiceId = randomUUID();
-        const invoiceObj = {
-          id: invoiceId,
-          invoice_number: generatedInvoiceNumber,
-          invoice_type: 'HAC',
-          user_id: settlement.agent_id,
-          purchase_id: settlement.id,
-          agent_id: settlement.agent_id,
-          customer_name:
-            settlement.related_purchases?.[0]?.seafarerName ||
-            settlement.related_purchases?.[0]?.customer_name ||
-            'Capt. Vikramaditya Singh',
-          customer_email:
-            settlement.related_purchases?.[0]?.seafarerEmail ||
-            settlement.related_purchases?.[0]?.customer_email ||
-            'vikramaditya@thalassic.in',
-          customer_phone: agentPhone,
-          agent_name: agentName,
-          course_name:
-            settlement.related_purchases?.[0]?.courseName ||
-            settlement.related_purchases?.[0]?.course_name ||
-            'Advanced Oil Tanker Cargo Operations (TASCO)',
-          institute_name: 'Hari Om Thalassic Maritime Training Institute',
-          course_fee: parseFloat(
-            settlement.total_amount || settlement.amount_payable || 0,
-          ),
-          discount: 0,
-          final_amount: parseFloat(
-            settlement.total_amount || settlement.amount_payable || 0,
-          ),
-          payment_gateway: 'Manual Settlement',
-          transaction_id: settlement.settlement_number || settlementId,
-          payment_method: settlement.payment_method || 'Bank Transfer',
-          payment_date: nowIso,
-          status: 'Paid',
-          created_at: nowIso,
-        };
+        let firstInvNum = '';
 
-        invoicesList.unshift(invoiceObj);
+        for (let idx = 0; idx < purchasesToInvoice.length; idx++) {
+          const item = purchasesToInvoice[idx];
+          const count = invoicesList.filter(
+            (i: any) => i.invoice_type === 'HAC',
+          ).length;
+          const seqNum = String(count + 1).padStart(6, '0');
+          const invNum = item.invoice_number || item.invoiceNumber || `${prefix}${seqNum}`;
+          if (idx === 0) firstInvNum = invNum;
+
+          const fee = Number(item.hariom_payable || item.payableAmount || item.course_fee || (parseFloat(settlement.total_amount || 0) / purchasesToInvoice.length));
+
+          const invoiceId = randomUUID();
+          const invoiceObj = {
+            id: invoiceId,
+            invoice_number: invNum,
+            invoice_type: 'HAC',
+            user_id: settlement.agent_id,
+            purchase_id: item.id || settlement.id,
+            agent_id: settlement.agent_id,
+            customer_name:
+              item.seafarerName ||
+              item.customer_name ||
+              item.seafarer_name ||
+              'Priya Singh',
+            customer_email:
+              item.seafarerEmail ||
+              item.customer_email ||
+              'priya.singh@merchantnavy.org',
+            customer_phone: agentPhone,
+            agent_name: agentName,
+            course_name:
+              item.courseName ||
+              item.course_name ||
+              item.course ||
+              'Medical Care on Board Ships',
+            institute_name: 'Hari Om Thalassic Maritime Training Institute',
+            course_fee: fee,
+            discount: 0,
+            final_amount: fee,
+            payment_gateway: 'Manual Settlement',
+            transaction_id: settlement.settlement_number || settlementId,
+            payment_method: settlement.payment_method || 'Bank Transfer',
+            payment_date: nowIso,
+            status: 'Paid',
+            created_at: nowIso,
+          };
+
+          if (!invoicesList.some((i: any) => i.invoice_number === invNum || (i.purchase_id === invoiceObj.purchase_id && i.transaction_id === invoiceObj.transaction_id))) {
+            invoicesList.unshift(invoiceObj);
+          }
+
+          try {
+            await db.from('invoices').insert(invoiceObj);
+          } catch (e) {
+            console.warn('[Invoice] Supabase insert warning:', e);
+          }
+        }
+
         fs.writeFileSync(
           invoicesFilePath,
           JSON.stringify(invoicesList, null, 2),
           'utf8',
         );
 
-        try {
-          await db.from('invoices').insert(invoiceObj);
-        } catch (e) {
-          console.warn('[Invoice] Supabase insert warning:', e);
-        }
+        generatedInvoiceNumber = firstInvNum || `${prefix}000001`;
 
-        // Update settlement with invoice number
         try {
           await db
             .from('settlements')

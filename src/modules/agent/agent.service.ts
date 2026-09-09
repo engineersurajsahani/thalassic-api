@@ -1433,12 +1433,13 @@ export class AgentService {
 
     const purchaseIds = dto.purchaseIds || [];
 
+    const allAgentPurchases = await this.getPurchases(agentId);
+    const selectedPurchases = allAgentPurchases.filter((p: any) => purchaseIds.includes(p.id));
+
     // Calculate total amount from selected purchases or fallback
     let totalAmount = dto.totalAmount || 0;
-    if (!totalAmount && purchaseIds.length > 0) {
-      const purchases = await this.getPurchases(agentId);
-      const selected = purchases.filter((p: any) => purchaseIds.includes(p.id));
-      totalAmount = selected.reduce(
+    if (!totalAmount && selectedPurchases.length > 0) {
+      totalAmount = selectedPurchases.reduce(
         (acc: number, curr: any) => acc + Number(curr.payableAmount || 0),
         0,
       );
@@ -1446,6 +1447,24 @@ export class AgentService {
     if (!totalAmount) {
       totalAmount = purchaseIds.length > 0 ? purchaseIds.length * 10000 : 15000;
     }
+
+    const relatedPurchasesList = (selectedPurchases.length > 0 ? selectedPurchases : (purchaseIds.length > 0 ? purchaseIds.map(id => ({ id })) : [{ id: 'pur-1' }])).map((p: any) => ({
+      id: p.id,
+      invoice_number: p.invoiceNumber || `HAC-2026-${(p.id || '').substring(0, 6).toUpperCase()}`,
+      customer_name: p.seafarerName || p.seafarer_name || 'Priya Singh',
+      seafarerName: p.seafarerName || p.seafarer_name || 'Priya Singh',
+      course_name: p.courseName || p.course_name || 'Medical Care on Board Ships',
+      courseName: p.courseName || p.course_name || 'Medical Care on Board Ships',
+      hariom_payable: Number(p.payableAmount || p.course_fee || (totalAmount / (purchaseIds.length || 1))),
+      payableAmount: Number(p.payableAmount || p.course_fee || (totalAmount / (purchaseIds.length || 1))),
+      date: p.purchaseDate
+        ? new Date(p.purchaseDate).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+        : '09 Sept 2026',
+    }));
 
     const paymentMode = dto.paymentMode === 'partial' ? 'partial' : 'full';
     const paidAmount =
@@ -1496,6 +1515,9 @@ export class AgentService {
       proof_file_name: proofFileName,
       purchaseIds,
       purchase_ids: purchaseIds,
+      related_purchases: relatedPurchasesList,
+      relatedPurchases: relatedPurchasesList,
+      purchases: relatedPurchasesList,
       createdAt: nowIso,
       created_at: nowIso,
       updatedAt: nowIso,
@@ -2436,23 +2458,49 @@ export class AgentService {
 
   async createPurchase(agentId: string, dto: any) {
     const courses = await this.getCourses();
-    const course = courses.find((c) => c.id === dto.courseId) || courses[0];
+    const course =
+      courses.find(
+        (c) =>
+          c.id === dto.courseId ||
+          c.code === dto.courseCode ||
+          c.name === dto.courseName,
+      ) || null;
+
     const purchaseId = randomUUID();
     const now = new Date().toISOString();
+
+    let seafarerName = dto.seafarerName || dto.seafarer_name || dto.customerName;
+    let indosNumber = dto.indosNumber || dto.indosNum;
+    if (!seafarerName && dto.seafarerId) {
+      try {
+        const sf = await this.getSeafarerById(dto.seafarerId);
+        if (sf) {
+          seafarerName = sf.name;
+          indosNumber = indosNumber || (sf as any).indosNum || (sf as any).indos_num;
+        }
+      } catch (_) {}
+    }
+
+    const courseName = dto.courseName || dto.course_name || (course ? course.name : 'STCW Training Course');
+    const courseCode = dto.courseCode || (course ? course.code : 'STCW-01');
+    const payableAmount = Number(
+      dto.payableAmount || (course ? course.payableAmount || course.standardFee : 10500),
+    );
 
     const newPurchase = {
       id: purchaseId,
       agentId,
       seafarerId: dto.seafarerId || 'sef-101',
-      seafarerName: dto.seafarerName || 'Rajesh Kumar',
-      courseId: course.id,
-      courseCode: course.code,
-      courseName: course.name,
-      payableAmount: course.payableAmount,
+      seafarerName: seafarerName || 'Priya Singh',
+      indosNumber: indosNumber || '21N5678',
+      courseId: course ? course.id : (dto.courseId || 'crs-101'),
+      courseCode: courseCode,
+      courseName: courseName,
+      payableAmount: payableAmount,
       purchaseDate: now,
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
-      trainingType: course.trainingType,
+      trainingType: course?.trainingType || 'Classroom Training',
       purchaseSource: 'Partner Portal',
     };
 
@@ -2465,10 +2513,10 @@ export class AgentService {
         id: purchaseId,
         agent_id: agentId,
         seafarer_name: newPurchase.seafarerName,
-        course_name: course.name,
-        course_fee: course.payableAmount,
+        course_name: courseName,
+        course_fee: payableAmount,
         commission_rate: 5,
-        commission_amount: Math.round(course.payableAmount * 0.05),
+        commission_amount: Math.round(payableAmount * 0.05),
         status: 'Pending',
         purchase_id: purchaseId,
         created_at: now,
