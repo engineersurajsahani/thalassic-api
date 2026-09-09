@@ -1553,7 +1553,17 @@ export class AgentService {
     if (!s) {
       throw new NotFoundException('Settlement record not found');
     }
-    return s;
+    const pids = s.purchaseIds || s.purchase_ids || [];
+    const allPurchases = await this.getPurchases(agentId);
+    const matchedPurchases = pids
+      .map((pid: string) => allPurchases.find((p: any) => p.id === pid))
+      .filter(Boolean);
+
+    return {
+      ...s,
+      purchases: matchedPurchases,
+      related_purchases: matchedPurchases,
+    };
   }
 
   async getFinancials(agentId: string) {
