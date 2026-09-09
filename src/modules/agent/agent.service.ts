@@ -1397,7 +1397,30 @@ export class AgentService {
       passportNum: 'Z3902184',
       indosNum: '18BN9021',
       cdcNum: 'MUM-892102',
+      rank: 'Master',
+      department: 'Deck',
+      status: 'Active',
+      address: 'Flat 402, Sea Breeze Apts, Bandra West, Mumbai – 400 050',
       hasHariOmAccount: true,
+      documents: [
+        { id: 'doc-101-1', name: 'Certificate of Competency (CoC) – Master', type: 'CoC', status: 'Approved', expiryDate: '2028-03-15' },
+        { id: 'doc-101-2', name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2033-08-20' },
+        { id: 'doc-101-3', name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2030-11-19' },
+        { id: 'doc-101-4', name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2026-06-30' },
+      ],
+      seaService: [
+        { id: 'ss-101-1', vesselName: 'MV Thalassic Wave', vesselType: 'Crude Oil Tanker', rank: 'Master', signOn: '2025-01-15', signOff: '2025-07-20', duration: 186 },
+        { id: 'ss-101-2', vesselName: 'MV Pacific Star', vesselType: 'Container Vessel', rank: 'Chief Mate', signOn: '2024-02-10', signOff: '2024-08-08', duration: 179 },
+        { id: 'ss-101-3', vesselName: 'MT Bombay Express', vesselType: 'LPG Tanker', rank: 'Chief Mate', signOn: '2023-03-01', signOff: '2023-09-01', duration: 184 },
+      ],
+      enrollments: [
+        { id: 'enr-101-1', courseName: 'Basic Safety Training (BST)', trainingType: 'Classroom Training', enrollmentDate: '2026-08-01', status: 'Completed' },
+        { id: 'enr-101-2', courseName: 'Advanced Firefighting (AFF)', trainingType: 'Classroom Training', enrollmentDate: '2026-08-20', status: 'Ongoing' },
+      ],
+      purchases: [
+        { id: 'PUR-101-A', courseName: 'Basic Safety Training (BST)', trainingType: 'Classroom Training', purchaseSource: 'Partner', purchaseDate: '2026-08-01', purchaseStatus: 'Completed' },
+        { id: 'PUR-101-B', courseName: 'Advanced Firefighting (AFF)', trainingType: 'Classroom Training', purchaseSource: 'Direct', purchaseDate: '2026-08-20', purchaseStatus: 'Active' },
+      ],
       purchaseHistory: [
         { courseName: 'Basic Safety Training (BST)', purchaseDate: '2026-08-15', channel: 'Partner Referral', status: 'Completed' },
         { courseName: 'Advanced Firefighting (AFF)', purchaseDate: '2026-08-28', channel: 'Direct Portal', status: 'Active' }
@@ -1414,7 +1437,30 @@ export class AgentService {
       passportNum: 'P8921045',
       indosNum: '15GL4401',
       cdcNum: 'KOL-774012',
+      rank: 'Chief Engineer',
+      department: 'Engine',
+      status: 'On Leave',
+      address: 'House 12B, Lake Town, Block A, Kolkata – 700 089',
       hasHariOmAccount: true,
+      documents: [
+        { id: 'doc-102-1', name: 'Certificate of Competency (CoC) – Chief Engineer', type: 'CoC', status: 'Approved', expiryDate: '2027-06-10' },
+        { id: 'doc-102-2', name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2031-12-01' },
+        { id: 'doc-102-3', name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2029-05-14' },
+        { id: 'doc-102-4', name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Approved', expiryDate: '2027-02-28' },
+        { id: 'doc-102-5', name: 'GMDSS General Operator Certificate', type: 'GMDSS', status: 'Approved', expiryDate: '2028-09-30' },
+      ],
+      seaService: [
+        { id: 'ss-102-1', vesselName: 'MV Eastern Horizon', vesselType: 'Bulk Carrier', rank: 'Chief Engineer', signOn: '2024-11-01', signOff: '2025-05-02', duration: 182 },
+        { id: 'ss-102-2', vesselName: 'MV Bengal Star', vesselType: 'General Cargo', rank: 'Second Engineer', signOn: '2023-07-15', signOff: '2024-01-10', duration: 179 },
+      ],
+      enrollments: [
+        { id: 'enr-102-1', courseName: 'Medical First Aid (MFA)', trainingType: 'Classroom Training', enrollmentDate: '2026-07-01', status: 'Completed' },
+        { id: 'enr-102-2', courseName: 'Survival Craft & Rescue Boats (SCRB)', trainingType: 'Simulator Training', enrollmentDate: '2026-09-05', status: 'Scheduled' },
+      ],
+      purchases: [
+        { id: 'PUR-102-A', courseName: 'Medical First Aid (MFA)', trainingType: 'Classroom Training', purchaseSource: 'Partner', purchaseDate: '2026-07-01', purchaseStatus: 'Completed' },
+        { id: 'PUR-102-B', courseName: 'Survival Craft & Rescue Boats (SCRB)', trainingType: 'Simulator Training', purchaseSource: 'Direct', purchaseDate: '2026-09-05', purchaseStatus: 'Scheduled' },
+      ],
       purchaseHistory: [
         { courseName: 'Medical First Aid (MFA)', purchaseDate: '2026-07-10', channel: 'Partner Referral', status: 'Completed' }
       ]
@@ -1430,7 +1476,24 @@ export class AgentService {
       passportNum: 'V7721098',
       indosNum: '21CH5510',
       cdcNum: 'CHD-551090',
+      rank: 'Electrical Officer',
+      department: 'Electro-Technical',
+      status: 'Active',
+      address: 'Sector 22-C, House 45, Chandigarh – 160 022',
       hasHariOmAccount: false,
+      documents: [
+        { id: 'doc-103-1', name: 'Certificate of Competency (CoC) – ETO', type: 'CoC', status: 'Approved', expiryDate: '2029-11-05' },
+        { id: 'doc-103-2', name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2034-03-22' },
+        { id: 'doc-103-3', name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2031-08-17' },
+        { id: 'doc-103-4', name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2026-01-15' },
+      ],
+      seaService: [
+        { id: 'ss-103-1', vesselName: 'MV Oceanic Pride', vesselType: 'RoRo Vessel', rank: 'Electrical Officer', signOn: '2025-03-10', signOff: '2025-09-10', duration: 184 },
+        { id: 'ss-103-2', vesselName: 'MV Northern Cross', vesselType: 'Offshore Supply Vessel', rank: 'Junior ETO', signOn: '2024-01-20', signOff: '2024-07-18', duration: 179 },
+        { id: 'ss-103-3', vesselName: 'MV Indus Spirit', vesselType: 'Chemical Tanker', rank: 'ETO Trainee', signOn: '2023-06-01', signOff: '2023-11-30', duration: 182 },
+      ],
+      enrollments: [],
+      purchases: [],
       purchaseHistory: []
     }
   ];
