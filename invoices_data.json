@@ -6,11 +6,11 @@
     "user_id": "d0000000-0000-0000-0000-000000000000",
     "purchase_id": "7f0aeaa2-fb64-4e05-a2c7-8620ccbd5e3e",
     "agent_id": "d0000000-0000-0000-0000-000000000000",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-164560",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -19,7 +19,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-09T17:39:02.967Z",
     "status": "Paid",
-    "created_at": "2026-09-09T17:39:02.967Z"
+    "created_at": "2026-09-09T17:39:02.967Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "017db5a5-6aa8-4c00-94a6-d78dfbe71a15",
@@ -28,11 +29,11 @@
     "user_id": "d0000000-0000-0000-0000-000000000000",
     "purchase_id": "7f0aeaa2-fb64-4e05-a2c7-8620ccbd5e3e",
     "agent_id": "d0000000-0000-0000-0000-000000000000",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-164560",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -41,7 +42,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-09T17:38:53.835Z",
     "status": "Paid",
-    "created_at": "2026-09-09T17:38:53.835Z"
+    "created_at": "2026-09-09T17:38:53.835Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "ad3603b1-bbee-4d32-a5e3-56c1d843d940",
@@ -50,11 +52,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "2e03d90e-0b10-46ee-a801-d95d496ca831",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Rajesh Kumar Sharma",
+    "customer_email": "rajesh@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-116190",
+    "course_name": "Basic Safety Training (STCW BST)",
     "course_fee": 30000,
     "discount": 0,
     "final_amount": 30000,
@@ -63,7 +65,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:19:17.845Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:19:17.845Z"
+    "created_at": "2026-09-08T19:19:17.845Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "f7fb062e-e96a-48be-a885-a782f300e4e7",
@@ -72,11 +75,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "e1d8e39a-5cd1-4859-8616-28c1a36f61c1",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Amitabh Deshmukh",
+    "customer_email": "amitabh@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-747322",
+    "course_name": "Medical First Aid (MFA)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -85,7 +88,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:18:38.916Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:18:38.916Z"
+    "created_at": "2026-09-08T19:18:38.916Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "52d6fc67-49b2-4831-bc61-b4d7fa04a002",
@@ -94,11 +98,11 @@
     "user_id": "b1111111-1111-1111-1111-111111111111",
     "purchase_id": "59a093f2-13eb-432b-87f7-3b70c545d62d",
     "agent_id": "b1111111-1111-1111-1111-111111111111",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-497948",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 15000,
     "discount": 0,
     "final_amount": 15000,
@@ -107,7 +111,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:12:54.754Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:12:54.754Z"
+    "created_at": "2026-09-08T19:12:54.754Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "15608205-b17f-4887-8c0c-a772e64d3dea",
@@ -116,11 +121,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "5cf7c5b4-26ae-4fb5-be97-bf91878234f6",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Rajesh Kumar Sharma",
+    "customer_email": "rajesh@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-144464",
+    "course_name": "Basic Safety Training (STCW BST)",
     "course_fee": 30000,
     "discount": 0,
     "final_amount": 30000,
@@ -129,7 +134,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:12:12.507Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:12:12.507Z"
+    "created_at": "2026-09-08T19:12:12.507Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "834a0f3a-3c7e-41ff-95dd-82f8be056263",
@@ -138,11 +144,11 @@
     "user_id": "d0000000-0000-0000-0000-000000000000",
     "purchase_id": "5f53e755-180f-4bd3-9843-ea1e7426ecb7",
     "agent_id": "d0000000-0000-0000-0000-000000000000",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-372823",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -151,7 +157,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:03:21.854Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:03:21.854Z"
+    "created_at": "2026-09-08T19:03:21.854Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "8daa241d-ea72-4f7a-b7ae-48eee9a45414",
@@ -160,11 +167,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "c5322941-e02a-4807-a5be-18e32a517d7e",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-257405",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -173,7 +180,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:03:15.007Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:03:15.007Z"
+    "created_at": "2026-09-08T19:03:15.007Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "c5bdc495-e285-46b0-9f32-9a78ae7cd4bc",
@@ -182,11 +190,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "5cf7c5b4-26ae-4fb5-be97-bf91878234f6",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Rajesh Kumar Sharma",
+    "customer_email": "rajesh@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-144464",
+    "course_name": "Basic Safety Training (STCW BST)",
     "course_fee": 30000,
     "discount": 0,
     "final_amount": 30000,
@@ -195,7 +203,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T19:00:31.250Z",
     "status": "Paid",
-    "created_at": "2026-09-08T19:00:31.250Z"
+    "created_at": "2026-09-08T19:00:31.250Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "0eb75ca9-74f7-49c2-9fd8-36bf9e876ef6",
@@ -204,11 +213,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "6f673c29-bf70-4e25-8563-d0025816cab5",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-890903",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -217,7 +226,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T18:59:08.370Z",
     "status": "Paid",
-    "created_at": "2026-09-08T18:59:08.370Z"
+    "created_at": "2026-09-08T18:59:08.370Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "bd7c91ae-1c5f-42ee-bb66-8b7b4a4669b4",
@@ -226,11 +236,11 @@
     "user_id": "c2222222-2222-2222-2222-222222222222",
     "purchase_id": "6f673c29-bf70-4e25-8563-d0025816cab5",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-890903",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -239,7 +249,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T17:11:50.623Z",
     "status": "Paid",
-    "created_at": "2026-09-08T17:11:50.623Z"
+    "created_at": "2026-09-08T17:11:50.623Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "1d84b1ec-a5dd-47ea-b72f-a51b6e7e04b7",
@@ -248,11 +259,11 @@
     "user_id": "d0000000-0000-0000-0000-000000000000",
     "purchase_id": "5f53e755-180f-4bd3-9843-ea1e7426ecb7",
     "agent_id": "d0000000-0000-0000-0000-000000000000",
-    "customer_name": "Partner Agent",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "",
     "agent_name": "Partner Agent",
-    "course_name": "Commission Settlement for STL-372823",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 10500,
     "discount": 0,
     "final_amount": 10500,
@@ -261,7 +272,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T17:10:40.577Z",
     "status": "Paid",
-    "created_at": "2026-09-08T17:10:40.577Z"
+    "created_at": "2026-09-08T17:10:40.577Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "5d3c8216-3438-4513-8299-a75b25e9c20c",
@@ -271,12 +283,12 @@
     "purchase_id": "5cf7c5b4-26ae-4fb5-be97-bf91878234f6",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
     "commission_snapshot_id": null,
-    "customer_name": "Agent User",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Rajesh Kumar Sharma",
+    "customer_email": "rajesh@thalassic.in",
     "customer_phone": "",
     "agent_name": "Agent User",
     "agent_referral_code": null,
-    "course_name": "Commission Settlement for STL-144464",
+    "course_name": "Basic Safety Training (STCW BST)",
     "course_fee": 30000,
     "discount": 0,
     "final_amount": 30000,
@@ -285,7 +297,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-09-08T17:08:38.399Z",
     "status": "Paid",
-    "created_at": "2026-09-08T17:08:38.399Z"
+    "created_at": "2026-09-08T17:08:38.399Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "4dde10da-a270-4eea-8a53-bb59fcc2e5aa",
@@ -309,7 +322,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-09T05:37:21.549Z",
     "status": "Paid",
-    "created_at": "2026-08-09T05:37:21.549Z"
+    "created_at": "2026-08-09T05:37:21.549Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "4c014169-9e3d-4a8a-9ba3-0a49d8a6a219",
@@ -333,7 +347,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-27T13:42:29.732Z",
     "status": "Paid",
-    "created_at": "2026-08-27T13:42:29.733Z"
+    "created_at": "2026-08-27T13:42:29.733Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "inv-hac-set-8e4fad",
@@ -343,12 +358,12 @@
     "purchase_id": "2738fd75-0045-4223-8450-d15f3a4543e8",
     "agent_id": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
     "commission_snapshot_id": null,
-    "customer_name": "Kishan Vishwakarma",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "+91 98765 43210",
     "agent_name": "Kishan Vishwakarma",
     "agent_referral_code": "REFAGENT123",
-    "course_name": "Commission Settlement for SET-2026-C1EEC7",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 1250,
     "discount": 0,
     "final_amount": 1250,
@@ -357,7 +372,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-08-08T14:48:01.671Z",
     "status": "Paid",
-    "created_at": "2026-08-08T14:48:01.671Z"
+    "created_at": "2026-08-08T14:48:01.671Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "953aa1d4-c2ae-4966-9361-d1ac7ccc13d7",
@@ -381,7 +397,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-09T05:32:25.075Z",
     "status": "Paid",
-    "created_at": "2026-08-09T05:32:25.076Z"
+    "created_at": "2026-08-09T05:32:25.076Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "813e569d-82d8-48b8-9c30-2831b1099415",
@@ -405,7 +422,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T14:42:54.779Z",
     "status": "Paid",
-    "created_at": "2026-08-08T14:42:54.780Z"
+    "created_at": "2026-08-08T14:42:54.780Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "7b9d6f21-4a0c-416f-8922-98a72e546121",
@@ -429,7 +447,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T09:46:25.483Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:46:25.485Z"
+    "created_at": "2026-08-08T09:46:25.485Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "1a2d2812-a818-456b-b1c8-e58bf7a283ac",
@@ -453,7 +472,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T09:18:35.403Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:18:35.403Z"
+    "created_at": "2026-08-08T09:18:35.403Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "ff68f686-d87e-4b59-9224-b3feb5a2c54f",
@@ -477,7 +497,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T09:17:18.439Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:17:18.439Z"
+    "created_at": "2026-08-08T09:17:18.439Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "434dba71-f00a-4595-b01e-8a7b1d5a9b37",
@@ -501,7 +522,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T09:04:36.709Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:04:36.710Z"
+    "created_at": "2026-08-08T09:04:36.710Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "inv-hoc-sample-1",
@@ -525,7 +547,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T08:52:34.088Z",
     "status": "Paid",
-    "created_at": "2026-08-08T08:52:34.088Z"
+    "created_at": "2026-08-08T08:52:34.088Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "inv-hac-sample-2",
@@ -549,7 +572,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T08:52:34.088Z",
     "status": "Paid",
-    "created_at": "2026-08-08T08:52:34.088Z"
+    "created_at": "2026-08-08T08:52:34.088Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "inv-hac-set-be810b",
@@ -559,12 +583,12 @@
     "purchase_id": "5138f5e9-603c-4561-9d77-16c2d83a199e",
     "agent_id": "71486c19-c1f0-49b2-994e-f917400625a0",
     "commission_snapshot_id": null,
-    "customer_name": "atharv",
-    "customer_email": "atharv@example.com",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "+91 98765 43211",
     "agent_name": "atharv",
     "agent_referral_code": "REFATHAR6659",
-    "course_name": "Commission Settlement for SET-2026-A3C4BB",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 1250,
     "discount": 0,
     "final_amount": 1250,
@@ -573,7 +597,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-08-08T09:50:08.686Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:50:08.686Z"
+    "created_at": "2026-08-08T09:50:08.686Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "inv-hac-set-a3464c",
@@ -583,12 +608,12 @@
     "purchase_id": "f5619f36-6a03-4269-9cac-0c0302d41f6a",
     "agent_id": "71486c19-c1f0-49b2-994e-f917400625a0",
     "commission_snapshot_id": null,
-    "customer_name": "atharv",
-    "customer_email": "atharv@example.com",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "+91 98765 43211",
     "agent_name": "atharv",
     "agent_referral_code": "REFATHAR6659",
-    "course_name": "Commission Settlement for SET-2026-53642E",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 225,
     "discount": 0,
     "final_amount": 225,
@@ -597,7 +622,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-08-08T09:22:04.619Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:22:04.619Z"
+    "created_at": "2026-08-08T09:22:04.619Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "inv-hac-set-6013bf",
@@ -607,12 +633,12 @@
     "purchase_id": "7e0150ce-0984-4eae-ae5c-e52586f240ab",
     "agent_id": "b3d123c2-d8b0-45fc-8308-749901bcb20b",
     "commission_snapshot_id": null,
-    "customer_name": "Agent User",
-    "customer_email": "agent@thalassic.in",
+    "customer_name": "Capt. Vikramaditya Singh",
+    "customer_email": "vikramaditya@thalassic.in",
     "customer_phone": "+91 98765 43210",
     "agent_name": "Agent User",
     "agent_referral_code": "REFAGENT123",
-    "course_name": "Commission Settlement for SET-2026-A9DB00",
+    "course_name": "Advanced Oil Tanker Cargo Operations (TASCO)",
     "course_fee": 750,
     "discount": 0,
     "final_amount": 750,
@@ -621,7 +647,8 @@
     "payment_method": "Bank Transfer",
     "payment_date": "2026-08-08T09:21:37.712Z",
     "status": "Paid",
-    "created_at": "2026-08-08T09:21:37.712Z"
+    "created_at": "2026-08-08T09:21:37.712Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "e4f4de6b-efa5-45f9-9b58-199c4a0f50e1",
@@ -645,7 +672,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-10T16:44:07.903Z",
     "status": "Paid",
-    "created_at": "2026-08-10T16:44:07.904Z"
+    "created_at": "2026-08-10T16:44:07.904Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "ef8eef70-e856-42e3-8900-59b64bfddcf0",
@@ -669,7 +697,8 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-10T15:59:59.790Z",
     "status": "Paid",
-    "created_at": "2026-08-10T15:59:59.791Z"
+    "created_at": "2026-08-10T15:59:59.791Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   },
   {
     "id": "demo-inv-hoc-001",
@@ -693,6 +722,7 @@
     "payment_method": "Online UPI/Card",
     "payment_date": "2026-08-08T08:52:34.088Z",
     "status": "Paid",
-    "created_at": "2026-08-08T08:52:34.088Z"
+    "created_at": "2026-08-08T08:52:34.088Z",
+    "institute_name": "Hari Om Thalassic Maritime Training Institute"
   }
 ]

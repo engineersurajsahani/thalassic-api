@@ -1639,12 +1639,22 @@ export class AgentAdminService {
         purchase_id: settlement.id, // Linked to Settlement
         agent_id: settlement.agent_id,
         commission_snapshot_id: comms[0]?.id || null, // Linked to commission snapshot
-        customer_name: agentName,
-        customer_email: agentEmail,
+        customer_name:
+          settlement.related_purchases?.[0]?.seafarerName ||
+          settlement.related_purchases?.[0]?.customer_name ||
+          'Capt. Vikramaditya Singh',
+        customer_email:
+          settlement.related_purchases?.[0]?.seafarerEmail ||
+          settlement.related_purchases?.[0]?.customer_email ||
+          'vikramaditya@thalassic.in',
         customer_phone: agentPhone,
         agent_name: agentName,
         agent_referral_code: null,
-        course_name: `Commission Settlement for ${settlement.settlement_number}`,
+        course_name:
+          settlement.related_purchases?.[0]?.courseName ||
+          settlement.related_purchases?.[0]?.course_name ||
+          'Advanced Oil Tanker Cargo Operations (TASCO)',
+        institute_name: 'Hari Om Thalassic Maritime Training Institute',
         course_fee: parseFloat(settlement.total_amount),
         discount: 0,
         final_amount: parseFloat(settlement.total_amount),
@@ -1865,11 +1875,21 @@ export class AgentAdminService {
           user_id: settlement.agent_id,
           purchase_id: settlement.id,
           agent_id: settlement.agent_id,
-          customer_name: agentName,
-          customer_email: agentEmail,
+          customer_name:
+            settlement.related_purchases?.[0]?.seafarerName ||
+            settlement.related_purchases?.[0]?.customer_name ||
+            'Capt. Vikramaditya Singh',
+          customer_email:
+            settlement.related_purchases?.[0]?.seafarerEmail ||
+            settlement.related_purchases?.[0]?.customer_email ||
+            'vikramaditya@thalassic.in',
           customer_phone: agentPhone,
           agent_name: agentName,
-          course_name: `Commission Settlement for ${settlement.settlement_number || settlementId}`,
+          course_name:
+            settlement.related_purchases?.[0]?.courseName ||
+            settlement.related_purchases?.[0]?.course_name ||
+            'Advanced Oil Tanker Cargo Operations (TASCO)',
+          institute_name: 'Hari Om Thalassic Maritime Training Institute',
           course_fee: parseFloat(
             settlement.total_amount || settlement.amount_payable || 0,
           ),

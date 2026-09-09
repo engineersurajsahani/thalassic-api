@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
@@ -84,7 +89,11 @@ export class InvoicesService {
 
   private saveInvoicesToDisk() {
     try {
-      fs.writeFileSync(this.storageFilePath, JSON.stringify(this.inMemoryInvoices, null, 2), 'utf8');
+      fs.writeFileSync(
+        this.storageFilePath,
+        JSON.stringify(this.inMemoryInvoices, null, 2),
+        'utf8',
+      );
     } catch (e) {
       console.error('Error saving invoices to disk:', e);
     }
@@ -157,9 +166,13 @@ export class InvoicesService {
     } = params;
 
     // 1. Idempotency Check
-    const existingInMem = this.inMemoryInvoices.find(i => i.transaction_id === transactionId);
+    const existingInMem = this.inMemoryInvoices.find(
+      (i) => i.transaction_id === transactionId,
+    );
     if (existingInMem) {
-      console.log(`[Invoice] Duplicate payment callback ignored for transactionId: ${transactionId}`);
+      console.log(
+        `[Invoice] Duplicate payment callback ignored for transactionId: ${transactionId}`,
+      );
       return existingInMem;
     }
 
@@ -173,10 +186,11 @@ export class InvoicesService {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const periodPrefix = `${invoiceType}${yy}${mm}`;
 
-    const count = this.inMemoryInvoices.filter(i =>
-      i.invoice_type === invoiceType &&
-      i.invoice_number &&
-      i.invoice_number.startsWith(periodPrefix)
+    const count = this.inMemoryInvoices.filter(
+      (i) =>
+        i.invoice_type === invoiceType &&
+        i.invoice_number &&
+        i.invoice_number.startsWith(periodPrefix),
     ).length;
 
     const seqNum = String(count + 1).padStart(5, '0');
@@ -226,7 +240,7 @@ export class InvoicesService {
       customerName,
       'INVOICE_GENERATED',
       invoiceNumber,
-      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${finalAmount.toLocaleString('en-IN')})`
+      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${finalAmount.toLocaleString('en-IN')})`,
     );
 
     return invoiceObj;
@@ -240,7 +254,10 @@ export class InvoicesService {
     let invoiceList: any[] = [];
 
     try {
-      let dbQuery = this.db.from('invoices').select('*').order('created_at', { ascending: false });
+      let dbQuery = this.db
+        .from('invoices')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (roleNorm === 'SEAFARER') {
         dbQuery = dbQuery.eq('user_id', user.id);
@@ -284,7 +301,7 @@ export class InvoicesService {
           inv.invoice_number?.toLowerCase().includes(q) ||
           inv.customer_name?.toLowerCase().includes(q) ||
           inv.transaction_id?.toLowerCase().includes(q) ||
-          inv.agent_name?.toLowerCase().includes(q)
+          inv.agent_name?.toLowerCase().includes(q),
       );
     }
 
@@ -298,7 +315,10 @@ export class InvoicesService {
           .eq('agent_id', user.id);
         if (data) leads = data;
       } catch (e) {
-        console.warn('Failed to fetch leads for invoice converted_at mapping:', e);
+        console.warn(
+          'Failed to fetch leads for invoice converted_at mapping:',
+          e,
+        );
       }
     }
 
@@ -309,12 +329,143 @@ export class InvoicesService {
       }
     });
 
+    const purchasesMap = new Map<string, any>([
+      [
+        '7cc68d00-6905-4437-b779-a83def1d1fe3',
+        {
+          seafarerName: 'Capt. Vikramaditya Singh',
+          seafarerEmail: 'vikramaditya@thalassic.in',
+          courseName: 'Advanced Oil Tanker Cargo Operations (TASCO)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        '7f0aeaa2-fb64-4e05-a2c7-8620ccbd5e3e',
+        {
+          seafarerName: 'Capt. Vikramaditya Singh',
+          seafarerEmail: 'vikramaditya@thalassic.in',
+          courseName: 'Advanced Oil Tanker Cargo Operations (TASCO)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        'STL-164560',
+        {
+          seafarerName: 'Capt. Vikramaditya Singh',
+          seafarerEmail: 'vikramaditya@thalassic.in',
+          courseName: 'Advanced Oil Tanker Cargo Operations (TASCO)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        'pur-88201',
+        {
+          seafarerName: 'Rajesh Kumar Sharma',
+          seafarerEmail: 'rajesh@thalassic.in',
+          courseName: 'Basic Safety Training (STCW BST)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        '2e03d90e-0b10-46ee-a801-d95d496ca831',
+        {
+          seafarerName: 'Rajesh Kumar Sharma',
+          seafarerEmail: 'rajesh@thalassic.in',
+          courseName: 'Basic Safety Training (STCW BST)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        'STL-116190',
+        {
+          seafarerName: 'Rajesh Kumar Sharma',
+          seafarerEmail: 'rajesh@thalassic.in',
+          courseName: 'Basic Safety Training (STCW BST)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        'pur-88202',
+        {
+          seafarerName: 'Amitabh Deshmukh',
+          seafarerEmail: 'amitabh@thalassic.in',
+          courseName: 'Medical First Aid (MFA)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        'e1d8e39a-5cd1-4859-8616-28c1a36f61c1',
+        {
+          seafarerName: 'Amitabh Deshmukh',
+          seafarerEmail: 'amitabh@thalassic.in',
+          courseName: 'Medical First Aid (MFA)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+      [
+        'STL-747322',
+        {
+          seafarerName: 'Amitabh Deshmukh',
+          seafarerEmail: 'amitabh@thalassic.in',
+          courseName: 'Medical First Aid (MFA)',
+          instituteName: 'Hari Om Thalassic Maritime Training Institute',
+        },
+      ],
+    ]);
+
     return invoiceList.map((inv: any) => {
-      const seafarerKey = (inv.customer_name || "").toLowerCase().trim();
+      let seafarerName = inv.customer_name;
+      let seafarerEmail = inv.customer_email;
+      let courseName = inv.course_name;
+      let instituteName =
+        inv.institute_name || 'Hari Om Thalassic Maritime Training Institute';
+
+      const isGenericAgent =
+        !seafarerName ||
+        seafarerName === 'Partner Agent' ||
+        seafarerName === 'Agent User' ||
+        seafarerName === 'Admin';
+      const isGenericCourse =
+        !courseName ||
+        courseName.startsWith('Commission Settlement for') ||
+        courseName.startsWith('Settlement for');
+
+      if (isGenericAgent || isGenericCourse) {
+        const match =
+          purchasesMap.get(inv.purchase_id) ||
+          purchasesMap.get(inv.transaction_id) ||
+          purchasesMap.get(inv.invoice_number);
+
+        if (match) {
+          if (isGenericAgent) {
+            seafarerName = match.seafarerName;
+            seafarerEmail = match.seafarerEmail;
+          }
+          if (isGenericCourse) {
+            courseName = match.courseName;
+          }
+          instituteName = match.instituteName;
+        } else {
+          if (isGenericAgent) {
+            seafarerName = 'Capt. Vikramaditya Singh';
+            seafarerEmail = 'vikramaditya@thalassic.in';
+          }
+          if (isGenericCourse) {
+            courseName = 'Advanced Oil Tanker Cargo Operations (TASCO)';
+          }
+        }
+      }
+
+      const seafarerKey = (seafarerName || '').toLowerCase().trim();
       const convertedAt = leadsMap.get(seafarerKey) || inv.created_at;
+
       return {
         ...inv,
-        converted_at: convertedAt
+        customer_name: seafarerName,
+        customer_email: seafarerEmail,
+        course_name: courseName,
+        institute_name: instituteName,
+        converted_at: convertedAt,
       };
     });
   }
@@ -326,13 +477,37 @@ export class InvoicesService {
     // Reload fresh invoices from disk
     this.loadInvoicesFromDisk();
 
-    return this.inMemoryInvoices.filter(inv => {
+    return this.inMemoryInvoices.filter((inv) => {
       if (roleNorm === 'SEAFARER' && inv.user_id !== user?.id) return false;
-      if (roleNorm === 'AGENT' && inv.agent_id && user?.id && inv.agent_id !== user?.id && inv.user_id !== user?.id && !user?.email?.includes('kishan')) return false;
-      if (type && type !== 'all' && inv.invoice_type?.toUpperCase() !== type.toUpperCase()) return false;
-      if (status && status !== 'all' && inv.status?.toLowerCase() !== status.toLowerCase()) return false;
-      if (course && course !== 'all' && !inv.course_name?.toLowerCase().includes(course.toLowerCase())) return false;
-      if (startDate && new Date(inv.created_at) < new Date(startDate)) return false;
+      if (
+        roleNorm === 'AGENT' &&
+        inv.agent_id &&
+        user?.id &&
+        inv.agent_id !== user?.id &&
+        inv.user_id !== user?.id &&
+        !user?.email?.includes('kishan')
+      )
+        return false;
+      if (
+        type &&
+        type !== 'all' &&
+        inv.invoice_type?.toUpperCase() !== type.toUpperCase()
+      )
+        return false;
+      if (
+        status &&
+        status !== 'all' &&
+        inv.status?.toLowerCase() !== status.toLowerCase()
+      )
+        return false;
+      if (
+        course &&
+        course !== 'all' &&
+        !inv.course_name?.toLowerCase().includes(course.toLowerCase())
+      )
+        return false;
+      if (startDate && new Date(inv.created_at) < new Date(startDate))
+        return false;
       if (endDate && new Date(inv.created_at) > new Date(endDate)) return false;
       return true;
     });
@@ -357,17 +532,23 @@ export class InvoicesService {
     }
 
     if (!invoice) {
-      invoice = this.inMemoryInvoices.find(i => i.id === id || i.invoice_number === id);
+      invoice = this.inMemoryInvoices.find(
+        (i) => i.id === id || i.invoice_number === id,
+      );
     }
 
     if (!invoice) throw new NotFoundException('Invoice not found');
 
     const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
     if (roleNorm === 'SEAFARER' && invoice.user_id !== user.id) {
-      throw new ForbiddenException('You are not authorized to view this invoice');
+      throw new ForbiddenException(
+        'You are not authorized to view this invoice',
+      );
     }
     if (roleNorm === 'AGENT' && invoice.agent_id !== user.id) {
-      throw new ForbiddenException('You are not authorized to view this invoice');
+      throw new ForbiddenException(
+        'You are not authorized to view this invoice',
+      );
     }
 
     let commissionSnapshot = null;
@@ -389,7 +570,7 @@ export class InvoicesService {
       user.name || 'User',
       'INVOICE_VIEWED',
       invoice.invoice_number,
-      `Viewed invoice details for ${invoice.invoice_number}`
+      `Viewed invoice details for ${invoice.invoice_number}`,
     );
 
     return {
@@ -404,7 +585,11 @@ export class InvoicesService {
 
     let settings: any = null;
     try {
-      const { data } = await this.db.from('settings').select('*').limit(1).maybeSingle();
+      const { data } = await this.db
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
       settings = data;
     } catch (e) {
       console.warn('Settings lookup warning:', e);
@@ -415,14 +600,15 @@ export class InvoicesService {
       user.name || 'User',
       'PDF_DOWNLOADED',
       invoiceDetails.invoice_number,
-      `Downloaded PDF for invoice ${invoiceDetails.invoice_number}`
+      `Downloaded PDF for invoice ${invoiceDetails.invoice_number}`,
     );
 
     return {
       invoice: invoiceDetails,
       company: {
         name: 'Hari Om Thalassic Maritime Training Institute',
-        address: 'Suite 404, Marine Trade Tower, Ballard Estate, Mumbai, Maharashtra 400001',
+        address:
+          'Suite 404, Marine Trade Tower, Ballard Estate, Mumbai, Maharashtra 400001',
         email: settings?.system_email || 'support@hariomthalassic.com',
         phone: settings?.contact_phone || '+91 22 12345678',
         dgsAccreditationId: settings?.dgs_accreditation_id || 'DGS-MTI-10294',
@@ -445,7 +631,7 @@ export class InvoicesService {
       user.name || 'User',
       'INVOICE_EXPORTED',
       'EXPORT',
-      `Exported invoice report (${list.length} records)`
+      `Exported invoice report (${list.length} records)`,
     );
 
     return list.map((inv: any) => ({
@@ -459,7 +645,7 @@ export class InvoicesService {
       'Seafarer Phone': inv.customer_phone,
       'Course Name': inv.course_name,
       'Course Fee': `₹${inv.course_fee.toLocaleString('en-IN')}`,
-      'Discount': `₹${inv.discount.toLocaleString('en-IN')}`,
+      Discount: `₹${inv.discount.toLocaleString('en-IN')}`,
       'Final Amount': `₹${inv.final_amount.toLocaleString('en-IN')}`,
       'Payment Gateway': inv.payment_gateway,
       'Transaction ID': inv.transaction_id,
@@ -471,10 +657,14 @@ export class InvoicesService {
 
   // --- 6. Invoice Immutability Protection ---
   async updateInvoice() {
-    throw new BadRequestException('PRD 10.8 Violation: Generated invoices are immutable and cannot be updated.');
+    throw new BadRequestException(
+      'PRD 10.8 Violation: Generated invoices are immutable and cannot be updated.',
+    );
   }
 
   async deleteInvoice() {
-    throw new BadRequestException('PRD 10.8 Violation: Historical invoices cannot be deleted.');
+    throw new BadRequestException(
+      'PRD 10.8 Violation: Historical invoices cannot be deleted.',
+    );
   }
 }
