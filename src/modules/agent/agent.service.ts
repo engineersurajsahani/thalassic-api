@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -47,7 +53,10 @@ export class AgentService {
 
     const totalPurchases = purchases.length;
     const pendingPurchases = purchases.filter(
-      (p: any) => p.settlementStatus === 'Pending' || p.settlementStatus === 'Partial' || p.settlementStatus === 'Submitted'
+      (p: any) =>
+        p.settlementStatus === 'Pending' ||
+        p.settlementStatus === 'Partial' ||
+        p.settlementStatus === 'Submitted',
     ).length;
 
     let totalPayable = 0;
@@ -57,7 +66,7 @@ export class AgentService {
     purchases.forEach((p: any) => {
       const origFee = Number(p.originalCourseFee || p.payableAmount || 16500);
       const paid = Number(p.paidAmount || 0);
-      const rem = Number(p.remainingAmount ?? (origFee - paid));
+      const rem = Number(p.remainingAmount ?? origFee - paid);
 
       totalPayable += origFee;
       amountSettled += paid;
@@ -65,7 +74,10 @@ export class AgentService {
     });
 
     const pendingSettlements = settlements.filter(
-      (s: any) => s.status === 'Pending' || s.status === 'Submitted' || s.status === 'Under Verification'
+      (s: any) =>
+        s.status === 'Pending' ||
+        s.status === 'Submitted' ||
+        s.status === 'Under Verification',
     ).length;
 
     const recentPurchases = purchases.slice(0, 5);
@@ -81,7 +93,11 @@ export class AgentService {
         pendingSettlements,
         totalLeads: totalPurchases,
         activeLeads: pendingPurchases,
-        convertedLeads: purchases.filter((p: any) => p.settlementStatus === 'Settled' || p.settlementStatus === 'Completed').length,
+        convertedLeads: purchases.filter(
+          (p: any) =>
+            p.settlementStatus === 'Settled' ||
+            p.settlementStatus === 'Completed',
+        ).length,
         totalEarned: amountSettled,
         pendingCommission: outstandingAmount,
         paidCommission: amountSettled,
@@ -95,7 +111,7 @@ export class AgentService {
         message: `Purchased ${p.courseName} for ${p.seafarerName} (₹${p.payableAmount})`,
         timestamp: p.purchaseDate || new Date().toISOString(),
       })),
-      referralCode: 'HARIOM-PARTNER-882'
+      referralCode: 'HARIOM-PARTNER-882',
     };
   }
 
@@ -121,20 +137,22 @@ export class AgentService {
             referral_code: 'REFAGENT123',
             course_commissions: {},
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .select()
           .maybeSingle();
-        
-        return newMeta || {
-          id: agentId,
-          user_id: agentId,
-          onboarding_status: 'Active',
-          general_commission: 5.0,
-          referral_code: 'REFAGENT123',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+
+        return (
+          newMeta || {
+            id: agentId,
+            user_id: agentId,
+            onboarding_status: 'Active',
+            general_commission: 5.0,
+            referral_code: 'REFAGENT123',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        );
       }
       return data;
     } catch (err: any) {
@@ -146,7 +164,7 @@ export class AgentService {
         general_commission: 5.0,
         referral_code: 'REFAGENT123',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
     }
   }
@@ -160,15 +178,18 @@ export class AgentService {
 
     if (!refCodeClean) {
       // Auto-generate a unique permanent referral code (e.g. KISH25 or OCEAN25)
-      const baseName = (data.name || 'AGENT').trim().toUpperCase().replace(/[^A-Z]/g, '');
+      const baseName = (data.name || 'AGENT')
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z]/g, '');
       const base = baseName.length >= 3 ? baseName.slice(0, 5) : 'OCEAN';
-      
+
       let isUnique = false;
       let attempts = 0;
       while (!isUnique && attempts < 10) {
         const suffix = Math.floor(10 + Math.random() * 90); // 2-digit suffix
         const candidate = `${base}${suffix}`;
-        
+
         const { data: dup } = await db
           .from('agent_metadata')
           .select('user_id')
@@ -198,14 +219,18 @@ export class AgentService {
         referral_code: refCodeClean,
         qr_code: qrCodeUrl,
         onboarding_status: 'Active',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('user_id', agentId);
 
     if (metaErr) throw new BadRequestException(metaErr.message);
 
     // 4. Update profile details in User
-    const { data: userRecord } = await db.from('User').select('name').eq('id', agentId).single();
+    const { data: userRecord } = await db
+      .from('User')
+      .select('name')
+      .eq('id', agentId)
+      .single();
     const userName = userRecord?.name || 'Agent';
 
     const { error: userErr } = await db
@@ -214,7 +239,7 @@ export class AgentService {
         name: data.name || userName,
         phone: data.phone || null,
         status: 'Active',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       })
       .eq('id', agentId);
 
@@ -227,7 +252,7 @@ export class AgentService {
       'AGENT_ONBOARDED',
       'Onboarding',
       agentId,
-      `Completed onboarding setup. Chosen referral code: ${refCodeClean}`
+      `Completed onboarding setup. Chosen referral code: ${refCodeClean}`,
     );
 
     return { success: true };
@@ -236,7 +261,7 @@ export class AgentService {
   // --- 3. Referral Leads ---
   async getLeads(agentId: string) {
     const db = this.getDb();
-    
+
     // We fetch leads and flag expired ones in-memory (and can update status to Expired if expired)
     try {
       const { data: leads, error } = await db
@@ -254,7 +279,12 @@ export class AgentService {
       return (leads || []).map((l: any) => {
         const expiry = new Date(l.expiry_at);
         let status = l.status;
-        if (expiry < now && (l.status === 'New' || l.status === 'Contacted' || l.status === 'Registered')) {
+        if (
+          expiry < now &&
+          (l.status === 'New' ||
+            l.status === 'Contacted' ||
+            l.status === 'Registered')
+        ) {
           status = 'Expired';
         }
         return {
@@ -269,7 +299,7 @@ export class AgentService {
           createdAt: l.created_at,
           expiryAt: l.expiry_at,
           commissionTier: l.commission_tier || '5%',
-          remarks: l.remarks
+          remarks: l.remarks,
         };
       });
     } catch (err: any) {
@@ -290,20 +320,27 @@ export class AgentService {
 
     // Enforce Ownership
     if (lead.agent_id !== agentId) {
-      throw new ForbiddenException('Access denied. You do not own this referral lead.');
+      throw new ForbiddenException(
+        'Access denied. You do not own this referral lead.',
+      );
     }
 
     const now = new Date();
     const expiry = new Date(lead.expiry_at);
     let status = lead.status;
-    if (expiry < now && (lead.status === 'New' || lead.status === 'Contacted' || lead.status === 'Registered')) {
+    if (
+      expiry < now &&
+      (lead.status === 'New' ||
+        lead.status === 'Contacted' ||
+        lead.status === 'Registered')
+    ) {
       status = 'Expired';
     }
 
     return {
       ...lead,
       status,
-      courseName: lead.Course?.name || 'N/A'
+      courseName: lead.Course?.name || 'N/A',
     };
   }
 
@@ -322,7 +359,9 @@ export class AgentService {
       .limit(1);
 
     if (ownDuplicate && ownDuplicate.length > 0) {
-      throw new BadRequestException('You have already registered an active lead with this email or mobile number.');
+      throw new BadRequestException(
+        'You have already registered an active lead with this email or mobile number.',
+      );
     }
 
     // 2. Check if another agent has registered an active lead for this email/phone
@@ -339,7 +378,9 @@ export class AgentService {
 
     const leadId = randomUUID();
     const createdAt = nowIso;
-    const expiryAt = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString();
+    const expiryAt = new Date(
+      Date.now() + 45 * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     const { data: newLead, error } = await db
       .from('referral_leads')
@@ -352,9 +393,11 @@ export class AgentService {
         city: data.city || null,
         course_id: data.courseId || null,
         status: leadStatus,
-        remarks: isConflict ? 'Conflict detected: Registered by multiple agents. Under manual review.' : (data.remarks || null),
+        remarks: isConflict
+          ? 'Conflict detected: Registered by multiple agents. Under manual review.'
+          : data.remarks || null,
         created_at: createdAt,
-        expiry_at: expiryAt
+        expiry_at: expiryAt,
       })
       .select()
       .single();
@@ -368,7 +411,7 @@ export class AgentService {
         .from('referral_leads')
         .update({
           status: 'Under Review',
-          remarks: `Conflict detected: Registered by another agent. Under manual review.`
+          remarks: `Conflict detected: Registered by another agent. Under manual review.`,
         })
         .neq('agent_id', agentId)
         .or(`email.eq.${data.email},phone.eq.${data.phone}`)
@@ -376,15 +419,18 @@ export class AgentService {
         .in('status', ['New', 'Contacted', 'Registered']);
 
       // Notify the agent admin
-      const { data: admins } = await db.from('User').select('id').eq('role', 'agent_admin');
-      for (const admin of (admins || [])) {
+      const { data: admins } = await db
+        .from('User')
+        .select('id')
+        .eq('role', 'agent_admin');
+      for (const admin of admins || []) {
         await db.from('Notification').insert({
           id: randomUUID(),
           userId: admin.id,
           title: 'Referral Lead Conflict Detected',
           message: `Multiple agents have registered the same lead: ${data.name || 'Seafarer'} (${data.email}). Please resolve this conflict in the Manual Review panel.`,
           isRead: false,
-          createdAt: nowIso
+          createdAt: nowIso,
         });
       }
 
@@ -395,18 +441,22 @@ export class AgentService {
         'REFERRAL_CONFLICT',
         'Referral Leads',
         leadId,
-        `Referral conflict triggered for seafarer ${data.name} (${data.email})`
+        `Referral conflict triggered for seafarer ${data.name} (${data.email})`,
       );
     }
 
-    const { data: userRec } = await db.from('User').select('name').eq('id', agentId).single();
+    const { data: userRec } = await db
+      .from('User')
+      .select('name')
+      .eq('id', agentId)
+      .single();
     await this.logAction(
       agentId,
       userRec?.name || 'Agent',
       'CREATE_LEAD',
       'Referral Leads',
       leadId,
-      `Registered a new referral lead: ${data.name} (${data.email})`
+      `Registered a new referral lead: ${data.name} (${data.email})`,
     );
 
     return newLead;
@@ -414,13 +464,15 @@ export class AgentService {
 
   async updateLead(agentId: string, leadId: string, data: any) {
     const db = this.getDb();
-    
+
     // Ownership check (throws if not owned)
     const currentLead = await this.getLeadById(agentId, leadId);
 
     // PRD 8.4 Business Rule: Agents may edit only Pending / New Leads. Expired or Converted leads are read-only.
     if (currentLead.status !== 'Pending' && currentLead.status !== 'New') {
-      throw new BadRequestException('PRD 8.4 Violation: Agents may edit only Pending leads. Expired or Converted leads are read-only.');
+      throw new BadRequestException(
+        'PRD 8.4 Violation: Agents may edit only Pending leads. Expired or Converted leads are read-only.',
+      );
     }
 
     // Only allow updating specific fields
@@ -433,20 +485,24 @@ export class AgentService {
         city: data.city ?? currentLead.city,
         course_id: data.courseId ?? currentLead.course_id,
         status: data.status ?? currentLead.status,
-        remarks: data.remarks ?? currentLead.remarks
+        remarks: data.remarks ?? currentLead.remarks,
       })
       .eq('id', leadId);
 
     if (error) throw new BadRequestException(error.message);
 
-    const { data: userRec } = await db.from('User').select('name').eq('id', agentId).single();
+    const { data: userRec } = await db
+      .from('User')
+      .select('name')
+      .eq('id', agentId)
+      .single();
     await this.logAction(
       agentId,
       userRec?.name || 'Agent',
       'UPDATE_LEAD',
       'Referral Leads',
       leadId,
-      `Updated referral lead details for: ${data.name || currentLead.name}`
+      `Updated referral lead details for: ${data.name || currentLead.name}`,
     );
 
     return { success: true };
@@ -468,7 +524,7 @@ export class AgentService {
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
       trainingType: 'Classroom Training',
-      purchaseSource: 'Partner Portal'
+      purchaseSource: 'Partner Portal',
     },
     {
       id: 'pur-88201',
@@ -484,7 +540,7 @@ export class AgentService {
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
       trainingType: 'Classroom Training',
-      purchaseSource: 'Partner Portal'
+      purchaseSource: 'Partner Portal',
     },
     {
       id: 'pur-88202',
@@ -500,8 +556,8 @@ export class AgentService {
       purchaseStatus: 'Completed',
       settlementStatus: 'Settled',
       trainingType: 'Classroom Training',
-      purchaseSource: 'Partner Portal'
-    }
+      purchaseSource: 'Partner Portal',
+    },
   ];
 
   async getPurchases(agentId: string) {
@@ -528,10 +584,16 @@ export class AgentService {
               courseName: p.course_name || 'Basic Safety Training',
               payableAmount: Number(p.course_fee) || 16500,
               purchaseDate: p.created_at || new Date().toISOString(),
-              purchaseStatus: p.status === 'Cancelled' ? 'Cancelled' : 'Completed',
-              settlementStatus: p.status === 'Paid' ? 'Settled' : p.status === 'Submitted' ? 'Submitted' : 'Pending',
+              purchaseStatus:
+                p.status === 'Cancelled' ? 'Cancelled' : 'Completed',
+              settlementStatus:
+                p.status === 'Paid'
+                  ? 'Settled'
+                  : p.status === 'Submitted'
+                    ? 'Submitted'
+                    : 'Pending',
               trainingType: 'Classroom Training',
-              purchaseSource: 'Partner Portal'
+              purchaseSource: 'Partner Portal',
             });
           }
         });
@@ -539,15 +601,41 @@ export class AgentService {
 
       // Dynamic lookup from settlements_data.json to sync settlementStatus & partial remaining balances
       const settlements = this.loadSettlementsFromDisk();
-      const partialMap = new Map<string, { paid: number; remaining: number; status: string; dueDate: string | null }>();
+      const partialMap = new Map<
+        string,
+        {
+          paid: number;
+          remaining: number;
+          status: string;
+          dueDate: string | null;
+        }
+      >();
+      const proofMap = new Map<
+        string,
+        { proofUrl: string; proofFileName: string }
+      >();
       const settledPurchaseIds = new Set<string>();
 
       settlements.forEach((s: any) => {
         const ids = s.purchaseIds || s.purchase_ids || [];
-        const isFullCompleted = s.status === 'Paid' || s.status === 'Completed' || s.status === 'Settled';
-        const isPartial = s.paymentMode === 'partial' || s.payment_mode === 'partial' || (Number(s.remainingAmount || s.remaining_amount || 0) > 0);
-        
+        const isFullCompleted =
+          s.status === 'Paid' ||
+          s.status === 'Completed' ||
+          s.status === 'Settled';
+        const isPartial =
+          s.paymentMode === 'partial' ||
+          s.payment_mode === 'partial' ||
+          Number(s.remainingAmount || s.remaining_amount || 0) > 0;
+        const pUrl = s.proofUrl || s.proof_url || s.bank_statement_url || null;
+        const pName =
+          s.proofFileName ||
+          s.proof_file_name ||
+          (pUrl ? 'Bank_Remittance_Receipt.pdf' : null);
+
         ids.forEach((id: string) => {
+          if (pUrl) {
+            proofMap.set(id, { proofUrl: pUrl, proofFileName: pName });
+          }
           if (isFullCompleted) {
             settledPurchaseIds.add(id);
           } else if (isPartial) {
@@ -557,14 +645,14 @@ export class AgentService {
               paid,
               remaining: rem,
               status: rem > 0 ? 'Partial' : 'Submitted',
-              dueDate: s.expectedDueDate || s.expected_due_date || null
+              dueDate: s.expectedDueDate || s.expected_due_date || null,
             });
           } else {
             partialMap.set(id, {
               paid: Number(s.totalAmount || s.total_amount || 0),
               remaining: 0,
               status: 'Submitted',
-              dueDate: null
+              dueDate: null,
             });
           }
         });
@@ -589,14 +677,23 @@ export class AgentService {
           dueDate = info.dueDate;
         }
 
+        const proof = proofMap.get(m.id);
+
         return {
           ...m,
           originalCourseFee: origFee,
-          payableAmount: status === 'Partial' && remaining > 0 ? remaining : origFee,
+          payableAmount:
+            status === 'Partial' && remaining > 0 ? remaining : origFee,
           paidAmount: paid,
           remainingAmount: remaining,
           settlementStatus: status,
           expectedDueDate: dueDate,
+          proofUrl: proof?.proofUrl || m.proofUrl || null,
+          proofFileName:
+            proof?.proofFileName ||
+            m.proofFileName ||
+            'Bank_Remittance_Receipt.pdf',
+          settlementProofUrl: proof?.proofUrl || m.proofUrl || null,
         };
       });
     } catch (err: any) {
@@ -644,7 +741,11 @@ export class AgentService {
       return (data || []).map((d: any) => {
         let meta: any = {};
         if (d.remarks) {
-          try { meta = JSON.parse(d.remarks); } catch { meta = {}; }
+          try {
+            meta = JSON.parse(d.remarks);
+          } catch {
+            meta = {};
+          }
         }
         return {
           id: d.id,
@@ -670,7 +771,12 @@ export class AgentService {
     agentId: string,
     type: string,
     file: any,
-    metadata?: { expiryDate?: string; documentNumber?: string; placeOfIssue?: string; dateOfIssue?: string },
+    metadata?: {
+      expiryDate?: string;
+      documentNumber?: string;
+      placeOfIssue?: string;
+      dateOfIssue?: string;
+    },
   ) {
     const db = this.getDb();
 
@@ -690,8 +796,16 @@ export class AgentService {
       .single();
 
     const docId = existingDoc?.id || randomUUID();
-    const docType = (type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'document';
-    const ext = file.originalname?.includes('.') ? '.' + file.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') : '.bin';
+    const docType =
+      (type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'document';
+    const ext = file.originalname?.includes('.')
+      ? '.' +
+        file.originalname
+          .split('.')
+          .pop()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+      : '.bin';
     const safeStorageKey = `${docId}${ext}`;
     const storagePath = `${docType}/${agentId}/${safeStorageKey}`;
     const BUCKET = 'seafarer-documents';
@@ -702,9 +816,17 @@ export class AgentService {
       const signedPathMarker = `/object/sign/${BUCKET}/`;
       let oldPath = existingDoc.url;
       if (oldPath.includes(publicPathMarker)) {
-        oldPath = decodeURIComponent(oldPath.substring(oldPath.indexOf(publicPathMarker) + publicPathMarker.length));
+        oldPath = decodeURIComponent(
+          oldPath.substring(
+            oldPath.indexOf(publicPathMarker) + publicPathMarker.length,
+          ),
+        );
       } else if (oldPath.includes(signedPathMarker)) {
-        oldPath = decodeURIComponent(oldPath.substring(oldPath.indexOf(signedPathMarker) + signedPathMarker.length));
+        oldPath = decodeURIComponent(
+          oldPath.substring(
+            oldPath.indexOf(signedPathMarker) + signedPathMarker.length,
+          ),
+        );
       }
       if (oldPath && !oldPath.startsWith('/uploads/')) {
         await db.storage.from(BUCKET).remove([oldPath]);
@@ -720,7 +842,10 @@ export class AgentService {
       });
 
     if (storageError) {
-      console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
+      console.error(
+        '[uploadDocument] Supabase Storage upload error:',
+        storageError.message,
+      );
       throw new BadRequestException(
         `File storage failed: ${storageError.message}. Ensure the '${BUCKET}' bucket exists in Supabase Storage.`,
       );
@@ -728,11 +853,13 @@ export class AgentService {
 
     // Build document record — metadata stored as JSON in remarks if column exists
     const metaObj: any = {};
-    if (metadata?.documentNumber) metaObj.documentNumber = metadata.documentNumber;
+    if (metadata?.documentNumber)
+      metaObj.documentNumber = metadata.documentNumber;
     if (metadata?.placeOfIssue) metaObj.placeOfIssue = metadata.placeOfIssue;
     if (metadata?.dateOfIssue) metaObj.dateOfIssue = metadata.dateOfIssue;
 
-    const remarksJson = Object.keys(metaObj).length > 0 ? JSON.stringify(metaObj) : null;
+    const remarksJson =
+      Object.keys(metaObj).length > 0 ? JSON.stringify(metaObj) : null;
 
     const documentData: any = {
       userId: agentId,
@@ -805,7 +932,9 @@ export class AgentService {
     }
 
     if (doc.userId !== agentId) {
-      throw new ForbiddenException('Access denied. You do not have permission to download this document.');
+      throw new ForbiddenException(
+        'Access denied. You do not have permission to download this document.',
+      );
     }
 
     const storedUrl: string = doc.url || '';
@@ -816,9 +945,17 @@ export class AgentService {
     const signedPathMarker = `/object/sign/${BUCKET}/`;
 
     if (storedUrl.includes(publicPathMarker)) {
-      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(publicPathMarker) + publicPathMarker.length));
+      storagePath = decodeURIComponent(
+        storedUrl.substring(
+          storedUrl.indexOf(publicPathMarker) + publicPathMarker.length,
+        ),
+      );
     } else if (storedUrl.includes(signedPathMarker)) {
-      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(signedPathMarker) + signedPathMarker.length));
+      storagePath = decodeURIComponent(
+        storedUrl.substring(
+          storedUrl.indexOf(signedPathMarker) + signedPathMarker.length,
+        ),
+      );
     }
 
     if (storagePath && !storagePath.startsWith('/uploads/')) {
@@ -834,13 +971,23 @@ export class AgentService {
     }
 
     // Fallback: search bucket
-    const { data: bucketFiles } = await db.storage.from(BUCKET).list('', { limit: 100 });
+    const { data: bucketFiles } = await db.storage
+      .from(BUCKET)
+      .list('', { limit: 100 });
     if (bucketFiles && bucketFiles.length > 0) {
-      const matchingFile = bucketFiles.find(f =>
-        (doc.userId && f.name.includes(doc.userId)) ||
-        (doc.id && f.name.includes(doc.id)) ||
-        (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase()))
-      ) || bucketFiles.find(f => f.name.endsWith('.pdf') || f.name.endsWith('.png') || f.name.endsWith('.jpg'));
+      const matchingFile =
+        bucketFiles.find(
+          (f) =>
+            (doc.userId && f.name.includes(doc.userId)) ||
+            (doc.id && f.name.includes(doc.id)) ||
+            (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase())),
+        ) ||
+        bucketFiles.find(
+          (f) =>
+            f.name.endsWith('.pdf') ||
+            f.name.endsWith('.png') ||
+            f.name.endsWith('.jpg'),
+        );
 
       if (matchingFile) {
         storagePath = matchingFile.name;
@@ -858,7 +1005,9 @@ export class AgentService {
       }
     }
 
-    throw new BadRequestException('Document file not found in storage. Please re-upload the document.');
+    throw new BadRequestException(
+      'Document file not found in storage. Please re-upload the document.',
+    );
   }
 
   // --- 7. Profile ---
@@ -886,13 +1035,15 @@ export class AgentService {
         state: metadata.state || '',
         pinCode: metadata.pin_code || '',
         agencyName: metadata.agency_name || 'Hari Om Maritime Agency',
-        officeAddress: metadata.office_address || '102 Maritime Towers, Nariman Point, Mumbai',
+        officeAddress:
+          metadata.office_address ||
+          '102 Maritime Towers, Nariman Point, Mumbai',
         agencyCity: metadata.agency_city || 'Mumbai',
         agencyState: metadata.agency_state || 'Maharashtra',
         agencyPinCode: metadata.agency_pin_code || '400021',
         referralCode: metadata.referral_code || 'REFAGENT123',
         qrCode: metadata.qr_code || '',
-        onboardingStatus: metadata.onboarding_status || 'Active'
+        onboardingStatus: metadata.onboarding_status || 'Active',
       };
     } catch (err: any) {
       console.warn('[getProfile] Exception:', err.message);
@@ -915,7 +1066,7 @@ export class AgentService {
         agencyPinCode: '400021',
         referralCode: 'REFAGENT123',
         qrCode: '',
-        onboardingStatus: 'Active'
+        onboardingStatus: 'Active',
       };
     }
   }
@@ -926,10 +1077,17 @@ export class AgentService {
     // 1. Immutability block (email, referral_code)
     const currentProfile = await this.getProfile(agentId);
     if (data.email && data.email !== currentProfile.email) {
-      throw new BadRequestException('Modifying account email address is not permitted.');
+      throw new BadRequestException(
+        'Modifying account email address is not permitted.',
+      );
     }
-    if (data.referralCode && data.referralCode !== currentProfile.referralCode) {
-      throw new BadRequestException('Modifying account referral code is not permitted.');
+    if (
+      data.referralCode &&
+      data.referralCode !== currentProfile.referralCode
+    ) {
+      throw new BadRequestException(
+        'Modifying account referral code is not permitted.',
+      );
     }
 
     // 2. Update User details
@@ -938,11 +1096,12 @@ export class AgentService {
       .update({
         name: data.name ?? currentProfile.name,
         phone: data.phone ?? currentProfile.phone,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       })
       .eq('id', agentId);
 
-    if (userErr) console.warn('[updateProfile] User update warning:', userErr.message);
+    if (userErr)
+      console.warn('[updateProfile] User update warning:', userErr.message);
 
     // 3. Update agent_metadata details
     const { error: metaErr } = await db
@@ -958,11 +1117,12 @@ export class AgentService {
         agency_city: data.agencyCity ?? null,
         agency_state: data.agencyState ?? null,
         agency_pin_code: data.agencyPinCode ?? null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('user_id', agentId);
 
-    if (metaErr) console.warn('[updateProfile] metadata update warning:', metaErr.message);
+    if (metaErr)
+      console.warn('[updateProfile] metadata update warning:', metaErr.message);
 
     await this.logAction(
       agentId,
@@ -970,7 +1130,7 @@ export class AgentService {
       'UPDATE_PROFILE',
       'Profile Settings',
       agentId,
-      'Updated account profile settings'
+      'Updated account profile settings',
     );
 
     return { success: true };
@@ -1009,7 +1169,9 @@ export class AgentService {
       if (error || !ticket) return null;
 
       if (ticket.userId !== agentId) {
-        throw new ForbiddenException('Access denied. You do not own this support ticket.');
+        throw new ForbiddenException(
+          'Access denied. You do not own this support ticket.',
+        );
       }
 
       return ticket;
@@ -1034,7 +1196,7 @@ export class AgentService {
           status: 'open',
           replies: '[]',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         })
         .select()
         .single();
@@ -1049,7 +1211,7 @@ export class AgentService {
           status: 'open',
           replies: '[]',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         };
       }
 
@@ -1064,7 +1226,7 @@ export class AgentService {
         status: 'open',
         replies: '[]',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
     }
   }
@@ -1073,7 +1235,7 @@ export class AgentService {
   async getInvoices(agentId: string) {
     try {
       const db = this.getDb();
-      
+
       const { data: leads } = await db
         .from('referral_leads')
         .select('name, created_at')
@@ -1081,7 +1243,9 @@ export class AgentService {
 
       const { data, error } = await db
         .from('commissions')
-        .select('id, seafarer_name, course_name, created_at, course_fee, status, purchase_id, commission_rate, commission_amount')
+        .select(
+          'id, seafarer_name, course_name, created_at, course_fee, status, purchase_id, commission_rate, commission_amount',
+        )
         .eq('agent_id', agentId)
         .order('created_at', { ascending: false });
 
@@ -1098,7 +1262,7 @@ export class AgentService {
       });
 
       return (data || []).map((p: any) => {
-        const seafarerKey = (p.seafarer_name || "").toLowerCase().trim();
+        const seafarerKey = (p.seafarer_name || '').toLowerCase().trim();
         const leadRegisteredAt = leadsMap.get(seafarerKey) || p.created_at;
 
         return {
@@ -1112,7 +1276,7 @@ export class AgentService {
           leadRegisteredAt,
           invoiceStatus: p.status === 'Cancelled' ? 'Cancelled' : 'Paid',
           commissionRate: p.commission_rate,
-          commissionAmount: p.commission_amount
+          commissionAmount: p.commission_amount,
         };
       });
     } catch (err: any) {
@@ -1175,7 +1339,8 @@ export class AgentService {
       .eq('id', agentId)
       .single();
 
-    if (userErr || !user) throw new NotFoundException('User account not found.');
+    if (userErr || !user)
+      throw new NotFoundException('User account not found.');
 
     const isMatch = await bcrypt.compare(oldPass, user.password);
     if (!isMatch) {
@@ -1187,7 +1352,7 @@ export class AgentService {
       .from('User')
       .update({
         password: hashedNew,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       })
       .eq('id', agentId);
 
@@ -1199,14 +1364,17 @@ export class AgentService {
       'CHANGE_PASSWORD',
       'Settings',
       agentId,
-      'Changed account password securely'
+      'Changed account password securely',
     );
 
     return { success: true };
   }
 
   // --- Settlements & Financials ---
-  private settlementsFilePath = path.join(process.cwd(), 'settlements_data.json');
+  private settlementsFilePath = path.join(
+    process.cwd(),
+    'settlements_data.json',
+  );
 
   private loadSettlementsFromDisk(): any[] {
     try {
@@ -1222,7 +1390,11 @@ export class AgentService {
 
   private saveSettlementsToDisk(settlements: any[]) {
     try {
-      fs.writeFileSync(this.settlementsFilePath, JSON.stringify(settlements, null, 2), 'utf8');
+      fs.writeFileSync(
+        this.settlementsFilePath,
+        JSON.stringify(settlements, null, 2),
+        'utf8',
+      );
     } catch (e) {
       console.warn('Error saving settlements to disk:', e);
     }
@@ -1241,37 +1413,52 @@ export class AgentService {
       remainingAmount?: number;
       expectedDueDate?: string;
       totalAmount?: number;
-    }
+      proofUrl?: string;
+      proofFileName?: string;
+      bank_statement_url?: string;
+    },
   ) {
     const settlements = this.loadSettlementsFromDisk();
     const db = this.getDb();
 
-    const { data: user } = await db.from('User').select('name').eq('id', agentId).single();
+    const { data: user } = await db
+      .from('User')
+      .select('name')
+      .eq('id', agentId)
+      .single();
     const agentName = user?.name || 'Partner Agent';
-    const settlementNumber = 'STL-' + Math.floor(100000 + Math.random() * 900000);
+    const settlementNumber =
+      'STL-' + Math.floor(100000 + Math.random() * 900000);
     const nowIso = new Date().toISOString();
 
     const purchaseIds = dto.purchaseIds || [];
-    
+
     // Calculate total amount from selected purchases or fallback
     let totalAmount = dto.totalAmount || 0;
     if (!totalAmount && purchaseIds.length > 0) {
       const purchases = await this.getPurchases(agentId);
       const selected = purchases.filter((p: any) => purchaseIds.includes(p.id));
-      totalAmount = selected.reduce((acc: number, curr: any) => acc + Number(curr.payableAmount || 0), 0);
+      totalAmount = selected.reduce(
+        (acc: number, curr: any) => acc + Number(curr.payableAmount || 0),
+        0,
+      );
     }
     if (!totalAmount) {
       totalAmount = purchaseIds.length > 0 ? purchaseIds.length * 10000 : 15000;
     }
 
     const paymentMode = dto.paymentMode === 'partial' ? 'partial' : 'full';
-    const paidAmount = paymentMode === 'partial' && dto.paidAmount !== undefined 
-      ? Number(dto.paidAmount) 
-      : totalAmount;
-    const remainingAmount = paymentMode === 'partial' 
-      ? Math.max(0, totalAmount - paidAmount) 
-      : 0;
+    const paidAmount =
+      paymentMode === 'partial' && dto.paidAmount !== undefined
+        ? Number(dto.paidAmount)
+        : totalAmount;
+    const remainingAmount =
+      paymentMode === 'partial' ? Math.max(0, totalAmount - paidAmount) : 0;
     const expectedDueDate = dto.expectedDueDate || null;
+
+    const proofUrl = dto.proofUrl || dto.bank_statement_url || null;
+    const proofFileName =
+      dto.proofFileName || (proofUrl ? 'Bank_Statement_Proof.pdf' : null);
 
     const newSettlement = {
       id: randomUUID(),
@@ -1293,12 +1480,20 @@ export class AgentService {
       expected_due_date: expectedDueDate,
       netAmount: paidAmount,
       net_amount: paidAmount,
-      status: paymentMode === 'partial' && remainingAmount > 0 ? 'Partial' : 'Pending',
+      status:
+        paymentMode === 'partial' && remainingAmount > 0
+          ? 'Partial'
+          : 'Pending',
       referenceNumber: dto.referenceNumber || 'UTR-' + Date.now(),
       reference_number: dto.referenceNumber || 'UTR-' + Date.now(),
       paymentMethod: dto.paymentMethod || 'Bank Transfer',
       payment_date: dto.paymentDate || nowIso,
       remarks: dto.remarks || 'Settlement submitted by partner',
+      proofUrl,
+      proof_url: proofUrl,
+      bank_statement_url: proofUrl,
+      proofFileName,
+      proof_file_name: proofFileName,
       purchaseIds,
       purchase_ids: purchaseIds,
       createdAt: nowIso,
@@ -1320,7 +1515,10 @@ export class AgentService {
 
     try {
       if (purchaseIds.length > 0) {
-        await db.from('commissions').update({ status: 'Submitted' }).in('id', purchaseIds);
+        await db
+          .from('commissions')
+          .update({ status: 'Submitted' })
+          .in('id', purchaseIds);
       }
     } catch (_) {}
 
@@ -1330,7 +1528,7 @@ export class AgentService {
       'SETTLEMENT_SUBMITTED',
       'Settlements',
       newSettlement.id,
-      `Submitted ${paymentMode === 'partial' ? 'partial' : 'full'} settlement ${settlementNumber} for ₹${paidAmount} paid (Total ₹${totalAmount}, Remaining ₹${remainingAmount})`
+      `Submitted ${paymentMode === 'partial' ? 'partial' : 'full'} settlement ${settlementNumber} for ₹${paidAmount} paid (Total ₹${totalAmount}, Remaining ₹${remainingAmount})`,
     );
 
     return newSettlement;
@@ -1338,13 +1536,20 @@ export class AgentService {
 
   async getSettlements(agentId: string) {
     const settlements = this.loadSettlementsFromDisk();
-    const filtered = settlements.filter(s => s.agentId === agentId || s.agent_id === agentId);
+    const filtered = settlements.filter(
+      (s) => s.agentId === agentId || s.agent_id === agentId,
+    );
     return filtered.length > 0 ? filtered : settlements;
   }
 
   async getSettlementById(agentId: string, id: string) {
     const settlements = this.loadSettlementsFromDisk();
-    const s = settlements.find(item => item.id === id || item.settlementNumber === id || item.settlement_number === id);
+    const s = settlements.find(
+      (item) =>
+        item.id === id ||
+        item.settlementNumber === id ||
+        item.settlement_number === id,
+    );
     if (!s) {
       throw new NotFoundException('Settlement record not found');
     }
@@ -1355,12 +1560,22 @@ export class AgentService {
     const purchases = await this.getPurchases(agentId);
     const settlements = await this.getSettlements(agentId);
 
-    const totalPayable = purchases.reduce((sum: number, p: any) => sum + Number(p.payableAmount || 0), 0);
-    
+    const totalPayable = purchases.reduce(
+      (sum: number, p: any) => sum + Number(p.payableAmount || 0),
+      0,
+    );
+
     let amountSettled = 0;
     for (const s of settlements) {
       if (s.status !== 'Cancelled' && s.status !== 'Rejected') {
-        const paid = Number(s.paidAmount || s.paid_amount || s.netAmount || s.totalAmount || s.total_amount || 0);
+        const paid = Number(
+          s.paidAmount ||
+            s.paid_amount ||
+            s.netAmount ||
+            s.totalAmount ||
+            s.total_amount ||
+            0,
+        );
         amountSettled += paid;
       }
     }
@@ -1403,28 +1618,112 @@ export class AgentService {
       address: 'Flat 402, Sea Breeze Apts, Bandra West, Mumbai – 400 050',
       hasHariOmAccount: true,
       documents: [
-        { id: 'doc-101-1', name: 'Certificate of Competency (CoC) – Master', type: 'CoC', status: 'Approved', expiryDate: '2028-03-15' },
-        { id: 'doc-101-2', name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2033-08-20' },
-        { id: 'doc-101-3', name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2030-11-19' },
-        { id: 'doc-101-4', name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2026-06-30' },
+        {
+          id: 'doc-101-1',
+          name: 'Certificate of Competency (CoC) – Master',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2028-03-15',
+        },
+        {
+          id: 'doc-101-2',
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2033-08-20',
+        },
+        {
+          id: 'doc-101-3',
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2030-11-19',
+        },
+        {
+          id: 'doc-101-4',
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2026-06-30',
+        },
       ],
       seaService: [
-        { id: 'ss-101-1', vesselName: 'MV Thalassic Wave', vesselType: 'Crude Oil Tanker', rank: 'Master', signOn: '2025-01-15', signOff: '2025-07-20', duration: 186 },
-        { id: 'ss-101-2', vesselName: 'MV Pacific Star', vesselType: 'Container Vessel', rank: 'Chief Mate', signOn: '2024-02-10', signOff: '2024-08-08', duration: 179 },
-        { id: 'ss-101-3', vesselName: 'MT Bombay Express', vesselType: 'LPG Tanker', rank: 'Chief Mate', signOn: '2023-03-01', signOff: '2023-09-01', duration: 184 },
+        {
+          id: 'ss-101-1',
+          vesselName: 'MV Thalassic Wave',
+          vesselType: 'Crude Oil Tanker',
+          rank: 'Master',
+          signOn: '2025-01-15',
+          signOff: '2025-07-20',
+          duration: 186,
+        },
+        {
+          id: 'ss-101-2',
+          vesselName: 'MV Pacific Star',
+          vesselType: 'Container Vessel',
+          rank: 'Chief Mate',
+          signOn: '2024-02-10',
+          signOff: '2024-08-08',
+          duration: 179,
+        },
+        {
+          id: 'ss-101-3',
+          vesselName: 'MT Bombay Express',
+          vesselType: 'LPG Tanker',
+          rank: 'Chief Mate',
+          signOn: '2023-03-01',
+          signOff: '2023-09-01',
+          duration: 184,
+        },
       ],
       enrollments: [
-        { id: 'enr-101-1', courseName: 'Basic Safety Training (BST)', trainingType: 'Classroom Training', enrollmentDate: '2026-08-01', status: 'Completed' },
-        { id: 'enr-101-2', courseName: 'Advanced Firefighting (AFF)', trainingType: 'Classroom Training', enrollmentDate: '2026-08-20', status: 'Ongoing' },
+        {
+          id: 'enr-101-1',
+          courseName: 'Basic Safety Training (BST)',
+          trainingType: 'Classroom Training',
+          enrollmentDate: '2026-08-01',
+          status: 'Completed',
+        },
+        {
+          id: 'enr-101-2',
+          courseName: 'Advanced Firefighting (AFF)',
+          trainingType: 'Classroom Training',
+          enrollmentDate: '2026-08-20',
+          status: 'Ongoing',
+        },
       ],
       purchases: [
-        { id: 'PUR-101-A', courseName: 'Basic Safety Training (BST)', trainingType: 'Classroom Training', purchaseSource: 'Partner', purchaseDate: '2026-08-01', purchaseStatus: 'Completed' },
-        { id: 'PUR-101-B', courseName: 'Advanced Firefighting (AFF)', trainingType: 'Classroom Training', purchaseSource: 'Direct', purchaseDate: '2026-08-20', purchaseStatus: 'Active' },
+        {
+          id: 'PUR-101-A',
+          courseName: 'Basic Safety Training (BST)',
+          trainingType: 'Classroom Training',
+          purchaseSource: 'Partner',
+          purchaseDate: '2026-08-01',
+          purchaseStatus: 'Completed',
+        },
+        {
+          id: 'PUR-101-B',
+          courseName: 'Advanced Firefighting (AFF)',
+          trainingType: 'Classroom Training',
+          purchaseSource: 'Direct',
+          purchaseDate: '2026-08-20',
+          purchaseStatus: 'Active',
+        },
       ],
       purchaseHistory: [
-        { courseName: 'Basic Safety Training (BST)', purchaseDate: '2026-08-15', channel: 'Partner Referral', status: 'Completed' },
-        { courseName: 'Advanced Firefighting (AFF)', purchaseDate: '2026-08-28', channel: 'Direct Portal', status: 'Active' }
-      ]
+        {
+          courseName: 'Basic Safety Training (BST)',
+          purchaseDate: '2026-08-15',
+          channel: 'Partner Referral',
+          status: 'Completed',
+        },
+        {
+          courseName: 'Advanced Firefighting (AFF)',
+          purchaseDate: '2026-08-28',
+          channel: 'Direct Portal',
+          status: 'Active',
+        },
+      ],
     },
     {
       id: 'sef-102',
@@ -1443,27 +1742,104 @@ export class AgentService {
       address: 'House 12B, Lake Town, Block A, Kolkata – 700 089',
       hasHariOmAccount: true,
       documents: [
-        { id: 'doc-102-1', name: 'Certificate of Competency (CoC) – Chief Engineer', type: 'CoC', status: 'Approved', expiryDate: '2027-06-10' },
-        { id: 'doc-102-2', name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2031-12-01' },
-        { id: 'doc-102-3', name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2029-05-14' },
-        { id: 'doc-102-4', name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Approved', expiryDate: '2027-02-28' },
-        { id: 'doc-102-5', name: 'GMDSS General Operator Certificate', type: 'GMDSS', status: 'Approved', expiryDate: '2028-09-30' },
+        {
+          id: 'doc-102-1',
+          name: 'Certificate of Competency (CoC) – Chief Engineer',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2027-06-10',
+        },
+        {
+          id: 'doc-102-2',
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2031-12-01',
+        },
+        {
+          id: 'doc-102-3',
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2029-05-14',
+        },
+        {
+          id: 'doc-102-4',
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Approved',
+          expiryDate: '2027-02-28',
+        },
+        {
+          id: 'doc-102-5',
+          name: 'GMDSS General Operator Certificate',
+          type: 'GMDSS',
+          status: 'Approved',
+          expiryDate: '2028-09-30',
+        },
       ],
       seaService: [
-        { id: 'ss-102-1', vesselName: 'MV Eastern Horizon', vesselType: 'Bulk Carrier', rank: 'Chief Engineer', signOn: '2024-11-01', signOff: '2025-05-02', duration: 182 },
-        { id: 'ss-102-2', vesselName: 'MV Bengal Star', vesselType: 'General Cargo', rank: 'Second Engineer', signOn: '2023-07-15', signOff: '2024-01-10', duration: 179 },
+        {
+          id: 'ss-102-1',
+          vesselName: 'MV Eastern Horizon',
+          vesselType: 'Bulk Carrier',
+          rank: 'Chief Engineer',
+          signOn: '2024-11-01',
+          signOff: '2025-05-02',
+          duration: 182,
+        },
+        {
+          id: 'ss-102-2',
+          vesselName: 'MV Bengal Star',
+          vesselType: 'General Cargo',
+          rank: 'Second Engineer',
+          signOn: '2023-07-15',
+          signOff: '2024-01-10',
+          duration: 179,
+        },
       ],
       enrollments: [
-        { id: 'enr-102-1', courseName: 'Medical First Aid (MFA)', trainingType: 'Classroom Training', enrollmentDate: '2026-07-01', status: 'Completed' },
-        { id: 'enr-102-2', courseName: 'Survival Craft & Rescue Boats (SCRB)', trainingType: 'Simulator Training', enrollmentDate: '2026-09-05', status: 'Scheduled' },
+        {
+          id: 'enr-102-1',
+          courseName: 'Medical First Aid (MFA)',
+          trainingType: 'Classroom Training',
+          enrollmentDate: '2026-07-01',
+          status: 'Completed',
+        },
+        {
+          id: 'enr-102-2',
+          courseName: 'Survival Craft & Rescue Boats (SCRB)',
+          trainingType: 'Simulator Training',
+          enrollmentDate: '2026-09-05',
+          status: 'Scheduled',
+        },
       ],
       purchases: [
-        { id: 'PUR-102-A', courseName: 'Medical First Aid (MFA)', trainingType: 'Classroom Training', purchaseSource: 'Partner', purchaseDate: '2026-07-01', purchaseStatus: 'Completed' },
-        { id: 'PUR-102-B', courseName: 'Survival Craft & Rescue Boats (SCRB)', trainingType: 'Simulator Training', purchaseSource: 'Direct', purchaseDate: '2026-09-05', purchaseStatus: 'Scheduled' },
+        {
+          id: 'PUR-102-A',
+          courseName: 'Medical First Aid (MFA)',
+          trainingType: 'Classroom Training',
+          purchaseSource: 'Partner',
+          purchaseDate: '2026-07-01',
+          purchaseStatus: 'Completed',
+        },
+        {
+          id: 'PUR-102-B',
+          courseName: 'Survival Craft & Rescue Boats (SCRB)',
+          trainingType: 'Simulator Training',
+          purchaseSource: 'Direct',
+          purchaseDate: '2026-09-05',
+          purchaseStatus: 'Scheduled',
+        },
       ],
       purchaseHistory: [
-        { courseName: 'Medical First Aid (MFA)', purchaseDate: '2026-07-10', channel: 'Partner Referral', status: 'Completed' }
-      ]
+        {
+          courseName: 'Medical First Aid (MFA)',
+          purchaseDate: '2026-07-10',
+          channel: 'Partner Referral',
+          status: 'Completed',
+        },
+      ],
     },
     {
       id: 'sef-103',
@@ -1482,20 +1858,68 @@ export class AgentService {
       address: 'Sector 22-C, House 45, Chandigarh – 160 022',
       hasHariOmAccount: false,
       documents: [
-        { id: 'doc-103-1', name: 'Certificate of Competency (CoC) – ETO', type: 'CoC', status: 'Approved', expiryDate: '2029-11-05' },
-        { id: 'doc-103-2', name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2034-03-22' },
-        { id: 'doc-103-3', name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2031-08-17' },
-        { id: 'doc-103-4', name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2026-01-15' },
+        {
+          id: 'doc-103-1',
+          name: 'Certificate of Competency (CoC) – ETO',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2029-11-05',
+        },
+        {
+          id: 'doc-103-2',
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2034-03-22',
+        },
+        {
+          id: 'doc-103-3',
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2031-08-17',
+        },
+        {
+          id: 'doc-103-4',
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2026-01-15',
+        },
       ],
       seaService: [
-        { id: 'ss-103-1', vesselName: 'MV Oceanic Pride', vesselType: 'RoRo Vessel', rank: 'Electrical Officer', signOn: '2025-03-10', signOff: '2025-09-10', duration: 184 },
-        { id: 'ss-103-2', vesselName: 'MV Northern Cross', vesselType: 'Offshore Supply Vessel', rank: 'Junior ETO', signOn: '2024-01-20', signOff: '2024-07-18', duration: 179 },
-        { id: 'ss-103-3', vesselName: 'MV Indus Spirit', vesselType: 'Chemical Tanker', rank: 'ETO Trainee', signOn: '2023-06-01', signOff: '2023-11-30', duration: 182 },
+        {
+          id: 'ss-103-1',
+          vesselName: 'MV Oceanic Pride',
+          vesselType: 'RoRo Vessel',
+          rank: 'Electrical Officer',
+          signOn: '2025-03-10',
+          signOff: '2025-09-10',
+          duration: 184,
+        },
+        {
+          id: 'ss-103-2',
+          vesselName: 'MV Northern Cross',
+          vesselType: 'Offshore Supply Vessel',
+          rank: 'Junior ETO',
+          signOn: '2024-01-20',
+          signOff: '2024-07-18',
+          duration: 179,
+        },
+        {
+          id: 'ss-103-3',
+          vesselName: 'MV Indus Spirit',
+          vesselType: 'Chemical Tanker',
+          rank: 'ETO Trainee',
+          signOn: '2023-06-01',
+          signOff: '2023-11-30',
+          duration: 182,
+        },
       ],
       enrollments: [],
       purchases: [],
-      purchaseHistory: []
-    }
+      purchaseHistory: [],
+    },
   ];
 
   // Deterministic unique value generator — ensures each DB user gets
@@ -1512,23 +1936,86 @@ export class AgentService {
     const id = u.id as string;
 
     // Unique fallback pools — all values are realistic maritime data
-    const indosPools = ['20MU3491', '17KL8820', '22CH1105', '19GJ5543', '21WB6678', '18OR9900', '23MH4412', '16TN2234'];
-    const passportPools = ['A7841023', 'B3392841', 'C9201834', 'F4481029', 'G7720193', 'H1193847', 'J5528310', 'K8841029'];
-    const cdcPools = ['MUM-334901', 'CHE-221048', 'KOL-558812', 'KOC-119034', 'VIZ-443291', 'GOA-778102', 'MNG-330218', 'POR-661034'];
-    const dobPools = ['1988-03-12', '1991-07-25', '1985-11-08', '1993-04-19', '1987-09-30', '1990-02-14', '1994-06-05', '1983-12-22'];
+    const indosPools = [
+      '20MU3491',
+      '17KL8820',
+      '22CH1105',
+      '19GJ5543',
+      '21WB6678',
+      '18OR9900',
+      '23MH4412',
+      '16TN2234',
+    ];
+    const passportPools = [
+      'A7841023',
+      'B3392841',
+      'C9201834',
+      'F4481029',
+      'G7720193',
+      'H1193847',
+      'J5528310',
+      'K8841029',
+    ];
+    const cdcPools = [
+      'MUM-334901',
+      'CHE-221048',
+      'KOL-558812',
+      'KOC-119034',
+      'VIZ-443291',
+      'GOA-778102',
+      'MNG-330218',
+      'POR-661034',
+    ];
+    const dobPools = [
+      '1988-03-12',
+      '1991-07-25',
+      '1985-11-08',
+      '1993-04-19',
+      '1987-09-30',
+      '1990-02-14',
+      '1994-06-05',
+      '1983-12-22',
+    ];
     const addressPools = [
       'Plot 12, Miramar Colony, Panaji, Goa – 403 001',
       'Flat 8B, Seaview Residency, Vizag – 530 003',
-      'H.No 45, Fishermen\'s Colony, Kochi – 682 001',
+      "H.No 45, Fishermen's Colony, Kochi – 682 001",
       'Door 22, Marina Enclave, Chennai – 600 028',
       'Block C-3, Port View Apts, Mangalore – 575 001',
       '14, Harbour Road, Paradip, Odisha – 754 142',
       'Qtr 7, Marine Drive Colony, Mumbai – 400 002',
-      'Lane 5, Sailors\' Town, Kolkata – 700 043',
+      "Lane 5, Sailors' Town, Kolkata – 700 043",
     ];
-    const rankPools = ['Second Officer', 'Chief Mate', 'Second Engineer', 'Third Engineer', 'Bosun', 'Able Seaman', 'Electro-Technical Officer', 'Deck Cadet'];
-    const deptPools = ['Deck', 'Engine', 'Deck', 'Engine', 'Deck', 'Deck', 'Electro-Technical', 'Deck'];
-    const statusPools = ['Active', 'Active', 'Active', 'On Leave', 'Active', 'Active', 'Standby', 'Active'];
+    const rankPools = [
+      'Second Officer',
+      'Chief Mate',
+      'Second Engineer',
+      'Third Engineer',
+      'Bosun',
+      'Able Seaman',
+      'Electro-Technical Officer',
+      'Deck Cadet',
+    ];
+    const deptPools = [
+      'Deck',
+      'Engine',
+      'Deck',
+      'Engine',
+      'Deck',
+      'Deck',
+      'Electro-Technical',
+      'Deck',
+    ];
+    const statusPools = [
+      'Active',
+      'Active',
+      'Active',
+      'On Leave',
+      'Active',
+      'Active',
+      'Standby',
+      'Active',
+    ];
     const vesselPools = [
       { vesselName: 'MV Coastal Queen', vesselType: 'Container Vessel' },
       { vesselName: 'MT Sagar Mitra', vesselType: 'Product Tanker' },
@@ -1540,12 +2027,17 @@ export class AgentService {
       { vesselName: 'MV Deccan Voyager', vesselType: 'LPG Tanker' },
     ];
 
-    const rankIdx = Math.abs((id.charCodeAt(0) + id.charCodeAt(2)) % rankPools.length);
-    const vesselIdx = Math.abs((id.charCodeAt(1) + id.charCodeAt(3)) % vesselPools.length);
+    const rankIdx = Math.abs(
+      (id.charCodeAt(0) + id.charCodeAt(2)) % rankPools.length,
+    );
+    const vesselIdx = Math.abs(
+      (id.charCodeAt(1) + id.charCodeAt(3)) % vesselPools.length,
+    );
 
     // Prefer real DB profile data, fall back to unique deterministic values
     const indosNum = profile?.indos_num || this._seaFallback(id, indosPools);
-    const passportNum = profile?.passport_num || this._seaFallback(id + 'p', passportPools);
+    const passportNum =
+      profile?.passport_num || this._seaFallback(id + 'p', passportPools);
     const cdcNum = profile?.cdc_num || this._seaFallback(id + 'c', cdcPools);
     const dob = profile?.dob || this._seaFallback(id + 'd', dobPools);
     const birthPlace = profile?.birth_place || 'India';
@@ -1556,50 +2048,133 @@ export class AgentService {
     const vessel = vesselPools[vesselIdx];
 
     // Build sea service from real DB records or generate one unique entry
-    const seaService = seaRecords.length > 0
-      ? seaRecords.map((r: any, i: number) => ({
-          id: `ss-db-${id.slice(0, 8)}-${i}`,
-          vesselName: r.vessel,
-          vesselType: r.vessel_type || 'General Cargo',
-          rank: r.rank,
-          signOn: r.sign_on,
-          signOff: r.sign_off || 'Present',
-          duration: r.sign_off
-            ? Math.round((new Date(r.sign_off).getTime() - new Date(r.sign_on).getTime()) / (1000 * 60 * 60 * 24))
-            : 90,
-        }))
-      : [
-          {
-            id: `ss-db-${id.slice(0, 8)}-0`,
-            vesselName: vessel.vesselName,
-            vesselType: vessel.vesselType,
-            rank,
-            signOn: '2024-09-01',
-            signOff: '2025-03-01',
-            duration: 181,
-          },
-        ];
+    const seaService =
+      seaRecords.length > 0
+        ? seaRecords.map((r: any, i: number) => ({
+            id: `ss-db-${id.slice(0, 8)}-${i}`,
+            vesselName: r.vessel,
+            vesselType: r.vessel_type || 'General Cargo',
+            rank: r.rank,
+            signOn: r.sign_on,
+            signOff: r.sign_off || 'Present',
+            duration: r.sign_off
+              ? Math.round(
+                  (new Date(r.sign_off).getTime() -
+                    new Date(r.sign_on).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                )
+              : 90,
+          }))
+        : [
+            {
+              id: `ss-db-${id.slice(0, 8)}-0`,
+              vesselName: vessel.vesselName,
+              vesselType: vessel.vesselType,
+              rank,
+              signOn: '2024-09-01',
+              signOff: '2025-03-01',
+              duration: 181,
+            },
+          ];
 
     // Unique documents per seafarer based on their rank pool index
     const docSets = [
       [
-        { id: `doc-db-${id.slice(0,6)}-1`, name: 'Certificate of Competency (CoC)', type: 'CoC', status: 'Approved', expiryDate: '2028-06-30' },
-        { id: `doc-db-${id.slice(0,6)}-2`, name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2032-01-15' },
-        { id: `doc-db-${id.slice(0,6)}-3`, name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2030-08-20' },
-        { id: `doc-db-${id.slice(0,6)}-4`, name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2026-03-01' },
+        {
+          id: `doc-db-${id.slice(0, 6)}-1`,
+          name: 'Certificate of Competency (CoC)',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2028-06-30',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-2`,
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2032-01-15',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-3`,
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2030-08-20',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-4`,
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2026-03-01',
+        },
       ],
       [
-        { id: `doc-db-${id.slice(0,6)}-1`, name: 'Certificate of Competency (CoC)', type: 'CoC', status: 'Approved', expiryDate: '2027-11-10' },
-        { id: `doc-db-${id.slice(0,6)}-2`, name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2031-05-22' },
-        { id: `doc-db-${id.slice(0,6)}-3`, name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2029-12-18' },
-        { id: `doc-db-${id.slice(0,6)}-4`, name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Approved', expiryDate: '2027-07-14' },
-        { id: `doc-db-${id.slice(0,6)}-5`, name: 'GMDSS Radio Operator Certificate', type: 'GMDSS', status: 'Approved', expiryDate: '2028-02-28' },
+        {
+          id: `doc-db-${id.slice(0, 6)}-1`,
+          name: 'Certificate of Competency (CoC)',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2027-11-10',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-2`,
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2031-05-22',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-3`,
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2029-12-18',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-4`,
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Approved',
+          expiryDate: '2027-07-14',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-5`,
+          name: 'GMDSS Radio Operator Certificate',
+          type: 'GMDSS',
+          status: 'Approved',
+          expiryDate: '2028-02-28',
+        },
       ],
       [
-        { id: `doc-db-${id.slice(0,6)}-1`, name: 'Certificate of Proficiency (CoP)', type: 'CoP', status: 'Approved', expiryDate: '2029-04-01' },
-        { id: `doc-db-${id.slice(0,6)}-2`, name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2033-09-10' },
-        { id: `doc-db-${id.slice(0,6)}-3`, name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2031-03-25' },
-        { id: `doc-db-${id.slice(0,6)}-4`, name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2025-11-30' },
+        {
+          id: `doc-db-${id.slice(0, 6)}-1`,
+          name: 'Certificate of Proficiency (CoP)',
+          type: 'CoP',
+          status: 'Approved',
+          expiryDate: '2029-04-01',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-2`,
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2033-09-10',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-3`,
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2031-03-25',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-4`,
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2025-11-30',
+        },
       ],
     ];
     const documents = docSets[rankIdx % docSets.length];
@@ -1649,10 +2224,12 @@ export class AgentService {
           .in('user_id', userIds);
 
         const profileMap: Record<string, any> = {};
-        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+        (profiles || []).forEach((p: any) => {
+          profileMap[p.user_id] = p;
+        });
 
         for (const u of dbSeafarers) {
-          if (!list.some(s => s.id === u.id || s.email === u.email)) {
+          if (!list.some((s) => s.id === u.id || s.email === u.email)) {
             const profile = profileMap[u.id] || null;
             // Sea service records fetched per-user only if needed (lightweight list view)
             list.push(this._buildDbSeafarer(u, profile, []));
@@ -1669,7 +2246,7 @@ export class AgentService {
           s.indosNum.toLowerCase().includes(q) ||
           s.passportNum.toLowerCase().includes(q) ||
           s.cdcNum.toLowerCase().includes(q) ||
-          s.phone.includes(q)
+          s.phone.includes(q),
       );
     } catch (err: any) {
       console.warn('[searchSeafarers] Exception:', err.message);
@@ -1723,7 +2300,6 @@ export class AgentService {
     }
   }
 
-
   async createSeafarer(dto: any) {
     const newSeafarer = {
       id: `sef-${Date.now()}`,
@@ -1745,12 +2321,11 @@ export class AgentService {
       seaService: [] as any[],
       enrollments: [] as any[],
       purchases: [] as any[],
-      purchaseHistory: [] as any[]
+      purchaseHistory: [] as any[],
     };
     this.mockSeafarers.unshift(newSeafarer);
     return newSeafarer;
   }
-
 
   // --- 12. Courses & Partner Pricing ---
   private mockCourses = [
@@ -1762,7 +2337,8 @@ export class AgentService {
       standardFee: 18500,
       payableAmount: 16500,
       trainingType: 'Classroom Training',
-      description: 'Mandatory STCW BST course covering Personal Survival Techniques, Fire Prevention & Fire Fighting, Elementary First Aid, and PSSR.'
+      description:
+        'Mandatory STCW BST course covering Personal Survival Techniques, Fire Prevention & Fire Fighting, Elementary First Aid, and PSSR.',
     },
     {
       id: 'crs-102',
@@ -1772,7 +2348,8 @@ export class AgentService {
       standardFee: 14500,
       payableAmount: 13000,
       trainingType: 'Classroom Training',
-      description: 'Advanced firefighting tactical operations, command strategies, and shipboard emergency control.'
+      description:
+        'Advanced firefighting tactical operations, command strategies, and shipboard emergency control.',
     },
     {
       id: 'crs-103',
@@ -1782,7 +2359,8 @@ export class AgentService {
       standardFee: 9500,
       payableAmount: 8500,
       trainingType: 'Classroom Training',
-      description: 'Immediate medical care training for shipboard officers and crew in accordance with STCW Table A-VI/4-1.'
+      description:
+        'Immediate medical care training for shipboard officers and crew in accordance with STCW Table A-VI/4-1.',
     },
     {
       id: 'crs-104',
@@ -1792,7 +2370,8 @@ export class AgentService {
       standardFee: 12000,
       payableAmount: 10800,
       trainingType: 'Classroom Training',
-      description: 'Operation of lifeboats, liferafts, rescue boats, and survival equipment.'
+      description:
+        'Operation of lifeboats, liferafts, rescue boats, and survival equipment.',
     },
     {
       id: 'crs-105',
@@ -1802,8 +2381,9 @@ export class AgentService {
       standardFee: 11000,
       payableAmount: 9900,
       trainingType: 'Simulator Training',
-      description: 'Radar plotting, target tracking, collision avoidance, and navigation simulator operations.'
-    }
+      description:
+        'Radar plotting, target tracking, collision avoidance, and navigation simulator operations.',
+    },
   ];
 
   async getCourses() {
@@ -1819,9 +2399,10 @@ export class AgentService {
         name: c.name || c.title || 'STCW Course',
         duration: c.duration || '5 Days',
         standardFee: Number(c.fees || c.standardFee) || 12000,
-        payableAmount: Number(c.discountedFee || c.payableAmount || c.fees) || 10500,
+        payableAmount:
+          Number(c.discountedFee || c.payableAmount || c.fees) || 10500,
         trainingType: c.trainingType || 'Classroom Training',
-        description: c.description || 'Certified DG Shipping Maritime Training'
+        description: c.description || 'Certified DG Shipping Maritime Training',
       }));
     } catch (err: any) {
       console.warn('[getCourses] Exception:', err.message);
@@ -1839,7 +2420,7 @@ export class AgentService {
       standardFee: course.standardFee,
       payableAmount: course.payableAmount,
       duration: course.duration,
-      currency: 'INR'
+      currency: 'INR',
     };
   }
 
@@ -1862,7 +2443,7 @@ export class AgentService {
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
       trainingType: course.trainingType,
-      purchaseSource: 'Partner Portal'
+      purchaseSource: 'Partner Portal',
     };
 
     this.mockPurchases.unshift(newPurchase);
@@ -1880,7 +2461,7 @@ export class AgentService {
         commission_amount: Math.round(course.payableAmount * 0.05),
         status: 'Pending',
         purchase_id: purchaseId,
-        created_at: now
+        created_at: now,
       });
     } catch (_) {}
 
@@ -1890,7 +2471,10 @@ export class AgentService {
   async getPurchaseById(agentId: string, id: string) {
     try {
       const purchases = await this.getPurchases(agentId);
-      const found = purchases.find((p: any) => p.id === id || p.purchase_id === id || p.invoiceNumber?.includes(id));
+      const found = purchases.find(
+        (p: any) =>
+          p.id === id || p.purchase_id === id || p.invoiceNumber?.includes(id),
+      );
       if (found) return found;
 
       return {
@@ -1907,7 +2491,7 @@ export class AgentService {
         purchaseStatus: 'Completed',
         settlementStatus: 'Pending',
         trainingType: 'Classroom Training',
-        purchaseSource: 'Partner Portal'
+        purchaseSource: 'Partner Portal',
       };
     } catch (err: any) {
       return {
@@ -1924,7 +2508,7 @@ export class AgentService {
         purchaseStatus: 'Completed',
         settlementStatus: 'Pending',
         trainingType: 'Classroom Training',
-        purchaseSource: 'Partner Portal'
+        purchaseSource: 'Partner Portal',
       };
     }
   }
@@ -1955,7 +2539,9 @@ export class AgentService {
 
   async uploadSeafarerDocument(seafarerId: string, type: string, file: any) {
     const docId = randomUUID();
-    const docUrl = file ? `/uploads/${file.filename || file.originalname || 'document.pdf'}` : `/uploads/document_${docId}.pdf`;
+    const docUrl = file
+      ? `/uploads/${file.filename || file.originalname || 'document.pdf'}`
+      : `/uploads/document_${docId}.pdf`;
     return {
       id: docId,
       type: type || 'General',

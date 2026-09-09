@@ -1,44 +1,38 @@
 [
   {
-    "id": "57b3d13d-f58a-4420-a04e-b54355e3da77",
-    "settlementNumber": "STL-948993",
-    "settlement_number": "STL-948993",
+    "id": "e1d8e39a-5cd1-4859-8616-28c1a36f61c1",
+    "settlementNumber": "STL-747322",
+    "settlement_number": "STL-747322",
     "agentId": "c2222222-2222-2222-2222-222222222222",
     "agent_id": "c2222222-2222-2222-2222-222222222222",
     "agentName": "Partner Agent",
     "agent_name": "Partner Agent",
-    "totalAmount": 21000,
-    "total_amount": 21000,
-    "paidAmount": 0,
-    "paid_amount": 0,
-    "remainingAmount": 21000,
-    "remaining_amount": 21000,
+    "totalAmount": 10500,
+    "total_amount": 10500,
+    "paidAmount": 10500,
+    "paid_amount": 10500,
+    "remainingAmount": 0,
+    "remaining_amount": 0,
     "paymentMode": "partial",
     "payment_mode": "partial",
     "expectedDueDate": "2026-09-30",
     "expected_due_date": "2026-09-30",
-    "netAmount": 15000,
-    "net_amount": 15000,
-    "status": "Pending",
-    "referenceNumber": "HWRY444424424424444444",
-    "reference_number": "HWRY444424424424444444",
+    "netAmount": 5250,
+    "net_amount": 5250,
+    "status": "Completed",
+    "referenceNumber": "1234567",
+    "reference_number": "1234567",
     "paymentMethod": "Bank Transfer (NEFT / RTGS)",
-    "payment_date": "2026-09-09",
-    "remarks": "Settlement submitted by partner",
-    "purchaseIds": [
-      "1d4815cf-6169-4095-af14-698736ccfa23",
-      "051bb4d9-5f91-4de3-be7e-cca5f0822aae"
-    ],
-    "purchase_ids": [
-      "1d4815cf-6169-4095-af14-698736ccfa23",
-      "051bb4d9-5f91-4de3-be7e-cca5f0822aae"
-    ],
-    "createdAt": "2026-09-09T12:56:35.946Z",
-    "created_at": "2026-09-09T12:56:35.946Z",
-    "updatedAt": "2026-09-09T13:18:35.412Z",
-    "updated_at": "2026-09-09T13:18:35.412Z",
-    "paid_at": null,
-    "paidAt": null
+    "payment_date": "2026-09-08",
+    "remarks": "qwertyui",
+    "purchaseIds": ["958e95e5-3fac-42f5-b3c4-0be66f9f23b0"],
+    "purchase_ids": ["958e95e5-3fac-42f5-b3c4-0be66f9f23b0"],
+    "createdAt": "2026-09-08T19:17:39.152Z",
+    "created_at": "2026-09-08T19:17:39.152Z",
+    "updatedAt": "2026-09-08T19:18:38.916Z",
+    "updated_at": "2026-09-08T19:18:38.916Z",
+    "paid_at": "2026-09-08T19:18:38.916Z",
+    "paidAt": "2026-09-08T19:18:38.916Z"
   },
   {
     "id": "c5322941-e02a-4807-a5be-18e32a517d7e",
@@ -66,12 +60,8 @@
     "paymentMethod": "Bank Transfer (NEFT / RTGS)",
     "payment_date": "2026-09-08",
     "remarks": "wyuio",
-    "purchaseIds": [
-      "21a7e81f-ab21-4441-b1f0-9a7b1a6cd995"
-    ],
-    "purchase_ids": [
-      "21a7e81f-ab21-4441-b1f0-9a7b1a6cd995"
-    ],
+    "purchaseIds": ["21a7e81f-ab21-4441-b1f0-9a7b1a6cd995"],
+    "purchase_ids": ["21a7e81f-ab21-4441-b1f0-9a7b1a6cd995"],
     "createdAt": "2026-09-08T19:03:00.317Z",
     "created_at": "2026-09-08T19:03:00.317Z",
     "updatedAt": "2026-09-08T19:03:15.007Z",
@@ -105,12 +95,8 @@
     "paymentMethod": "Bank Transfer (NEFT / RTGS)",
     "payment_date": "2026-09-08",
     "remarks": "12345678",
-    "purchaseIds": [
-      "dc138f20-8ebe-44f9-9333-22a428added5"
-    ],
-    "purchase_ids": [
-      "dc138f20-8ebe-44f9-9333-22a428added5"
-    ],
+    "purchaseIds": ["dc138f20-8ebe-44f9-9333-22a428added5"],
+    "purchase_ids": ["dc138f20-8ebe-44f9-9333-22a428added5"],
     "createdAt": "2026-09-08T16:35:34.577Z",
     "created_at": "2026-09-08T16:35:34.577Z",
     "updatedAt": "2026-09-08T19:03:21.854Z",
@@ -144,12 +130,8 @@
     "paymentMethod": "Bank Transfer (NEFT / RTGS)",
     "payment_date": "2026-09-08",
     "remarks": "ertyu",
-    "purchaseIds": [
-      "afd02a40-08f6-4f99-aec3-ddd00f536a2f"
-    ],
-    "purchase_ids": [
-      "afd02a40-08f6-4f99-aec3-ddd00f536a2f"
-    ],
+    "purchaseIds": ["afd02a40-08f6-4f99-aec3-ddd00f536a2f"],
+    "purchase_ids": ["afd02a40-08f6-4f99-aec3-ddd00f536a2f"],
     "createdAt": "2026-09-08T14:21:42.175Z",
     "created_at": "2026-09-08T14:21:42.175Z",
     "updatedAt": "2026-09-08T14:21:42.175Z",
@@ -208,7 +190,7 @@
     "total_amount": 30000,
     "netAmount": 30000,
     "net_amount": 30000,
-    "status": "Pending",
+    "status": "Completed",
     "referenceNumber": "qwerwdffegrhef",
     "reference_number": "qwerwdffegrhef",
     "paymentMethod": "Bank Transfer (NEFT / RTGS)",
@@ -226,8 +208,14 @@
     ],
     "createdAt": "2026-09-08T14:16:37.400Z",
     "created_at": "2026-09-08T14:16:37.400Z",
-    "updatedAt": "2026-09-08T14:16:37.400Z",
-    "updated_at": "2026-09-08T14:16:37.400Z"
+    "updatedAt": "2026-09-08T19:19:17.845Z",
+    "updated_at": "2026-09-08T19:19:17.845Z",
+    "paidAmount": 30000,
+    "paid_amount": 30000,
+    "remainingAmount": 0,
+    "remaining_amount": 0,
+    "paid_at": "2026-09-08T19:19:17.845Z",
+    "paidAt": "2026-09-08T19:19:17.845Z"
   },
   {
     "id": "59a093f2-13eb-432b-87f7-3b70c545d62d",
@@ -241,7 +229,7 @@
     "total_amount": 15000,
     "netAmount": 15000,
     "net_amount": 15000,
-    "status": "Pending",
+    "status": "Completed",
     "referenceNumber": "UTR-999888",
     "reference_number": "UTR-999888",
     "paymentMethod": "Bank Transfer",
@@ -251,8 +239,14 @@
     "purchase_ids": [],
     "createdAt": "2026-09-07T16:25:01.730Z",
     "created_at": "2026-09-07T16:25:01.730Z",
-    "updatedAt": "2026-09-07T16:25:01.730Z",
-    "updated_at": "2026-09-07T16:25:01.730Z"
+    "updatedAt": "2026-09-08T19:12:54.754Z",
+    "updated_at": "2026-09-08T19:12:54.754Z",
+    "paidAmount": 15000,
+    "paid_amount": 15000,
+    "remainingAmount": 0,
+    "remaining_amount": 0,
+    "paid_at": "2026-09-08T19:12:54.754Z",
+    "paidAt": "2026-09-08T19:12:54.754Z"
   },
   {
     "id": "13b9c0fb-41c8-4b9f-b2fe-c8bd21edbd86",
