@@ -467,7 +467,7 @@ export class AgentService {
       purchaseDate: '2026-09-08T14:13:38.134Z',
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       purchaseSource: 'Partner Portal'
     },
     {
@@ -483,7 +483,7 @@ export class AgentService {
       purchaseDate: '2026-09-05T10:30:00.000Z',
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       purchaseSource: 'Partner Portal'
     },
     {
@@ -499,7 +499,7 @@ export class AgentService {
       purchaseDate: '2026-08-28T16:45:00.000Z',
       purchaseStatus: 'Completed',
       settlementStatus: 'Settled',
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       purchaseSource: 'Partner Portal'
     }
   ];
@@ -530,7 +530,7 @@ export class AgentService {
               purchaseDate: p.created_at || new Date().toISOString(),
               purchaseStatus: p.status === 'Cancelled' ? 'Cancelled' : 'Completed',
               settlementStatus: p.status === 'Paid' ? 'Settled' : p.status === 'Submitted' ? 'Submitted' : 'Pending',
-              trainingType: 'In-Person Training',
+              trainingType: 'Classroom Training',
               purchaseSource: 'Partner Portal'
             });
           }
@@ -1525,7 +1525,7 @@ export class AgentService {
       duration: '12 Days',
       standardFee: 18500,
       payableAmount: 16500,
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       description: 'Mandatory STCW BST course covering Personal Survival Techniques, Fire Prevention & Fire Fighting, Elementary First Aid, and PSSR.'
     },
     {
@@ -1535,7 +1535,7 @@ export class AgentService {
       duration: '6 Days',
       standardFee: 14500,
       payableAmount: 13000,
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       description: 'Advanced firefighting tactical operations, command strategies, and shipboard emergency control.'
     },
     {
@@ -1545,7 +1545,7 @@ export class AgentService {
       duration: '4 Days',
       standardFee: 9500,
       payableAmount: 8500,
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       description: 'Immediate medical care training for shipboard officers and crew in accordance with STCW Table A-VI/4-1.'
     },
     {
@@ -1555,7 +1555,7 @@ export class AgentService {
       duration: '5 Days',
       standardFee: 12000,
       payableAmount: 10800,
-      trainingType: 'In-Person Training',
+      trainingType: 'Classroom Training',
       description: 'Operation of lifeboats, liferafts, rescue boats, and survival equipment.'
     },
     {
@@ -1584,7 +1584,7 @@ export class AgentService {
         duration: c.duration || '5 Days',
         standardFee: Number(c.fees || c.standardFee) || 12000,
         payableAmount: Number(c.discountedFee || c.payableAmount || c.fees) || 10500,
-        trainingType: c.trainingType || 'In-Person Training',
+        trainingType: c.trainingType || 'Classroom Training',
         description: c.description || 'Certified DG Shipping Maritime Training'
       }));
     } catch (err: any) {
@@ -1670,7 +1670,7 @@ export class AgentService {
         purchaseDate: new Date().toISOString(),
         purchaseStatus: 'Completed',
         settlementStatus: 'Pending',
-        trainingType: 'In-Person Training',
+        trainingType: 'Classroom Training',
         purchaseSource: 'Partner Portal'
       };
     } catch (err: any) {
@@ -1687,7 +1687,7 @@ export class AgentService {
         purchaseDate: new Date().toISOString(),
         purchaseStatus: 'Completed',
         settlementStatus: 'Pending',
-        trainingType: 'In-Person Training',
+        trainingType: 'Classroom Training',
         purchaseSource: 'Partner Portal'
       };
     }

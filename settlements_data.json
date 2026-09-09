@@ -1,5 +1,46 @@
 [
   {
+    "id": "57b3d13d-f58a-4420-a04e-b54355e3da77",
+    "settlementNumber": "STL-948993",
+    "settlement_number": "STL-948993",
+    "agentId": "c2222222-2222-2222-2222-222222222222",
+    "agent_id": "c2222222-2222-2222-2222-222222222222",
+    "agentName": "Partner Agent",
+    "agent_name": "Partner Agent",
+    "totalAmount": 21000,
+    "total_amount": 21000,
+    "paidAmount": 0,
+    "paid_amount": 0,
+    "remainingAmount": 21000,
+    "remaining_amount": 21000,
+    "paymentMode": "partial",
+    "payment_mode": "partial",
+    "expectedDueDate": "2026-09-30",
+    "expected_due_date": "2026-09-30",
+    "netAmount": 15000,
+    "net_amount": 15000,
+    "status": "Pending",
+    "referenceNumber": "HWRY444424424424444444",
+    "reference_number": "HWRY444424424424444444",
+    "paymentMethod": "Bank Transfer (NEFT / RTGS)",
+    "payment_date": "2026-09-09",
+    "remarks": "Settlement submitted by partner",
+    "purchaseIds": [
+      "1d4815cf-6169-4095-af14-698736ccfa23",
+      "051bb4d9-5f91-4de3-be7e-cca5f0822aae"
+    ],
+    "purchase_ids": [
+      "1d4815cf-6169-4095-af14-698736ccfa23",
+      "051bb4d9-5f91-4de3-be7e-cca5f0822aae"
+    ],
+    "createdAt": "2026-09-09T12:56:35.946Z",
+    "created_at": "2026-09-09T12:56:35.946Z",
+    "updatedAt": "2026-09-09T13:18:35.412Z",
+    "updated_at": "2026-09-09T13:18:35.412Z",
+    "paid_at": null,
+    "paidAt": null
+  },
+  {
     "id": "c5322941-e02a-4807-a5be-18e32a517d7e",
     "settlementNumber": "STL-257405",
     "settlement_number": "STL-257405",
