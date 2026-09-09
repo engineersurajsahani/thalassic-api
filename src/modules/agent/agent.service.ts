@@ -1498,36 +1498,166 @@ export class AgentService {
     }
   ];
 
+  // Deterministic unique value generator — ensures each DB user gets
+  // different (but stable across requests) maritime data based on their id.
+  private _seaFallback(id: string, pool: string[]): string {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    }
+    return pool[hash % pool.length];
+  }
+
+  private _buildDbSeafarer(u: any, profile: any, seaRecords: any[]) {
+    const id = u.id as string;
+
+    // Unique fallback pools — all values are realistic maritime data
+    const indosPools = ['20MU3491', '17KL8820', '22CH1105', '19GJ5543', '21WB6678', '18OR9900', '23MH4412', '16TN2234'];
+    const passportPools = ['A7841023', 'B3392841', 'C9201834', 'F4481029', 'G7720193', 'H1193847', 'J5528310', 'K8841029'];
+    const cdcPools = ['MUM-334901', 'CHE-221048', 'KOL-558812', 'KOC-119034', 'VIZ-443291', 'GOA-778102', 'MNG-330218', 'POR-661034'];
+    const dobPools = ['1988-03-12', '1991-07-25', '1985-11-08', '1993-04-19', '1987-09-30', '1990-02-14', '1994-06-05', '1983-12-22'];
+    const addressPools = [
+      'Plot 12, Miramar Colony, Panaji, Goa – 403 001',
+      'Flat 8B, Seaview Residency, Vizag – 530 003',
+      'H.No 45, Fishermen\'s Colony, Kochi – 682 001',
+      'Door 22, Marina Enclave, Chennai – 600 028',
+      'Block C-3, Port View Apts, Mangalore – 575 001',
+      '14, Harbour Road, Paradip, Odisha – 754 142',
+      'Qtr 7, Marine Drive Colony, Mumbai – 400 002',
+      'Lane 5, Sailors\' Town, Kolkata – 700 043',
+    ];
+    const rankPools = ['Second Officer', 'Chief Mate', 'Second Engineer', 'Third Engineer', 'Bosun', 'Able Seaman', 'Electro-Technical Officer', 'Deck Cadet'];
+    const deptPools = ['Deck', 'Engine', 'Deck', 'Engine', 'Deck', 'Deck', 'Electro-Technical', 'Deck'];
+    const statusPools = ['Active', 'Active', 'Active', 'On Leave', 'Active', 'Active', 'Standby', 'Active'];
+    const vesselPools = [
+      { vesselName: 'MV Coastal Queen', vesselType: 'Container Vessel' },
+      { vesselName: 'MT Sagar Mitra', vesselType: 'Product Tanker' },
+      { vesselName: 'MV Navodaya', vesselType: 'Bulk Carrier' },
+      { vesselName: 'MT Arabian Star', vesselType: 'Crude Oil Tanker' },
+      { vesselName: 'MV Bay Express', vesselType: 'RoRo Vessel' },
+      { vesselName: 'MV Konkan Pride', vesselType: 'General Cargo' },
+      { vesselName: 'OSV Deep Driller', vesselType: 'Offshore Supply Vessel' },
+      { vesselName: 'MV Deccan Voyager', vesselType: 'LPG Tanker' },
+    ];
+
+    const rankIdx = Math.abs((id.charCodeAt(0) + id.charCodeAt(2)) % rankPools.length);
+    const vesselIdx = Math.abs((id.charCodeAt(1) + id.charCodeAt(3)) % vesselPools.length);
+
+    // Prefer real DB profile data, fall back to unique deterministic values
+    const indosNum = profile?.indos_num || this._seaFallback(id, indosPools);
+    const passportNum = profile?.passport_num || this._seaFallback(id + 'p', passportPools);
+    const cdcNum = profile?.cdc_num || this._seaFallback(id + 'c', cdcPools);
+    const dob = profile?.dob || this._seaFallback(id + 'd', dobPools);
+    const birthPlace = profile?.birth_place || 'India';
+    const rank = this._seaFallback(id + 'r', rankPools);
+    const dept = deptPools[rankIdx];
+    const status = statusPools[rankIdx];
+    const address = this._seaFallback(id + 'a', addressPools);
+    const vessel = vesselPools[vesselIdx];
+
+    // Build sea service from real DB records or generate one unique entry
+    const seaService = seaRecords.length > 0
+      ? seaRecords.map((r: any, i: number) => ({
+          id: `ss-db-${id.slice(0, 8)}-${i}`,
+          vesselName: r.vessel,
+          vesselType: r.vessel_type || 'General Cargo',
+          rank: r.rank,
+          signOn: r.sign_on,
+          signOff: r.sign_off || 'Present',
+          duration: r.sign_off
+            ? Math.round((new Date(r.sign_off).getTime() - new Date(r.sign_on).getTime()) / (1000 * 60 * 60 * 24))
+            : 90,
+        }))
+      : [
+          {
+            id: `ss-db-${id.slice(0, 8)}-0`,
+            vesselName: vessel.vesselName,
+            vesselType: vessel.vesselType,
+            rank,
+            signOn: '2024-09-01',
+            signOff: '2025-03-01',
+            duration: 181,
+          },
+        ];
+
+    // Unique documents per seafarer based on their rank pool index
+    const docSets = [
+      [
+        { id: `doc-db-${id.slice(0,6)}-1`, name: 'Certificate of Competency (CoC)', type: 'CoC', status: 'Approved', expiryDate: '2028-06-30' },
+        { id: `doc-db-${id.slice(0,6)}-2`, name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2032-01-15' },
+        { id: `doc-db-${id.slice(0,6)}-3`, name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2030-08-20' },
+        { id: `doc-db-${id.slice(0,6)}-4`, name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2026-03-01' },
+      ],
+      [
+        { id: `doc-db-${id.slice(0,6)}-1`, name: 'Certificate of Competency (CoC)', type: 'CoC', status: 'Approved', expiryDate: '2027-11-10' },
+        { id: `doc-db-${id.slice(0,6)}-2`, name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2031-05-22' },
+        { id: `doc-db-${id.slice(0,6)}-3`, name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2029-12-18' },
+        { id: `doc-db-${id.slice(0,6)}-4`, name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Approved', expiryDate: '2027-07-14' },
+        { id: `doc-db-${id.slice(0,6)}-5`, name: 'GMDSS Radio Operator Certificate', type: 'GMDSS', status: 'Approved', expiryDate: '2028-02-28' },
+      ],
+      [
+        { id: `doc-db-${id.slice(0,6)}-1`, name: 'Certificate of Proficiency (CoP)', type: 'CoP', status: 'Approved', expiryDate: '2029-04-01' },
+        { id: `doc-db-${id.slice(0,6)}-2`, name: 'Continuous Discharge Certificate (CDC)', type: 'CDC', status: 'Approved', expiryDate: '2033-09-10' },
+        { id: `doc-db-${id.slice(0,6)}-3`, name: 'Indian Passport', type: 'Passport', status: 'Approved', expiryDate: '2031-03-25' },
+        { id: `doc-db-${id.slice(0,6)}-4`, name: 'Medical Fitness Certificate (ENG1)', type: 'Medical', status: 'Expired', expiryDate: '2025-11-30' },
+      ],
+    ];
+    const documents = docSets[rankIdx % docSets.length];
+
+    return {
+      id,
+      name: u.name || 'Seafarer User',
+      email: u.email,
+      phone: u.phone || '+91 99999 00000',
+      dob,
+      birthPlace,
+      nationality: 'Indian',
+      passportNum,
+      indosNum,
+      cdcNum,
+      rank,
+      department: dept,
+      status,
+      address,
+      hasHariOmAccount: true,
+      documents,
+      seaService,
+      enrollments: [],
+      purchases: [],
+      purchaseHistory: [],
+    };
+  }
+
   async searchSeafarers(query?: string) {
     try {
       const db = this.getDb();
       const q = (query || '').trim().toLowerCase();
 
+      // Fetch users + their seafarer profiles in one call
       const { data: dbSeafarers } = await db
         .from('User')
-        .select('id, name, email, phone')
+        .select('id, name, email, phone, role')
         .eq('role', 'SEAFARER');
 
       let list = [...this.mockSeafarers];
       if (dbSeafarers && dbSeafarers.length > 0) {
-        dbSeafarers.forEach((u: any) => {
+        // Bulk-fetch all seafarer profiles
+        const userIds = dbSeafarers.map((u: any) => u.id);
+        const { data: profiles } = await db
+          .from('SeafarerProfile')
+          .select('user_id, indos_num, passport_num, cdc_num, dob, birth_place')
+          .in('user_id', userIds);
+
+        const profileMap: Record<string, any> = {};
+        (profiles || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+
+        for (const u of dbSeafarers) {
           if (!list.some(s => s.id === u.id || s.email === u.email)) {
-            list.push({
-              id: u.id,
-              name: u.name || 'Seafarer User',
-              email: u.email,
-              phone: u.phone || '+91 99999 00000',
-              dob: '1994-01-01',
-              birthPlace: 'India',
-              nationality: 'Indian',
-              passportNum: 'P1234567',
-              indosNum: '19IN1234',
-              cdcNum: 'MUM-123456',
-              hasHariOmAccount: true,
-              purchaseHistory: []
-            });
+            const profile = profileMap[u.id] || null;
+            // Sea service records fetched per-user only if needed (lightweight list view)
+            list.push(this._buildDbSeafarer(u, profile, []));
           }
-        });
+        }
       }
 
       if (!q) return list;
@@ -1552,13 +1682,47 @@ export class AgentService {
   }
 
   async getSeafarerById(id: string) {
-    const list = await this.searchSeafarers();
-    const found = list.find((s) => s.id === id);
-    if (!found) {
-      return list[0];
+    // Check mock seafarers first (sef-101, sef-102, sef-103)
+    const mockFound = this.mockSeafarers.find((s) => s.id === id);
+    if (mockFound) return mockFound;
+
+    // For DB seafarers, do a deep fetch including sea service records
+    try {
+      const db = this.getDb();
+
+      const { data: users } = await db
+        .from('User')
+        .select('id, name, email, phone')
+        .eq('id', id)
+        .limit(1);
+
+      if (!users || users.length === 0) {
+        // fallback: return first mock
+        return this.mockSeafarers[0];
+      }
+
+      const u = users[0];
+
+      const { data: profiles } = await db
+        .from('SeafarerProfile')
+        .select('user_id, indos_num, passport_num, cdc_num, dob, birth_place')
+        .eq('user_id', id)
+        .limit(1);
+
+      const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+
+      const { data: seaRecords } = await db
+        .from('sea_service_records')
+        .select('vessel, vessel_type, rank, sign_on, sign_off')
+        .eq('user_id', id);
+
+      return this._buildDbSeafarer(u, profile, seaRecords || []);
+    } catch (err: any) {
+      console.warn('[getSeafarerById] Exception:', err.message);
+      return this.mockSeafarers[0];
     }
-    return found;
   }
+
 
   async createSeafarer(dto: any) {
     const newSeafarer = {
@@ -1572,12 +1736,21 @@ export class AgentService {
       passportNum: dto.passportNum || 'P9999999',
       indosNum: dto.indosNum || '24IN9999',
       cdcNum: dto.cdcNum || 'MUM-999999',
+      rank: dto.rank || 'Deck Officer',
+      department: dto.department || 'Deck',
+      status: 'Active',
+      address: dto.address || 'India',
       hasHariOmAccount: true,
-      purchaseHistory: []
+      documents: [] as any[],
+      seaService: [] as any[],
+      enrollments: [] as any[],
+      purchases: [] as any[],
+      purchaseHistory: [] as any[]
     };
     this.mockSeafarers.unshift(newSeafarer);
     return newSeafarer;
   }
+
 
   // --- 12. Courses & Partner Pricing ---
   private mockCourses = [
