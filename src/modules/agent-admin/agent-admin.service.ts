@@ -1283,8 +1283,11 @@ export class AgentAdminService {
         `STL-${(s.id || '').substring(0, 6)}`;
       const utr =
         s.reference_number || s.referenceNumber || s.utr || 'UTR-8492049182';
+      const rawAgent = s.agent_name || s.agentName || s.User?.name;
       const agent =
-        s.agent_name || s.agentName || s.User?.name || 'Kishan Manning Agency';
+        rawAgent && rawAgent !== 'Partner Agent' && rawAgent !== 'Agent User'
+          ? rawAgent
+          : 'Kishan Manning Agency';
 
       const statusStr = s.status || 'Pending';
       const isDone =
@@ -1845,8 +1848,11 @@ export class AgentAdminService {
           .select('*')
           .eq('id', settlement.agent_id)
           .maybeSingle();
+        const rawAgentName = agentUser?.name || settlement.agent_name;
         const agentName =
-          agentUser?.name || settlement.agent_name || 'Agent User';
+          rawAgentName && rawAgentName !== 'Partner Agent' && rawAgentName !== 'Agent User'
+            ? rawAgentName
+            : 'Kishan Manning Agency';
         const agentEmail = agentUser?.email || 'agent@thalassic.in';
         const agentPhone = agentUser?.phone || '';
 
