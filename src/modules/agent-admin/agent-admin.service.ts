@@ -1176,20 +1176,49 @@ export class AgentAdminService {
   }
 
   // --- 6. Reports ---
-  async getReports() {
+  async getReports(month?: string) {
     const db = this.getDb();
 
-    // 1. Agent Performance
+    // 1. Fetch agents, commissions (with created_at), and referral_leads (with created_at)
     const { data: agents } = await db.from('User').select('id, name').in('role', ['agent', 'AGENT', 'Agent']);
-    const { data: comms } = await db.from('commissions').select('agent_id, commission_amount, course_fee');
-    const { data: leads } = await db.from('referral_leads').select('agent_id, status, city');
+    const { data: comms } = await db.from('commissions').select('agent_id, commission_amount, course_fee, created_at');
+    const { data: leads } = await db.from('referral_leads').select('agent_id, status, city, created_at');
+
+    // Extract available months from actual DB records (YYYY-MM format)
+    const monthSet = new Set<string>();
+    (comms || []).forEach((c: any) => {
+      if (c.created_at) {
+        const m = new Date(c.created_at).toISOString().substring(0, 7);
+        if (/^\d{4}-\d{2}$/.test(m)) monthSet.add(m);
+      }
+    });
+    (leads || []).forEach((l: any) => {
+      if (l.created_at) {
+        const m = new Date(l.created_at).toISOString().substring(0, 7);
+        if (/^\d{4}-\d{2}$/.test(m)) monthSet.add(m);
+      }
+    });
+    const availableMonths = Array.from(monthSet).sort().reverse();
+
+    // Filter by month if specified and not 'all'
+    const filteredComms = (comms || []).filter((c: any) => {
+      if (!month || month === 'all') return true;
+      if (!c.created_at) return false;
+      return new Date(c.created_at).toISOString().substring(0, 7) === month;
+    });
+
+    const filteredLeads = (leads || []).filter((l: any) => {
+      if (!month || month === 'all') return true;
+      if (!l.created_at) return false;
+      return new Date(l.created_at).toISOString().substring(0, 7) === month;
+    });
 
     const performance = (agents || []).map((agent: any) => {
-      const agentComms = (comms || []).filter((c: any) => c.agent_id === agent.id);
-      const agentLeads = (leads || []).filter((l: any) => l.agent_id === agent.id);
+      const agentComms = filteredComms.filter((c: any) => c.agent_id === agent.id);
+      const agentLeads = filteredLeads.filter((l: any) => l.agent_id === agent.id);
 
-      const totalEarnings = agentComms.reduce((acc, curr) => acc + (parseFloat(curr.commission_amount) || 0), 0);
-      const totalSales = agentComms.reduce((acc, curr) => acc + (parseFloat(curr.course_fee) || 0), 0);
+      const totalEarnings = agentComms.reduce((acc: number, curr: any) => acc + (parseFloat(curr.commission_amount) || 0), 0);
+      const totalSales = agentComms.reduce((acc: number, curr: any) => acc + (parseFloat(curr.course_fee) || 0), 0);
       const totalLeadsCount = agentLeads.length;
       const convertedLeads = agentLeads.filter((l: any) => l.status === 'Converted').length;
       const conversionRate = totalLeadsCount > 0 ? `${Math.round((convertedLeads / totalLeadsCount) * 100)}%` : '0%';
@@ -1198,6 +1227,8 @@ export class AgentAdminService {
         agentName: agent.name,
         leads: totalLeadsCount,
         conversions: convertedLeads,
+        seafarers: convertedLeads,
+        courses: agentComms.length,
         conversionRate,
         totalSales: `₹${totalSales.toLocaleString('en-IN')}`,
         earnings: `₹${totalEarnings.toLocaleString('en-IN')}`,
@@ -1205,13 +1236,13 @@ export class AgentAdminService {
     });
 
     // 2. Conversion details
-    const totalLeadsCount = (leads || []).length;
-    const convertedLeadsCount = (leads || []).filter((l: any) => l.status === 'Converted').length;
+    const totalLeadsCount = filteredLeads.length;
+    const convertedLeadsCount = filteredLeads.filter((l: any) => l.status === 'Converted').length;
     const globalConversionRate = totalLeadsCount > 0 ? `${((convertedLeadsCount / totalLeadsCount) * 100).toFixed(1)}%` : '0%';
 
     // 3. Region Stats
     const regions: Record<string, number> = {};
-    (leads || []).forEach((l: any) => {
+    filteredLeads.forEach((l: any) => {
       let city = (l.city || '').trim();
       if (!city) {
         city = 'Unknown';
@@ -1235,6 +1266,8 @@ export class AgentAdminService {
         globalConversionRate,
       },
       regionStats,
+      availableMonths,
+      selectedMonth: month || 'all',
     };
   }
 

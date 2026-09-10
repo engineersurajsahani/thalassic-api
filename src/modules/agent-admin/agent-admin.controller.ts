@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { AgentAdminService } from './agent-admin.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -89,8 +89,8 @@ export class AgentAdminController {
   }
 
   @Get('reports')
-  getReports() {
-    return this.agentAdminService.getReports();
+  getReports(@Query('month') month?: string) {
+    return this.agentAdminService.getReports(month);
   }
 
   @Get('audit-logs')
