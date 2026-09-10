@@ -1362,18 +1362,56 @@ export class AgentAdminService {
       const pids: string[] = s.purchase_ids || s.purchaseIds || [];
       let relatedPurchases: any[] = [];
 
-      const existingRP = s.related_purchases || s.purchases || s.relatedPurchases;
+      const existingRP =
+        s.related_purchases || s.purchases || s.relatedPurchases;
       if (Array.isArray(existingRP) && existingRP.length > 0) {
         relatedPurchases = existingRP.map((p: any) => ({
           id: p.id || p.purchase_id || `pur-${s.id}`,
-          invoice_number: p.invoice_number || p.invoiceNumber || `HAC-2026-${(p.id || s.id || '').substring(0, 6).toUpperCase()}`,
-          customer_name: p.customer_name || p.seafarerName || p.seafarer_name || s.seafarer_name || s.customer_name || 'Priya Singh',
-          seafarerName: p.customer_name || p.seafarerName || p.seafarer_name || s.seafarer_name || s.customer_name || 'Priya Singh',
-          course_name: p.course_name || p.courseName || p.course || s.course_name || 'Medical Care on Board Ships',
-          courseName: p.course_name || p.courseName || p.course || s.course_name || 'Medical Care on Board Ships',
-          hariom_payable: Number(p.hariom_payable || p.payableAmount || p.final_amount || total),
-          payableAmount: Number(p.hariom_payable || p.payableAmount || p.final_amount || total),
-          date: p.date || (p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '09 Sept 2026'),
+          invoice_number:
+            p.invoice_number ||
+            p.invoiceNumber ||
+            `HAC-2026-${(p.id || s.id || '').substring(0, 6).toUpperCase()}`,
+          customer_name:
+            p.customer_name ||
+            p.seafarerName ||
+            p.seafarer_name ||
+            s.seafarer_name ||
+            s.customer_name ||
+            'Priya Singh',
+          seafarerName:
+            p.customer_name ||
+            p.seafarerName ||
+            p.seafarer_name ||
+            s.seafarer_name ||
+            s.customer_name ||
+            'Priya Singh',
+          course_name:
+            p.course_name ||
+            p.courseName ||
+            p.course ||
+            s.course_name ||
+            'Medical Care on Board Ships',
+          courseName:
+            p.course_name ||
+            p.courseName ||
+            p.course ||
+            s.course_name ||
+            'Medical Care on Board Ships',
+          hariom_payable: Number(
+            p.hariom_payable || p.payableAmount || p.final_amount || total,
+          ),
+          payableAmount: Number(
+            p.hariom_payable || p.payableAmount || p.final_amount || total,
+          ),
+          date:
+            p.date ||
+            (p.created_at
+              ? new Date(p.created_at).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : '09 Sept 2026'),
         }));
       } else if (pids.length > 0) {
         relatedPurchases = pids
@@ -1385,10 +1423,18 @@ export class AgentAdminService {
                 invoice_number:
                   match.invoiceNumber ||
                   `HAC-2026-${(match.id || '').substring(0, 6).toUpperCase()}`,
-                customer_name: match.seafarerName || match.seafarer_name || 'Priya Singh',
-                seafarerName: match.seafarerName || match.seafarer_name || 'Priya Singh',
-                course_name: match.courseName || match.course_name || 'Medical Care on Board Ships',
-                courseName: match.courseName || match.course_name || 'Medical Care on Board Ships',
+                customer_name:
+                  match.seafarerName || match.seafarer_name || 'Priya Singh',
+                seafarerName:
+                  match.seafarerName || match.seafarer_name || 'Priya Singh',
+                course_name:
+                  match.courseName ||
+                  match.course_name ||
+                  'Medical Care on Board Ships',
+                courseName:
+                  match.courseName ||
+                  match.course_name ||
+                  'Medical Care on Board Ships',
                 hariom_payable: Number(match.payableAmount || 0),
                 payableAmount: Number(match.payableAmount || 0),
                 date: match.purchaseDate
@@ -1406,7 +1452,8 @@ export class AgentAdminService {
       }
 
       if (!relatedPurchases || relatedPurchases.length === 0) {
-        const defaultSeafarer = s.seafarer_name || s.customer_name || 'Priya Singh';
+        const defaultSeafarer =
+          s.seafarer_name || s.customer_name || 'Priya Singh';
         const defaultCourse = s.course_name || 'Medical Care on Board Ships';
         relatedPurchases = [
           {
@@ -1473,10 +1520,30 @@ export class AgentAdminService {
           s.paid_at ||
           s.paidAt ||
           (statusStr === 'Completed' ? createdDate : null),
-        expected_due_date: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
-        expectedDueDate: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
-        dueDate: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
-        due_date: s.expected_due_date || s.expectedDueDate || s.dueDate || s.due_date || null,
+        expected_due_date:
+          s.expected_due_date ||
+          s.expectedDueDate ||
+          s.dueDate ||
+          s.due_date ||
+          null,
+        expectedDueDate:
+          s.expected_due_date ||
+          s.expectedDueDate ||
+          s.dueDate ||
+          s.due_date ||
+          null,
+        dueDate:
+          s.expected_due_date ||
+          s.expectedDueDate ||
+          s.dueDate ||
+          s.due_date ||
+          null,
+        due_date:
+          s.expected_due_date ||
+          s.expectedDueDate ||
+          s.dueDate ||
+          s.due_date ||
+          null,
         related_purchases: relatedPurchases,
         relatedPurchases: relatedPurchases,
         purchases: relatedPurchases,
@@ -1488,6 +1555,65 @@ export class AgentAdminService {
         bank_statement_url: proofUrl,
         proofFileName,
         proof_file_name: proofFileName,
+        payment_mode:
+          s.payment_mode ||
+          s.paymentMode ||
+          (s.is_partial || s.was_partial || (s.netAmount && s.netAmount < total)
+            ? 'partial'
+            : 'full'),
+        paymentMode:
+          s.payment_mode ||
+          s.paymentMode ||
+          (s.is_partial || s.was_partial || (s.netAmount && s.netAmount < total)
+            ? 'partial'
+            : 'full'),
+        is_partial: Boolean(
+          s.is_partial ||
+          s.was_partial ||
+          s.isPartial ||
+          s.wasPartial ||
+          s.payment_mode === 'partial' ||
+          s.paymentMode === 'partial' ||
+          (s.netAmount && s.netAmount < total) ||
+          (s.net_amount && s.net_amount < total),
+        ),
+        was_partial: Boolean(
+          s.is_partial ||
+          s.was_partial ||
+          s.isPartial ||
+          s.wasPartial ||
+          s.payment_mode === 'partial' ||
+          s.paymentMode === 'partial' ||
+          (s.netAmount && s.netAmount < total) ||
+          (s.net_amount && s.net_amount < total),
+        ),
+        isPartial: Boolean(
+          s.is_partial ||
+          s.was_partial ||
+          s.isPartial ||
+          s.wasPartial ||
+          s.payment_mode === 'partial' ||
+          s.paymentMode === 'partial' ||
+          (s.netAmount && s.netAmount < total) ||
+          (s.net_amount && s.net_amount < total),
+        ),
+        wasPartial: Boolean(
+          s.is_partial ||
+          s.was_partial ||
+          s.isPartial ||
+          s.wasPartial ||
+          s.payment_mode === 'partial' ||
+          s.paymentMode === 'partial' ||
+          (s.netAmount && s.netAmount < total) ||
+          (s.net_amount && s.net_amount < total),
+        ),
+        netAmount: s.netAmount ?? s.net_amount ?? null,
+        net_amount: s.netAmount ?? s.net_amount ?? null,
+        first_installment_amount:
+          s.first_installment_amount || s.firstInstallmentAmount || null,
+        firstInstallmentAmount:
+          s.first_installment_amount || s.firstInstallmentAmount || null,
+        installments: s.installments || null,
       };
     });
   }
@@ -1706,13 +1832,21 @@ export class AgentAdminService {
         console.warn('Invoices file read warning inside settlements:', e);
       }
 
-      const purchasesToInvoice = (settlement.related_purchases && settlement.related_purchases.length > 0)
-        ? settlement.related_purchases
-        : (settlement.relatedPurchases && settlement.relatedPurchases.length > 0)
-          ? settlement.relatedPurchases
-          : (settlement.purchases && settlement.purchases.length > 0)
-            ? settlement.purchases
-            : [{ customer_name: 'Priya Singh', course_name: 'Medical Care on Board Ships', payableAmount: parseFloat(settlement.total_amount || 10500) }];
+      const purchasesToInvoice =
+        settlement.related_purchases && settlement.related_purchases.length > 0
+          ? settlement.related_purchases
+          : settlement.relatedPurchases &&
+              settlement.relatedPurchases.length > 0
+            ? settlement.relatedPurchases
+            : settlement.purchases && settlement.purchases.length > 0
+              ? settlement.purchases
+              : [
+                  {
+                    customer_name: 'Priya Singh',
+                    course_name: 'Medical Care on Board Ships',
+                    payableAmount: parseFloat(settlement.total_amount || 10500),
+                  },
+                ];
 
       let firstInvNum = '';
 
@@ -1722,10 +1856,17 @@ export class AgentAdminService {
           (i: any) => i.invoice_type === 'HAC',
         ).length;
         const seqNum = String(count + 1).padStart(6, '0');
-        const invNum = item.invoice_number || item.invoiceNumber || `${prefix}${seqNum}`;
+        const invNum =
+          item.invoice_number || item.invoiceNumber || `${prefix}${seqNum}`;
         if (idx === 0) firstInvNum = invNum;
 
-        const fee = Number(item.hariom_payable || item.payableAmount || item.course_fee || (parseFloat(settlement.total_amount || 0) / purchasesToInvoice.length));
+        const fee = Number(
+          item.hariom_payable ||
+            item.payableAmount ||
+            item.course_fee ||
+            parseFloat(settlement.total_amount || 0) /
+              purchasesToInvoice.length,
+        );
 
         const invoiceId = randomUUID();
         const invoiceObj = {
@@ -1758,14 +1899,24 @@ export class AgentAdminService {
           discount: 0,
           final_amount: fee,
           payment_gateway: 'Manual Settlement',
-          transaction_id: settlement.settlement_number || settlement.settlementNumber || settlementId,
+          transaction_id:
+            settlement.settlement_number ||
+            settlement.settlementNumber ||
+            settlementId,
           payment_method: settlement.payment_method || 'Bank Transfer',
           payment_date: nowIso,
           status: 'Paid',
           created_at: nowIso,
         };
 
-        if (!invoicesList.some((i: any) => i.invoice_number === invNum || (i.purchase_id === invoiceObj.purchase_id && i.transaction_id === invoiceObj.transaction_id))) {
+        if (
+          !invoicesList.some(
+            (i: any) =>
+              i.invoice_number === invNum ||
+              (i.purchase_id === invoiceObj.purchase_id &&
+                i.transaction_id === invoiceObj.transaction_id),
+          )
+        ) {
           invoicesList.unshift(invoiceObj);
         }
 
