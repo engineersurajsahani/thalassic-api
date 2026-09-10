@@ -1939,135 +1939,20 @@ export class AgentAdminService {
       if (isCompleting) inMemMatch.paid_at = nowIso;
     }
 
-    // --- Auto-generate HAC invoice when marking as Completed ---
-    let generatedInvoiceNumber = null;
     if (isCompleting) {
-      try {
-        const { data: agentUser } = await db
-          .from('User')
-          .select('*')
-          .eq('id', settlement.agent_id)
-          .maybeSingle();
-        const rawAgentName = agentUser?.name || settlement.agent_name;
-        const agentName =
-          rawAgentName && rawAgentName !== 'Partner Agent' && rawAgentName !== 'Agent User'
-            ? rawAgentName
-            : 'Kishan Manning Agency';
-        const agentEmail = agentUser?.email || 'agent@thalassic.in';
-        const agentPhone = agentUser?.phone || '';
-
-        const currentYear = new Date().getFullYear();
-        const prefix = `HAC-${currentYear}-`;
-        let invoicesList: any[] = [];
-        const invoicesFilePath = path.join(process.cwd(), 'invoices_data.json');
-        try {
-          if (fs.existsSync(invoicesFilePath)) {
-            invoicesList = JSON.parse(
-              fs.readFileSync(invoicesFilePath, 'utf8'),
-            );
-          }
-        } catch (e) {}
-
-        const purchasesToInvoice = (settlement.related_purchases && settlement.related_purchases.length > 0)
-          ? settlement.related_purchases
-          : (settlement.relatedPurchases && settlement.relatedPurchases.length > 0)
-            ? settlement.relatedPurchases
-            : (settlement.purchases && settlement.purchases.length > 0)
-              ? settlement.purchases
-              : [{ customer_name: 'Priya Singh', course_name: 'Medical Care on Board Ships', payableAmount: parseFloat(settlement.total_amount || 10500) }];
-
-        let firstInvNum = '';
-
-        for (let idx = 0; idx < purchasesToInvoice.length; idx++) {
-          const item = purchasesToInvoice[idx];
-          const count = invoicesList.filter(
-            (i: any) => i.invoice_type === 'HAC',
-          ).length;
-          const seqNum = String(count + 1).padStart(6, '0');
-          const invNum = item.invoice_number || item.invoiceNumber || `${prefix}${seqNum}`;
-          if (idx === 0) firstInvNum = invNum;
-
-          const fee = Number(item.hariom_payable || item.payableAmount || item.course_fee || (parseFloat(settlement.total_amount || 0) / purchasesToInvoice.length));
-
-          const invoiceId = randomUUID();
-          const invoiceObj = {
-            id: invoiceId,
-            invoice_number: invNum,
-            invoice_type: 'HAC',
-            user_id: settlement.agent_id,
-            purchase_id: item.id || settlement.id,
-            agent_id: settlement.agent_id,
-            customer_name:
-              item.seafarerName ||
-              item.customer_name ||
-              item.seafarer_name ||
-              'Priya Singh',
-            customer_email:
-              item.seafarerEmail ||
-              item.customer_email ||
-              'priya.singh@merchantnavy.org',
-            customer_phone: agentPhone,
-            agent_name: agentName,
-            course_name:
-              item.courseName ||
-              item.course_name ||
-              item.course ||
-              'Medical Care on Board Ships',
-            institute_name: 'Hari Om Thalassic Maritime Training Institute',
-            course_fee: fee,
-            discount: 0,
-            final_amount: fee,
-            payment_gateway: 'Manual Settlement',
-            transaction_id: settlement.settlement_number || settlementId,
-            payment_method: settlement.payment_method || 'Bank Transfer',
-            payment_date: nowIso,
-            status: 'Paid',
-            created_at: nowIso,
-          };
-
-          if (!invoicesList.some((i: any) => i.invoice_number === invNum || (i.purchase_id === invoiceObj.purchase_id && i.transaction_id === invoiceObj.transaction_id))) {
-            invoicesList.unshift(invoiceObj);
-          }
-
-          try {
-            await db.from('invoices').insert(invoiceObj);
-          } catch (e) {
-            console.warn('[Invoice] Supabase insert warning:', e);
-          }
-        }
-
-        fs.writeFileSync(
-          invoicesFilePath,
-          JSON.stringify(invoicesList, null, 2),
-          'utf8',
-        );
-
-        generatedInvoiceNumber = firstInvNum || `${prefix}000001`;
-
-        try {
-          await db
-            .from('settlements')
-            .update({ hac_invoice_number: generatedInvoiceNumber })
-            .eq('id', settlementId);
-        } catch (_) {}
-      } catch (e) {
-        console.warn('[Settlement HAC Invoice] Error generating invoice:', e);
-      }
-
       await this.logAction(
         adminId,
         adminName,
         'SETTLEMENT_COMPLETED',
         'Settlements',
         settlementId,
-        `Settlement ${settlement.settlement_number || settlementId} marked as Completed. Invoice: ${generatedInvoiceNumber || 'N/A'}`,
+        `Settlement ${settlement.settlement_number || settlementId} marked as Completed.`,
       );
     }
 
     return {
       id: settlementId,
       status: newStatus,
-      hacInvoiceNumber: generatedInvoiceNumber,
       success: true,
     };
   }
