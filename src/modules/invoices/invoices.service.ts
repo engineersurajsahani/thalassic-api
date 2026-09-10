@@ -28,62 +28,12 @@ export class InvoicesService {
         const raw = fs.readFileSync(this.storageFilePath, 'utf8');
         this.inMemoryInvoices = JSON.parse(raw);
       } else {
-        // Seed sample invoices if empty
-        const now = new Date().toISOString();
-        this.inMemoryInvoices = [
-          {
-            id: 'inv-hoc-sample-1',
-            invoice_number: 'HOC260900001',
-            invoice_type: 'HOC',
-            user_id: 'a0000000-0000-0000-0000-000000000001',
-            purchase_id: 'purch-sample-1',
-            agent_id: null,
-            commission_snapshot_id: null,
-            customer_name: 'Raj Kumar',
-            customer_email: 'raj@example.com',
-            customer_phone: '+91 98765 43210',
-            agent_name: null,
-            agent_referral_code: null,
-            course_name: 'Basic Safety Training (BST)',
-            course_fee: 12000,
-            discount: 0,
-            final_amount: 12000,
-            payment_gateway: 'razorpay_production_mode',
-            transaction_id: 'TXN-HOC-1001',
-            payment_method: 'Online UPI/Card',
-            payment_date: now,
-            status: 'Paid',
-            created_at: now,
-          },
-          {
-            id: 'inv-hac-sample-2',
-            invoice_number: 'HAC260900001',
-            invoice_type: 'HAC',
-            user_id: 'a0000000-0000-0000-0000-000000000002',
-            purchase_id: 'purch-sample-2',
-            agent_id: '58f7dc83-cb27-4547-8264-ed433b557103',
-            commission_snapshot_id: 'f02c3029-3897-4606-aeb0-af576e103641',
-            customer_name: 'Priya Singh',
-            customer_email: 'priya@example.com',
-            customer_phone: '+91 99887 76655',
-            agent_name: 'Agent User',
-            agent_referral_code: 'REFAGENT123',
-            course_name: 'Basic Safety Training (BST)',
-            course_fee: 12000,
-            discount: 0,
-            final_amount: 12000,
-            payment_gateway: 'razorpay_production_mode',
-            transaction_id: 'TXN-HAC-1002',
-            payment_method: 'Online UPI/Card',
-            payment_date: now,
-            status: 'Paid',
-            created_at: now,
-          },
-        ];
+        this.inMemoryInvoices = [];
         this.saveInvoicesToDisk();
       }
     } catch (e) {
       console.error('Error loading invoices from disk:', e);
+      this.inMemoryInvoices = [];
     }
   }
 
@@ -125,79 +75,90 @@ export class InvoicesService {
     }
   }
 
-  // --- 1. Automatic Idempotent Invoice Generation ---
+  // --- 1. Automatic & Manual Idempotent Invoice Generation ---
   async generateInvoice(params: {
-    userId: string;
-    purchaseId: string;
+    userId?: string;
+    purchaseId?: string;
     agentId?: string;
     commissionSnapshotId?: string;
-    customerName: string;
-    customerEmail: string;
-    customerPhone: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string;
     agentName?: string;
     agentReferralCode?: string;
-    courseName: string;
-    courseFee: number;
+    courseName?: string;
+    courseFee?: number;
     discount?: number;
-    finalAmount: number;
+    finalAmount?: number;
+    hariomPayable?: number;
     paymentGateway?: string;
-    transactionId: string;
+    transactionId?: string;
     paymentMethod?: string;
     paymentDate?: string;
+    invoiceNumber?: string;
   }) {
     const {
-      userId,
-      purchaseId,
-      agentId,
+      userId = 'd0000000-0000-0000-0000-000000000000',
+      purchaseId = randomUUID(),
+      agentId = 'd0000000-0000-0000-0000-000000000000',
       commissionSnapshotId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      agentName,
+      customerName = 'Seafarer',
+      customerEmail = 'seafarer@merchantnavy.org',
+      customerPhone = '',
+      agentName = 'Kishan Manning Agency',
       agentReferralCode,
-      courseName,
-      courseFee,
+      courseName = 'STCW Course',
+      courseFee = 10500,
       discount = 0,
-      finalAmount,
-      paymentGateway = 'razorpay_production_mode',
-      transactionId,
-      paymentMethod = 'Online UPI/Card',
+      finalAmount = 10500,
+      hariomPayable,
+      paymentGateway = 'Manual Settlement',
+      transactionId = 'STL-000000',
+      paymentMethod = 'Bank Transfer',
       paymentDate = new Date().toISOString(),
+      invoiceNumber: customInvNum,
     } = params;
 
-    // 1. Idempotency Check
+    // 1. Reload from disk to get latest state
+    this.loadInvoicesFromDisk();
+
+    // 2. Idempotency Check
     const existingInMem = this.inMemoryInvoices.find(
-      (i) => i.transaction_id === transactionId,
+      (i) =>
+        (customInvNum && i.invoice_number === customInvNum) ||
+        (purchaseId && i.purchase_id === purchaseId),
     );
     if (existingInMem) {
       console.log(
-        `[Invoice] Duplicate payment callback ignored for transactionId: ${transactionId}`,
+        `[Invoice] Duplicate invoice generation ignored for purchaseId/invoiceNumber: ${customInvNum || purchaseId}`,
       );
       return existingInMem;
     }
 
-    // 2. Determine Invoice Type (HOC vs HAC)
-    const isHac = !!(agentId || agentReferralCode || commissionSnapshotId);
+    // 3. Determine Invoice Type (HOC vs HAC)
+    const isHac = !!(agentId || agentReferralCode || commissionSnapshotId || agentName);
     const invoiceType = isHac ? 'HAC' : 'HOC';
 
-    // 3. Generate Sequential Unique Invoice Number per PRD 6.1 (PREFIX + YY + MM + SEQUENCE)
-    const now = new Date();
-    const yy = String(now.getFullYear()).slice(-2);
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const periodPrefix = `${invoiceType}${yy}${mm}`;
-
-    const count = this.inMemoryInvoices.filter(
-      (i) =>
-        i.invoice_type === invoiceType &&
-        i.invoice_number &&
-        i.invoice_number.startsWith(periodPrefix),
-    ).length;
-
-    const seqNum = String(count + 1).padStart(5, '0');
-    const invoiceNumber = `${periodPrefix}${seqNum}`;
+    // 4. Determine Invoice Number
+    let invoiceNumber = customInvNum;
+    if (!invoiceNumber) {
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const periodPrefix = `${invoiceType}${yy}${mm}`;
+      const count = this.inMemoryInvoices.filter(
+        (i) =>
+          i.invoice_type === invoiceType &&
+          i.invoice_number &&
+          i.invoice_number.startsWith(periodPrefix),
+      ).length;
+      const seqNum = String(count + 1).padStart(5, '0');
+      invoiceNumber = `${periodPrefix}${seqNum}`;
+    }
 
     const invoiceId = randomUUID();
     const createdAt = new Date().toISOString();
+    const payableAmt = hariomPayable ?? finalAmount;
 
     const invoiceObj = {
       id: invoiceId,
@@ -213,9 +174,11 @@ export class InvoicesService {
       agent_name: agentName || null,
       agent_referral_code: agentReferralCode || null,
       course_name: courseName,
+      institute_name: 'Hari Om Thalassic Maritime Training Institute',
       course_fee: courseFee,
       discount,
       final_amount: finalAmount,
+      hariom_payable_amount: payableAmt,
       payment_gateway: paymentGateway,
       transaction_id: transactionId,
       payment_method: paymentMethod,
@@ -240,7 +203,7 @@ export class InvoicesService {
       customerName,
       'INVOICE_GENERATED',
       invoiceNumber,
-      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${finalAmount.toLocaleString('en-IN')})`,
+      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${payableAmt.toLocaleString('en-IN')})`,
     );
 
     return invoiceObj;

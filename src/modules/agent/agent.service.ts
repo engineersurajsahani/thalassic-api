@@ -617,6 +617,29 @@ export class AgentService {
       const settledPurchaseIds = new Set<string>();
 
       settlements.forEach((s: any) => {
+        const rels = s.related_purchases || s.relatedPurchases || s.purchases || [];
+        rels.forEach((rel: any) => {
+          const pid = rel.id;
+          if (pid && !this.mockPurchases.some((m) => m.id === pid)) {
+            this.mockPurchases.push({
+              id: pid,
+              agentId: s.agentId || s.agent_id || agentId,
+              seafarerId: rel.seafarerId || rel.seafarer_id || 'sef-102',
+              seafarerName: rel.seafarerName || rel.customer_name || 'Rajesh Kumar',
+              indosNumber: rel.indosNumber || rel.indos_number || '18BN9021',
+              courseId: rel.courseId || rel.course_id || 'crs-102',
+              courseCode: rel.courseCode || rel.course_code || 'AFF-OFF-02',
+              courseName: rel.courseName || rel.course_name || 'Advanced Fire Fighting',
+              payableAmount: Number(rel.payableAmount || rel.hariom_payable || 10500),
+              purchaseDate: rel.date || s.createdAt || s.created_at || new Date().toISOString(),
+              purchaseStatus: 'Completed',
+              settlementStatus: Number(s.remainingAmount ?? s.remaining_amount ?? 0) > 0 ? 'Partial' : 'Pending',
+              trainingType: 'Classroom Training',
+              purchaseSource: 'Partner Portal',
+            });
+          }
+        });
+
         const ids = s.purchaseIds || s.purchase_ids || [];
         const isFullCompleted =
           s.status === 'Paid' ||
@@ -1475,6 +1498,83 @@ export class AgentService {
       paymentMode === 'partial' ? Math.max(0, totalAmount - paidAmount) : 0;
     const expectedDueDate = dto.expectedDueDate || null;
 
+    // Check if an existing settlement row already exists for these purchaseIds
+    const existingSettlement = settlements.find((s: any) => {
+      const sIds = s.purchaseIds || s.purchase_ids || (s.related_purchases ? s.related_purchases.map((r: any) => r.id) : []);
+      return purchaseIds.some((pid) => sIds.includes(pid) || s.id === pid);
+    });
+
+    if (existingSettlement) {
+      const currentSettled = Number(existingSettlement.amount_settled || existingSettlement.paid_amount || existingSettlement.paidAmount || 0);
+      const payable = Number(existingSettlement.amount_payable || existingSettlement.total_amount || existingSettlement.totalAmount || totalAmount);
+      const newSettled = Math.min(payable, currentSettled + paidAmount);
+      const newPending = Math.max(0, payable - newSettled);
+
+      existingSettlement.amount_settled = newSettled;
+      existingSettlement.amountSettled = newSettled;
+      existingSettlement.paid_amount = newSettled;
+      existingSettlement.paidAmount = newSettled;
+      existingSettlement.pending_amount = newPending;
+      existingSettlement.pendingAmount = newPending;
+      existingSettlement.remaining_amount = newPending;
+      existingSettlement.remainingAmount = newPending;
+
+      if (existingSettlement.status !== 'Completed') {
+        if (newSettled > 0 && newPending > 0) {
+          existingSettlement.status = 'Partial';
+        } else {
+          existingSettlement.status = 'Pending';
+        }
+      }
+
+      existingSettlement.is_partial = true;
+      existingSettlement.was_partial = true;
+      existingSettlement.payment_mode = "partial";
+      existingSettlement.paymentMode = "partial";
+
+      const firstAmt = currentSettled || Math.floor(payable * 0.47);
+      const secondAmt = payable - firstAmt;
+      const firstDate = existingSettlement.created_at ? new Date(existingSettlement.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "10 Sept 2026";
+      const secondDate = new Date(nowIso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+      existingSettlement.installments = [
+        {
+          name: "1st Installment",
+          date: firstDate,
+          amount: firstAmt,
+          utr: existingSettlement.reference_number || "UTR-12345678",
+          status: "Paid"
+        },
+        {
+          name: "2nd Installment",
+          date: secondDate,
+          amount: secondAmt,
+          utr: dto.referenceNumber || existingSettlement.reference_number || "UTR-87654321",
+          status: "Paid"
+        }
+      ];
+
+      if (dto.referenceNumber) {
+        existingSettlement.reference_number = dto.referenceNumber;
+        existingSettlement.referenceNumber = dto.referenceNumber;
+      }
+      existingSettlement.updated_at = nowIso;
+      existingSettlement.updatedAt = nowIso;
+
+      this.saveSettlementsToDisk(settlements);
+
+      if (newPending === 0) {
+        purchaseIds.forEach((pid: string) => {
+          const match = this.mockPurchases.find((m) => m.id === pid);
+          if (match) {
+            match.settlementStatus = 'Completed';
+          }
+        });
+      }
+
+      return existingSettlement;
+    }
+
     const proofUrl = dto.proofUrl || dto.bank_statement_url || null;
     const proofFileName =
       dto.proofFileName || (proofUrl ? 'Bank_Statement_Proof.pdf' : null);
@@ -1489,10 +1589,16 @@ export class AgentService {
       agent_name: agentName,
       totalAmount,
       total_amount: totalAmount,
+      amount_payable: totalAmount,
+      amountPayable: totalAmount,
       paidAmount,
       paid_amount: paidAmount,
+      amount_settled: paidAmount,
+      amountSettled: paidAmount,
       remainingAmount,
       remaining_amount: remainingAmount,
+      pendingAmount: remainingAmount,
+      pending_amount: remainingAmount,
       paymentMode,
       payment_mode: paymentMode,
       expectedDueDate,
@@ -1502,6 +1608,8 @@ export class AgentService {
       status:
         paymentMode === 'partial' && remainingAmount > 0
           ? 'Partial'
+          : remainingAmount === 0
+          ? 'Completed'
           : 'Pending',
       referenceNumber: dto.referenceNumber || 'UTR-' + Date.now(),
       reference_number: dto.referenceNumber || 'UTR-' + Date.now(),
