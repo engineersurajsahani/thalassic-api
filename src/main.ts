@@ -16,23 +16,30 @@ process.on('uncaughtException', (err: any) => {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
+
   const logger = createLogger('Main');
-  
+
   // Global API prefix with versioning
   app.setGlobalPrefix('api/v1');
-  
+
   // Global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Environment-based CORS configuration
-  const frontendOrigins = (process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || '')
+  const frontendOrigins = (
+    process.env.FRONTEND_ORIGINS ||
+    process.env.FRONTEND_URL ||
+    ''
+  )
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
 
   app.enableCors({
-    origin: (origin: string | undefined, callback: (err: Error | null, allow: boolean) => void) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow: boolean) => void,
+    ) => {
       if (!origin) return callback(null, true);
       // Allow localhost, custom frontend origins, and vercel/render deployments
       if (
@@ -58,9 +65,15 @@ async function bootstrap() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=()',
+    );
     if (process.env.NODE_ENV === 'production') {
-      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains',
+      );
     }
     next();
   });
@@ -81,7 +94,10 @@ async function bootstrap() {
   // Request timeout middleware (30 seconds)
   app.use((req: Request, res: Response, next: NextFunction) => {
     req.setTimeout(30000, () => {
-      logger.warn({ method: req.method, url: req.url }, 'Request timeout after 30s');
+      logger.warn(
+        { method: req.method, url: req.url },
+        'Request timeout after 30s',
+      );
       if (!res.headersSent) {
         res.status(408).json({
           statusCode: 408,
@@ -96,16 +112,18 @@ async function bootstrap() {
   });
 
   const port = parseInt(process.env.PORT || '4000', 10);
-  
+
   // Bind explicitly to 0.0.0.0 for Render / Container deployments
   await app.listen(port, '0.0.0.0');
   logger.info(`NestJS Backend running on port ${port} (0.0.0.0)`);
   logger.info(`API Base URL: http://0.0.0.0:${port}/api/v1`);
-  logger.info(`Health check available at: http://0.0.0.0:${port}/api/v1/health`);
-  
+  logger.info(
+    `Health check available at: http://0.0.0.0:${port}/api/v1/health`,
+  );
+
   // Enable graceful shutdown
   app.enableShutdownHooks();
-  
+
   process.on('SIGTERM', () => {
     logger.info('SIGTERM received. Starting graceful shutdown...');
     app.close().then(() => {
@@ -113,7 +131,7 @@ async function bootstrap() {
       process.exit(0);
     });
   });
-  
+
   process.on('SIGINT', () => {
     logger.info('SIGINT received. Starting graceful shutdown...');
     app.close().then(() => {

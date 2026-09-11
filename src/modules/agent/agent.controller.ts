@@ -1,9 +1,22 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, ForbiddenException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  ForbiddenException,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AgentService } from './agent.service';
 import { AuthGuard } from '../auth/auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller(['agent', 'partner'])
 @UseGuards(AuthGuard)
@@ -159,7 +172,11 @@ export class AgentController {
   @Put('settings/password')
   changePassword(@Req() req: any, @Body() dto: any) {
     this.checkRole(req);
-    return this.agentService.changePassword(req.user.id, dto.oldPassword, dto.newPassword);
+    return this.agentService.changePassword(
+      req.user.id,
+      dto.oldPassword,
+      dto.newPassword,
+    );
   }
 
   @Post('settlements')
@@ -238,26 +255,43 @@ export class AgentController {
 
   // --- Seafarer Verification Documents ---
   @Get('seafarers/:seafarerId/documents')
-  getSeafarerDocuments(@Req() req: any, @Param('seafarerId') seafarerId: string) {
+  getSeafarerDocuments(
+    @Req() req: any,
+    @Param('seafarerId') seafarerId: string,
+  ) {
     this.checkRole(req);
     return this.agentService.getSeafarerDocuments(seafarerId);
   }
 
   @Post('seafarers/:seafarerId/documents')
   @UseInterceptors(FileInterceptor('file'))
-  uploadSeafarerDocument(@Req() req: any, @Param('seafarerId') seafarerId: string, @UploadedFile() file: any, @Body('type') type: string) {
+  uploadSeafarerDocument(
+    @Req() req: any,
+    @Param('seafarerId') seafarerId: string,
+    @UploadedFile() file: any,
+    @Body('type') type: string,
+  ) {
     this.checkRole(req);
     return this.agentService.uploadSeafarerDocument(seafarerId, type, file);
   }
 
   @Put('seafarers/:seafarerId/documents/:docId')
-  updateSeafarerDocument(@Req() req: any, @Param('seafarerId') seafarerId: string, @Param('docId') docId: string, @Body() dto: any) {
+  updateSeafarerDocument(
+    @Req() req: any,
+    @Param('seafarerId') seafarerId: string,
+    @Param('docId') docId: string,
+    @Body() dto: any,
+  ) {
     this.checkRole(req);
     return this.agentService.updateSeafarerDocument(seafarerId, docId, dto);
   }
 
   @Delete('seafarers/:seafarerId/documents/:docId')
-  deleteSeafarerDocument(@Req() req: any, @Param('seafarerId') seafarerId: string, @Param('docId') docId: string) {
+  deleteSeafarerDocument(
+    @Req() req: any,
+    @Param('seafarerId') seafarerId: string,
+    @Param('docId') docId: string,
+  ) {
     this.checkRole(req);
     return this.agentService.deleteSeafarerDocument(seafarerId, docId);
   }

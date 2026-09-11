@@ -10,13 +10,18 @@ export const CONFIGURED_INSTITUTES = [
     name: 'Hari Om Thalassic Maritime Training Academy - Mumbai',
     code: 'HOT-MUM-01',
     idtNumber: 'IDT-10294',
-    address: 'Colaba Maritime Training Complex, Marine Drive, Mumbai, Maharashtra 400005',
+    address:
+      'Colaba Maritime Training Complex, Marine Drive, Mumbai, Maharashtra 400005',
     city: 'Mumbai',
     phone: '+91 22 6123 4567',
     email: 'mumbai.campus@hariomthalassic.com',
     schedule: 'Monday - Friday | 09:00 - 17:30 IST',
-    batchDates: ['Batch 1: 1st - 12th of month', 'Batch 2: 15th - 27th of month'],
-    facilities: 'Full-Mission Bridge Simulator, Fire Fighting Mock-up, Survival Craft Davit'
+    batchDates: [
+      'Batch 1: 1st - 12th of month',
+      'Batch 2: 15th - 27th of month',
+    ],
+    facilities:
+      'Full-Mission Bridge Simulator, Fire Fighting Mock-up, Survival Craft Davit',
   },
   {
     id: 'inst-chennai',
@@ -28,21 +33,30 @@ export const CONFIGURED_INSTITUTES = [
     phone: '+91 44 2598 1122',
     email: 'chennai.campus@hariomthalassic.com',
     schedule: 'Monday - Saturday | 08:30 - 16:30 IST',
-    batchDates: ['Batch A: 5th - 17th of month', 'Batch B: 20th - 31st of month'],
-    facilities: 'Tanker Cargo Simulator (OCTCO/GTFC), Advanced Medical Care Ward, Wet PST Pool'
+    batchDates: [
+      'Batch A: 5th - 17th of month',
+      'Batch B: 20th - 31st of month',
+    ],
+    facilities:
+      'Tanker Cargo Simulator (OCTCO/GTFC), Advanced Medical Care Ward, Wet PST Pool',
   },
   {
     id: 'inst-kolkata',
     name: 'Hari Om Thalassic Nautical Institute - Kolkata',
     code: 'HOT-KOL-03',
     idtNumber: 'IDT-10488',
-    address: 'Garden Reach Road, Kidderpore Port Area, Kolkata, West Bengal 700024',
+    address:
+      'Garden Reach Road, Kidderpore Port Area, Kolkata, West Bengal 700024',
     city: 'Kolkata',
     phone: '+91 33 2410 8890',
     email: 'kolkata.campus@hariomthalassic.com',
     schedule: 'Monday - Friday | 09:00 - 17:00 IST',
-    batchDates: ['Batch 1: 3rd - 15th of month', 'Batch 2: 18th - 30th of month'],
-    facilities: 'Advanced Engine Room Simulator, High Voltage Switchboard Lab, ECDIS Suite'
+    batchDates: [
+      'Batch 1: 3rd - 15th of month',
+      'Batch 2: 18th - 30th of month',
+    ],
+    facilities:
+      'Advanced Engine Room Simulator, High Voltage Switchboard Lab, ECDIS Suite',
   },
   {
     id: 'inst-goa',
@@ -54,8 +68,12 @@ export const CONFIGURED_INSTITUTES = [
     phone: '+91 832 251 4400',
     email: 'goa.campus@hariomthalassic.com',
     schedule: 'Monday - Saturday | 09:00 - 16:30 IST',
-    batchDates: ['Batch Alpha: 2nd - 14th of month', 'Batch Beta: 16th - 28th of month'],
-    facilities: 'Offshore Survival Platform, Fast Rescue Boat Davits, Helideck Simulator'
+    batchDates: [
+      'Batch Alpha: 2nd - 14th of month',
+      'Batch Beta: 16th - 28th of month',
+    ],
+    facilities:
+      'Offshore Survival Platform, Fast Rescue Boat Davits, Helideck Simulator',
   },
   {
     id: 'inst-kochi',
@@ -67,29 +85,64 @@ export const CONFIGURED_INSTITUTES = [
     phone: '+91 484 266 7711',
     email: 'kochi.campus@hariomthalassic.com',
     schedule: 'Monday - Friday | 09:00 - 17:30 IST',
-    batchDates: ['Batch 1: 1st - 12th of month', 'Batch 2: 15th - 27th of month'],
-    facilities: 'Ship Maneuvering Simulator, Chemical Tanker Safety Lab, Medical Trauma Bay'
-  }
+    batchDates: [
+      'Batch 1: 1st - 12th of month',
+      'Batch 2: 15th - 27th of month',
+    ],
+    facilities:
+      'Ship Maneuvering Simulator, Chemical Tanker Safety Lab, Medical Trauma Bay',
+  },
 ];
 
 export function getInstitutesForCourse(courseCode?: string): any[] {
   const code = (courseCode || '').toUpperCase();
   if (code.includes('BST')) {
-    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2], CONFIGURED_INSTITUTES[3], CONFIGURED_INSTITUTES[4]];
+    return [
+      CONFIGURED_INSTITUTES[0],
+      CONFIGURED_INSTITUTES[1],
+      CONFIGURED_INSTITUTES[2],
+      CONFIGURED_INSTITUTES[3],
+      CONFIGURED_INSTITUTES[4],
+    ];
   } else if (code.includes('AFF')) {
-    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[2], CONFIGURED_INSTITUTES[3]];
+    return [
+      CONFIGURED_INSTITUTES[0],
+      CONFIGURED_INSTITUTES[2],
+      CONFIGURED_INSTITUTES[3],
+    ];
   } else if (code.includes('OCTCO')) {
-    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[4]];
+    return [
+      CONFIGURED_INSTITUTES[0],
+      CONFIGURED_INSTITUTES[1],
+      CONFIGURED_INSTITUTES[4],
+    ];
   } else if (code.includes('MEDICARE')) {
-    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[4]];
+    return [
+      CONFIGURED_INSTITUTES[0],
+      CONFIGURED_INSTITUTES[1],
+      CONFIGURED_INSTITUTES[4],
+    ];
   } else if (code.includes('PST') || code.includes('RPST')) {
-    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2], CONFIGURED_INSTITUTES[3]];
+    return [
+      CONFIGURED_INSTITUTES[0],
+      CONFIGURED_INSTITUTES[1],
+      CONFIGURED_INSTITUTES[2],
+      CONFIGURED_INSTITUTES[3],
+    ];
   } else if (code.includes('STSDSD')) {
-    return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2]];
+    return [
+      CONFIGURED_INSTITUTES[0],
+      CONFIGURED_INSTITUTES[1],
+      CONFIGURED_INSTITUTES[2],
+    ];
   } else if (code.includes('GTFC')) {
     return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1]];
   }
-  return [CONFIGURED_INSTITUTES[0], CONFIGURED_INSTITUTES[1], CONFIGURED_INSTITUTES[2]];
+  return [
+    CONFIGURED_INSTITUTES[0],
+    CONFIGURED_INSTITUTES[1],
+    CONFIGURED_INSTITUTES[2],
+  ];
 }
 
 // Helper to decode latin1-garbled UTF-8 filenames (common with multer)
@@ -110,7 +163,10 @@ function cleanDisplayName(rawName?: string, fallback = 'document'): string {
 function sanitizeStorageKey(rawName?: string, fallback = 'document'): string {
   const clean = cleanDisplayName(rawName, fallback);
   const lastDot = clean.lastIndexOf('.');
-  const ext = lastDot !== -1 ? clean.substring(lastDot).replace(/[^a-zA-Z0-9.]/g, '') : '';
+  const ext =
+    lastDot !== -1
+      ? clean.substring(lastDot).replace(/[^a-zA-Z0-9.]/g, '')
+      : '';
   const base = lastDot !== -1 ? clean.substring(0, lastDot) : clean;
 
   const safeBase = base
@@ -137,7 +193,10 @@ export class SeafarerService {
 
   private isBucketVerified = false;
 
-  private getSafeFileExtension(originalName?: string, mimeType?: string): string {
+  private getSafeFileExtension(
+    originalName?: string,
+    mimeType?: string,
+  ): string {
     let ext = '';
     if (originalName && originalName.includes('.')) {
       const parts = originalName.split('.');
@@ -157,7 +216,9 @@ export class SeafarerService {
     return ext || '.bin';
   }
 
-  private async ensureBucketExists(bucketName = 'seafarer-documents'): Promise<void> {
+  private async ensureBucketExists(
+    bucketName = 'seafarer-documents',
+  ): Promise<void> {
     if (this.isBucketVerified) return;
     try {
       const { data: buckets, error } = await this.db.storage.listBuckets();
@@ -168,14 +229,20 @@ export class SeafarerService {
           return;
         }
       }
-      const { error: createErr } = await this.db.storage.createBucket(bucketName, {
-        public: false,
-      });
+      const { error: createErr } = await this.db.storage.createBucket(
+        bucketName,
+        {
+          public: false,
+        },
+      );
       if (!createErr || createErr.message?.includes('already exists')) {
         this.isBucketVerified = true;
       }
     } catch (e) {
-      console.warn('[ensureBucketExists] Bucket verification warning:', (e as any)?.message);
+      console.warn(
+        '[ensureBucketExists] Bucket verification warning:',
+        (e as any)?.message,
+      );
     }
   }
 
@@ -189,20 +256,27 @@ export class SeafarerService {
       .eq('id', userId)
       .maybeSingle();
 
-    const isUserOnHold = (userRecord?.status || '').toLowerCase() === 'on hold' || 
-                         (userRecord?.status || '').toLowerCase() === 'on_hold';
+    const isUserOnHold =
+      (userRecord?.status || '').toLowerCase() === 'on hold' ||
+      (userRecord?.status || '').toLowerCase() === 'on_hold';
 
     const { data: enrollments } = await this.db
       .from('Enrollment')
-      .select('id, status, progress, startDate, createdAt, courseId, remarks, Course(id, name, code, duration)')
-      .eq('userId', userId)
+      .select(
+        'id, status, progress, startDate, createdAt, courseId, remarks, Course(id, name, code, duration)',
+      )
+      .eq('user_id', userId)
       .order('createdAt', { ascending: false });
 
     // Accurately separate statuses: Ongoing / Active, On Hold, Completed
     const parseMeta = (e: any) => {
       let meta: any = {};
       try {
-        if (e.remarks && typeof e.remarks === 'string' && e.remarks.startsWith('{')) {
+        if (
+          e.remarks &&
+          typeof e.remarks === 'string' &&
+          e.remarks.startsWith('{')
+        ) {
           meta = JSON.parse(e.remarks);
         } else if (e.remarks && typeof e.remarks === 'object') {
           meta = e.remarks;
@@ -215,36 +289,56 @@ export class SeafarerService {
 
     const isHoldEnrollment = (e: any) => {
       const st = (e.status || '').toLowerCase();
-      return st === 'on hold' || st === 'on_hold' || st === 'onhold' || (isUserOnHold && st !== 'completed');
+      return (
+        st === 'on hold' ||
+        st === 'on_hold' ||
+        st === 'onhold' ||
+        (isUserOnHold && st !== 'completed')
+      );
     };
 
     const isOngoingEnrollment = (e: any) => {
       const st = (e.status || '').toLowerCase();
-      return !isHoldEnrollment(e) && (st === 'processing' || st === 'active' || st === 'ongoing');
+      return (
+        !isHoldEnrollment(e) &&
+        (st === 'processing' || st === 'active' || st === 'ongoing')
+      );
     };
 
     const activeEnrollment = enrollments?.find(isOngoingEnrollment);
     const onHoldEnrollment = enrollments?.find(isHoldEnrollment);
-    const completedCount = enrollments?.filter((e: any) => (e.status || '').toLowerCase() === 'completed').length ?? 0;
+    const completedCount =
+      enrollments?.filter(
+        (e: any) => (e.status || '').toLowerCase() === 'completed',
+      ).length ?? 0;
     const ongoingCount = enrollments?.filter(isOngoingEnrollment).length ?? 0;
-    const onHoldCount = enrollments?.filter(isHoldEnrollment).length ?? (isUserOnHold && enrollments && enrollments.length > 0 ? enrollments.length : 0);
+    const onHoldCount =
+      enrollments?.filter(isHoldEnrollment).length ??
+      (isUserOnHold && enrollments && enrollments.length > 0
+        ? enrollments.length
+        : 0);
 
-    const { data: profile } = await this.db
-      .from('SeafarerProfile')
-      .select('*')
-      .eq('userId', userId)
-      .single();
+    let profile: any = null;
+    try {
+      const { data: prof } = await this.db
+        .from('SeafarerProfile')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      profile = prof;
+    } catch (_) {}
 
     const { data: docs } = await this.db
       .from('Document')
-      .select('type, expiryDate, status')
-      .eq('userId', userId);
+      .select('type, expiry_date, status')
+      .eq('user_id', userId);
 
     const now = new Date();
     const docStatus = (type: string) => {
       const doc = docs?.find((d: any) => d.type?.toLowerCase() === type);
       if (!doc) return 'missing';
-      if (doc.expiryDate && new Date(doc.expiryDate) < now) return 'pending';
+      const expiry = doc.expiry_date || (doc as any).expiryDate;
+      if (expiry && new Date(expiry) < now) return 'pending';
       return doc.status?.toLowerCase() === 'verified' ? 'verified' : 'pending';
     };
 
@@ -255,16 +349,26 @@ export class SeafarerService {
       stcw: completedCount > 0 ? 'verified' : 'pending',
     };
 
-    const fields = [profile?.indosNumber, completedCount > 0, (docs?.length ?? 0) > 0, profile?.dob];
-    const profileCompletion = Math.round((fields.filter(Boolean).length / fields.length) * 100);
+    const fields = [
+      profile?.indosNumber,
+      completedCount > 0,
+      (docs?.length ?? 0) > 0,
+      profile?.dob,
+    ];
+    const profileCompletion = Math.round(
+      (fields.filter(Boolean).length / fields.length) * 100,
+    );
 
     let activeCourseData = null;
     if (activeEnrollment) {
       const meta = parseMeta(activeEnrollment);
       const courseCode = (activeEnrollment as any).Course?.code || '';
       const associatedInsts = getInstitutesForCourse(courseCode);
-      const matchedInst = CONFIGURED_INSTITUTES.find(i => i.id === meta.instituteId || i.name === meta.instituteName) || associatedInsts[0];
-      
+      const matchedInst =
+        CONFIGURED_INSTITUTES.find(
+          (i) => i.id === meta.instituteId || i.name === meta.instituteName,
+        ) || associatedInsts[0];
+
       activeCourseData = {
         name: (activeEnrollment as any).Course?.name,
         code: courseCode,
@@ -281,8 +385,11 @@ export class SeafarerService {
       const meta = parseMeta(onHoldEnrollment);
       const courseCode = (onHoldEnrollment as any).Course?.code || '';
       const associatedInsts = getInstitutesForCourse(courseCode);
-      const matchedInst = CONFIGURED_INSTITUTES.find(i => i.id === meta.instituteId || i.name === meta.instituteName) || associatedInsts[0];
-      
+      const matchedInst =
+        CONFIGURED_INSTITUTES.find(
+          (i) => i.id === meta.instituteId || i.name === meta.instituteName,
+        ) || associatedInsts[0];
+
       onHoldCourseData = {
         name: (onHoldEnrollment as any).Course?.name,
         code: courseCode,
@@ -291,13 +398,14 @@ export class SeafarerService {
         trainingType: 'Physical / Offline Training',
         institute: matchedInst,
         batchSchedule: meta.batchSchedule || matchedInst.schedule,
-        holdReason: 'Administrative / Document Verification on hold. Profile & history are preserved.'
+        holdReason:
+          'Administrative / Document Verification on hold. Profile & history are preserved.',
       };
     }
 
     return {
       profileCompletion,
-      userStatus: isUserOnHold ? 'On Hold' : (userRecord?.status || 'Active'),
+      userStatus: isUserOnHold ? 'On Hold' : userRecord?.status || 'Active',
       courses: {
         active: activeCourseData,
         onHold: onHoldCourseData,
@@ -380,7 +488,10 @@ export class SeafarerService {
 
       // Sort by date descending
       return notificationsList
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
         .slice(0, 5);
     }
 
@@ -397,14 +508,14 @@ export class SeafarerService {
         e.status === 'Completed'
           ? `✅ Course Completed: ${e.Course?.name}`
           : e.status === 'On Hold' || e.status === 'on_hold'
-          ? `⚠️ Course On Hold: ${e.Course?.name}`
-          : `📋 Enrollment Processing: ${e.Course?.name}`,
+            ? `⚠️ Course On Hold: ${e.Course?.name}`
+            : `📋 Enrollment Processing: ${e.Course?.name}`,
       message:
         e.status === 'Completed'
           ? `Your certificate for ${e.Course?.name} has been issued.`
           : e.status === 'On Hold' || e.status === 'on_hold'
-          ? `Your training for ${e.Course?.name} is on hold pending verification.`
-          : `Your physical training booking for ${e.Course?.name} is confirmed.`,
+            ? `Your training for ${e.Course?.name} is on hold pending verification.`
+            : `Your physical training booking for ${e.Course?.name} is confirmed.`,
       isRead: false,
       read: false,
       createdAt: e.createdAt,
@@ -453,12 +564,15 @@ export class SeafarerService {
       .eq('id', userId)
       .maybeSingle();
 
-    const isUserOnHold = (userRecord?.status || '').toLowerCase() === 'on hold' || 
-                         (userRecord?.status || '').toLowerCase() === 'on_hold';
+    const isUserOnHold =
+      (userRecord?.status || '').toLowerCase() === 'on hold' ||
+      (userRecord?.status || '').toLowerCase() === 'on_hold';
 
     const { data, error } = await this.db
       .from('Enrollment')
-      .select('id, status, progress, startDate, createdAt, remarks, Course(id, name, code, category, duration, fees, description)')
+      .select(
+        'id, status, progress, startDate, createdAt, remarks, Course(id, name, code, category, duration, fees, description)',
+      )
       .eq('userId', userId)
       .order('createdAt', { ascending: false });
 
@@ -470,7 +584,11 @@ export class SeafarerService {
     return (data ?? []).map((e: any) => {
       let meta: any = {};
       try {
-        if (e.remarks && typeof e.remarks === 'string' && e.remarks.startsWith('{')) {
+        if (
+          e.remarks &&
+          typeof e.remarks === 'string' &&
+          e.remarks.startsWith('{')
+        ) {
           meta = JSON.parse(e.remarks);
         } else if (e.remarks && typeof e.remarks === 'object') {
           meta = e.remarks;
@@ -483,7 +601,12 @@ export class SeafarerService {
       let normStatus: 'active' | 'on_hold' | 'completed' = 'active';
       if (rawStatus === 'completed') {
         normStatus = 'completed';
-      } else if (rawStatus === 'on hold' || rawStatus === 'on_hold' || rawStatus === 'onhold' || (isUserOnHold && rawStatus !== 'completed')) {
+      } else if (
+        rawStatus === 'on hold' ||
+        rawStatus === 'on_hold' ||
+        rawStatus === 'onhold' ||
+        (isUserOnHold && rawStatus !== 'completed')
+      ) {
         normStatus = 'on_hold';
       } else {
         normStatus = 'active';
@@ -491,9 +614,13 @@ export class SeafarerService {
 
       const courseCode = e.Course?.code || '';
       const associatedInstitutes = getInstitutesForCourse(courseCode);
-      const selectedInstitute = 
-        CONFIGURED_INSTITUTES.find(i => i.id === meta.instituteId || i.name === meta.instituteName) ||
-        (associatedInstitutes && associatedInstitutes.length > 0 ? associatedInstitutes[0] : CONFIGURED_INSTITUTES[0]);
+      const selectedInstitute =
+        CONFIGURED_INSTITUTES.find(
+          (i) => i.id === meta.instituteId || i.name === meta.instituteName,
+        ) ||
+        (associatedInstitutes && associatedInstitutes.length > 0
+          ? associatedInstitutes[0]
+          : CONFIGURED_INSTITUTES[0]);
 
       return {
         id: e.id,
@@ -501,7 +628,13 @@ export class SeafarerService {
         purchaseDate: e.startDate ?? e.createdAt,
         course: e.Course,
         courseId: e.Course?.id ?? e.courseId,
-        progress: e.progress ?? (normStatus === 'completed' ? 100 : normStatus === 'on_hold' ? (e.progress || 0) : 35),
+        progress:
+          e.progress ??
+          (normStatus === 'completed'
+            ? 100
+            : normStatus === 'on_hold'
+              ? e.progress || 0
+              : 35),
         trainingType: 'Physical / Offline Maritime Training',
         institute: selectedInstitute,
         batchSchedule: meta.batchSchedule || selectedInstitute.schedule,
@@ -511,8 +644,11 @@ export class SeafarerService {
           coordinatorContact: selectedInstitute.phone,
           coordinatorEmail: selectedInstitute.email,
           facilities: selectedInstitute.facilities,
-          onHoldNotice: normStatus === 'on_hold' ? 'Training placed on hold. All profile history & purchases remain intact.' : null
-        }
+          onHoldNotice:
+            normStatus === 'on_hold'
+              ? 'Training placed on hold. All profile history & purchases remain intact.'
+              : null,
+        },
       };
     });
   }
@@ -540,13 +676,18 @@ export class SeafarerService {
       .eq('courseId', courseId)
       .single();
 
-    if (existing) throw new BadRequestException('Already enrolled in this course');
+    if (existing)
+      throw new BadRequestException('Already enrolled in this course');
 
     // Determine institute associated with this course
     const associatedInstitutes = getInstitutesForCourse(course.code);
-    const chosenInstitute = 
-      CONFIGURED_INSTITUTES.find(i => i.id === instituteId || i.name === instituteName) ||
-      (associatedInstitutes && associatedInstitutes.length > 0 ? associatedInstitutes[0] : CONFIGURED_INSTITUTES[0]);
+    const chosenInstitute =
+      CONFIGURED_INSTITUTES.find(
+        (i) => i.id === instituteId || i.name === instituteName,
+      ) ||
+      (associatedInstitutes && associatedInstitutes.length > 0
+        ? associatedInstitutes[0]
+        : CONFIGURED_INSTITUTES[0]);
 
     const metadataObj = {
       instituteId: chosenInstitute.id,
@@ -591,7 +732,9 @@ export class SeafarerService {
     if (error) throw new BadRequestException(error.message);
 
     // ── Referral Attribution, Commission Snapshot & Invoice Generation ─────
-    console.log(`[Backend Enroll] User ${userId} enrolling in ${courseId} with referralCode: "${referralCode}"`);
+    console.log(
+      `[Backend Enroll] User ${userId} enrolling in ${courseId} with referralCode: "${referralCode}"`,
+    );
     try {
       let targetAgentId = '';
       let targetCommissionRate = 5.0;
@@ -613,7 +756,9 @@ export class SeafarerService {
         const code = referralCode.trim().toUpperCase();
         const { data: agentMeta } = await this.db
           .from('agent_metadata')
-          .select('user_id, general_commission, course_commissions, referral_code')
+          .select(
+            'user_id, general_commission, course_commissions, referral_code',
+          )
           .eq('referral_code', code)
           .maybeSingle();
 
@@ -625,23 +770,34 @@ export class SeafarerService {
 
         // PRD 9.2 Priority 1: Course-specific Commission Override
         const courseOverrides = agentMeta.course_commissions || {};
-        if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+        if (
+          courseOverrides[courseId] !== undefined &&
+          courseOverrides[courseId] !== null
+        ) {
           targetCommissionRate = Number(courseOverrides[courseId]);
           commissionSource = 'Course Override';
         } else {
           targetCommissionRate = Number(agentMeta.general_commission) || 5.0;
           commissionSource = 'General Commission';
         }
-      } 
+      }
       // Case B: Referral Code left blank -> Auto-match with Referral Leads
       else if (seafarerUser) {
         const nowIso = new Date().toISOString();
         const { data: activeLeads } = await this.db
           .from('referral_leads')
           .select('id, agent_id, status, created_at')
-          .in('status', ['New', 'Contacted', 'Registered', 'Pending', 'Under Review'])
+          .in('status', [
+            'New',
+            'Contacted',
+            'Registered',
+            'Pending',
+            'Under Review',
+          ])
           .gt('expiry_at', nowIso)
-          .or(`email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`);
+          .or(
+            `email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`,
+          );
 
         if (activeLeads && activeLeads.length > 0) {
           const uniqueAgentsMap = new Map();
@@ -660,14 +816,19 @@ export class SeafarerService {
               .eq('user_id', targetAgentId)
               .maybeSingle();
 
-            targetAgentReferralCode = agentMeta?.referral_code || 'MATCHED_LEAD';
+            targetAgentReferralCode =
+              agentMeta?.referral_code || 'MATCHED_LEAD';
 
             const courseOverrides = agentMeta?.course_commissions || {};
-            if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+            if (
+              courseOverrides[courseId] !== undefined &&
+              courseOverrides[courseId] !== null
+            ) {
               targetCommissionRate = Number(courseOverrides[courseId]);
               commissionSource = 'Course Override';
             } else {
-              targetCommissionRate = Number(agentMeta?.general_commission) || 5.0;
+              targetCommissionRate =
+                Number(agentMeta?.general_commission) || 5.0;
               commissionSource = 'General Commission';
             }
           } else if (uniqueAgentsMap.size > 1) {
@@ -708,9 +869,14 @@ export class SeafarerService {
           created_at: new Date().toISOString(),
         };
 
-        const { error: commErr } = await this.db.from('commissions').insert(commObj);
+        const { error: commErr } = await this.db
+          .from('commissions')
+          .insert(commObj);
 
-        if (commErr && (commErr.code === 'PGRST204' || commErr.message?.includes('column'))) {
+        if (
+          commErr &&
+          (commErr.code === 'PGRST204' || commErr.message?.includes('column'))
+        ) {
           // Retry with legacy standard columns if new columns don't exist yet in DB schema
           const stdCommObj = {
             id: createdCommissionId,
@@ -724,8 +890,14 @@ export class SeafarerService {
             status: 'Pending',
             created_at: new Date().toISOString(),
           };
-          const { error: retryErr } = await this.db.from('commissions').insert(stdCommObj);
-          if (retryErr) console.error('[Referral] Standard commission insert error:', retryErr.message);
+          const { error: retryErr } = await this.db
+            .from('commissions')
+            .insert(stdCommObj);
+          if (retryErr)
+            console.error(
+              '[Referral] Standard commission insert error:',
+              retryErr.message,
+            );
         } else if (commErr) {
           console.error('[Referral] Commission insert error:', commErr.message);
         }
@@ -737,7 +909,8 @@ export class SeafarerService {
             commission_id: createdCommissionId,
             old_status: 'None',
             new_status: 'Pending',
-            reason: 'Initial commission snapshot generated upon course checkout',
+            reason:
+              'Initial commission snapshot generated upon course checkout',
             changed_by_user_id: userId,
             changed_by_user_name: seafarerUser?.name || 'Seafarer',
             created_at: new Date().toISOString(),
@@ -752,7 +925,9 @@ export class SeafarerService {
             .update({ status: 'Converted' })
             .eq('id', matchingLeadId);
         }
-        console.log(`[Referral] Attributed commission ${createdCommissionId} to agent ${targetAgentId} for course ${course.name}`);
+        console.log(
+          `[Referral] Attributed commission ${createdCommissionId} to agent ${targetAgentId} for course ${course.name}`,
+        );
       } else if (isConflict) {
         for (const lead of conflictingAgents) {
           const { data: agentMeta } = await this.db
@@ -764,7 +939,10 @@ export class SeafarerService {
           const courseOverrides = agentMeta?.course_commissions || {};
           let rate = agentMeta?.general_commission ?? 5.0;
           let source = 'General Commission';
-          if (courseOverrides[courseId] !== undefined && courseOverrides[courseId] !== null) {
+          if (
+            courseOverrides[courseId] !== undefined &&
+            courseOverrides[courseId] !== null
+          ) {
             rate = Number(courseOverrides[courseId]);
             source = 'Course Override';
           }
@@ -788,8 +966,13 @@ export class SeafarerService {
             created_at: new Date().toISOString(),
           };
 
-          const { error: commErr } = await this.db.from('commissions').insert(commObjConflict);
-          if (commErr && (commErr.code === 'PGRST204' || commErr.message?.includes('column'))) {
+          const { error: commErr } = await this.db
+            .from('commissions')
+            .insert(commObjConflict);
+          if (
+            commErr &&
+            (commErr.code === 'PGRST204' || commErr.message?.includes('column'))
+          ) {
             await this.db.from('commissions').insert({
               id: commId,
               agent_id: lead.agent_id,
@@ -810,7 +993,8 @@ export class SeafarerService {
               commission_id: commId,
               old_status: 'None',
               new_status: 'Under Review',
-              reason: 'Conflicting referral leads detected. Placed under manual review.',
+              reason:
+                'Conflicting referral leads detected. Placed under manual review.',
               changed_by_user_id: userId,
               changed_by_user_name: seafarerUser?.name || 'Seafarer',
               created_at: new Date().toISOString(),
@@ -857,15 +1041,20 @@ export class SeafarerService {
       if (err instanceof BadRequestException) {
         throw err; // Bubble up validation errors
       }
-      console.error('[Referral] Unexpected error in commission & invoice flow:', err?.message);
+      console.error(
+        '[Referral] Unexpected error in commission & invoice flow:',
+        err?.message,
+      );
     }
 
     return data;
   }
 
-
-
-  async updateCourseProgress(userId: string, courseId: string, progress: number) {
+  async updateCourseProgress(
+    userId: string,
+    courseId: string,
+    progress: number,
+  ) {
     const dbStatus = progress >= 100 ? 'Completed' : 'Processing';
     const updateData: any = {
       progress,
@@ -896,7 +1085,7 @@ export class SeafarerService {
     const { data, error } = await this.db
       .from('Document')
       .select('*')
-      .eq('userId', userId);
+      .eq('user_id', userId);
 
     if (error) {
       console.warn('[getDocuments] Query warning:', error.message);
@@ -908,45 +1097,90 @@ export class SeafarerService {
       const { data: prof } = await this.db
         .from('SeafarerProfile')
         .select('*')
-        .eq('userId', userId)
+        .eq('user_id', userId)
         .maybeSingle();
       profileData = prof;
     } catch (_) {}
-    return (data ?? []).map((d: any) => {
-      let meta: any = {};
-      try {
-        const remarksStr = d.remarks || d.metadata;
-        if (remarksStr && typeof remarksStr === 'string' && remarksStr.startsWith('{')) {
-          meta = JSON.parse(remarksStr);
-        } else if (remarksStr && typeof remarksStr === 'object') {
-          meta = remarksStr;
+    return (data ?? [])
+      .filter(
+        (d: any) =>
+          d.type?.toLowerCase() !== 'avatar' &&
+          d.type?.toLowerCase() !== 'profile_picture',
+      )
+      .map((d: any) => {
+        let meta: any = {};
+        try {
+          const remarksStr = d.remarks || d.metadata;
+          if (
+            remarksStr &&
+            typeof remarksStr === 'string' &&
+            remarksStr.startsWith('{')
+          ) {
+            meta = JSON.parse(remarksStr);
+          } else if (remarksStr && typeof remarksStr === 'object') {
+            meta = remarksStr;
+          }
+        } catch (e) {
+          meta = {};
         }
-      } catch (e) {
-        meta = {};
-      }
 
-      const isPass = d.type?.toLowerCase() === 'passport';
-      const isCdc = d.type?.toLowerCase() === 'cdc';
+        const isPass = d.type?.toLowerCase() === 'passport';
+        const isCdc = d.type?.toLowerCase() === 'cdc';
 
-      return {
-        id: d.id,
-        type: d.type,
-        label: d.name ?? d.type,
-        status: d.status ?? 'pending',
-        expiryDate: d.expiryDate ?? meta.expiryDate ?? (isPass ? (profileData?.passportExpiry || profileData?.passport_expiry) : isCdc ? (profileData?.cdcExpiry || profileData?.cdc_expiry) : null),
-        uploadedAt: d.uploadDate ?? d.createdAt ?? null,
-        url: d.url,
-        passportNumber: meta.passportNumber ?? d.passportNumber ?? (isPass ? (profileData?.passportNum || profileData?.passport_num) : null),
-        cdcNumber: meta.cdcNumber ?? d.cdcNumber ?? (isCdc ? (profileData?.cdcNum || profileData?.cdc_num) : null),
-        placeOfIssue: meta.placeOfIssue ?? d.placeOfIssue ?? (isPass ? (profileData?.passportPlace || profileData?.passport_place) : isCdc ? (profileData?.cdcPlace || profileData?.cdc_place) : null),
-        issueDate: meta.issueDate ?? d.issueDate ?? (isPass ? (profileData?.passportIssue || profileData?.passport_issue) : isCdc ? (profileData?.cdcIssue || profileData?.cdc_issue) : null),
-        courseName: meta.courseName ?? d.courseName ?? null,
-        courseType: meta.courseType ?? d.courseType ?? null,
-        durationFrom: meta.durationFrom ?? d.durationFrom ?? null,
-        durationTo: meta.durationTo ?? d.durationTo ?? null,
-        metadata: meta,
-      };
-    });
+        return {
+          id: d.id,
+          type: d.type,
+          label: d.name ?? d.type,
+          status: d.status ?? 'pending',
+          expiryDate:
+            d.expiry_date ??
+            d.expiryDate ??
+            meta.expiryDate ??
+            (isPass
+              ? profileData?.passportExpiry || profileData?.passport_expiry
+              : isCdc
+                ? profileData?.cdcExpiry || profileData?.cdc_expiry
+                : null),
+          uploadedAt:
+            d.upload_date ??
+            d.uploadDate ??
+            d.createdAt ??
+            d.created_at ??
+            null,
+          url: d.url,
+          passportNumber:
+            meta.passportNumber ??
+            d.passportNumber ??
+            (isPass
+              ? profileData?.passportNum || profileData?.passport_num
+              : null),
+          cdcNumber:
+            meta.cdcNumber ??
+            d.cdcNumber ??
+            (isCdc ? profileData?.cdcNum || profileData?.cdc_num : null),
+          placeOfIssue:
+            meta.placeOfIssue ??
+            d.placeOfIssue ??
+            (isPass
+              ? profileData?.passportPlace || profileData?.passport_place
+              : isCdc
+                ? profileData?.cdcPlace || profileData?.cdc_place
+                : null),
+          issueDate:
+            meta.issueDate ??
+            d.issueDate ??
+            (isPass
+              ? profileData?.passportIssue || profileData?.passport_issue
+              : isCdc
+                ? profileData?.cdcIssue || profileData?.cdc_issue
+                : null),
+          courseName: meta.courseName ?? d.courseName ?? null,
+          courseType: meta.courseType ?? d.courseType ?? null,
+          durationFrom: meta.durationFrom ?? d.durationFrom ?? null,
+          durationTo: meta.durationTo ?? d.durationTo ?? null,
+          metadata: meta,
+        };
+      });
   }
 
   async uploadDocument(
@@ -960,7 +1194,10 @@ export class SeafarerService {
       throw new BadRequestException('No file provided or file is empty.');
     }
 
-    const docType = (type || bodyMetadata?.type || 'other').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'document';
+    const docType =
+      (type || bodyMetadata?.type || 'other')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '') || 'document';
     const BUCKET = 'seafarer-documents';
 
     // Verify bucket exists once without re-running on every upload
@@ -971,7 +1208,7 @@ export class SeafarerService {
       const { data: existingDocs } = await this.db
         .from('Document')
         .select('id, url')
-        .eq('userId', userId)
+        .eq('user_id', userId)
         .ilike('type', docType);
 
       if (existingDocs && existingDocs.length > 0) {
@@ -987,8 +1224,14 @@ export class SeafarerService {
     }
 
     const docId = randomUUID();
-    const displayName = cleanDisplayName(file.originalname, `${docType}-${docId}`);
-    const safeFileName = sanitizeStorageKey(file.originalname, `${docType}-${docId}`);
+    const displayName = cleanDisplayName(
+      file.originalname,
+      `${docType}-${docId}`,
+    );
+    const safeFileName = sanitizeStorageKey(
+      file.originalname,
+      `${docType}-${docId}`,
+    );
     const mimeType = file.mimetype || 'application/octet-stream';
 
     // Storage path: userId/docId/safeFileName (S3/Supabase key-safe without spaces or control chars)
@@ -1001,7 +1244,11 @@ export class SeafarerService {
         upsert: true,
       });
 
-    if (storageError && (storageError.message?.toLowerCase().includes('bucket') || storageError.message?.toLowerCase().includes('not found'))) {
+    if (
+      storageError &&
+      (storageError.message?.toLowerCase().includes('bucket') ||
+        storageError.message?.toLowerCase().includes('not found'))
+    ) {
       try {
         await this.db.storage.createBucket(BUCKET, { public: true });
         const retry = await this.db.storage
@@ -1017,13 +1264,18 @@ export class SeafarerService {
     }
 
     if (storageError) {
-      console.error('[uploadDocument] Supabase Storage upload error:', storageError.message);
+      console.error(
+        '[uploadDocument] Supabase Storage upload error:',
+        storageError.message,
+      );
       if (storageError.message?.toLowerCase().includes('bucket not found')) {
         throw new BadRequestException(
           `Storage bucket '${BUCKET}' does not exist in Supabase Storage. Please create the '${BUCKET}' bucket.`,
         );
       }
-      throw new BadRequestException(`File storage failed: ${storageError.message}`);
+      throw new BadRequestException(
+        `File storage failed: ${storageError.message}`,
+      );
     }
 
     const metadataObj = {
@@ -1040,33 +1292,21 @@ export class SeafarerService {
 
     const insertPayload: any = {
       id: docId,
-      userId,
+      user_id: userId,
       type: docType,
       name: displayName,
       url: storagePath,
       status: 'Pending',
-      expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
-      uploadDate: new Date().toISOString(),
+      expiry_date: expiryDate || bodyMetadata?.expiryDate || null,
+      upload_date: new Date().toISOString(),
+      remarks: JSON.stringify(metadataObj),
     };
 
-    // Try including remarks column; if it fails, retry without it
-    insertPayload.remarks = JSON.stringify(metadataObj);
     let { data, error } = await this.db
       .from('Document')
       .insert(insertPayload)
       .select()
       .single();
-
-    if (error && error.message?.includes('remarks')) {
-      delete insertPayload.remarks;
-      const retry = await this.db
-        .from('Document')
-        .insert(insertPayload)
-        .select()
-        .single();
-      data = retry.data;
-      error = retry.error;
-    }
 
     if (error) {
       // Clean up storage object if database insertion failed
@@ -1081,34 +1321,24 @@ export class SeafarerService {
       if (docType === 'passport' && bodyMetadata?.passportNumber) {
         await this.db.from('SeafarerProfile').upsert(
           {
-            userId,
-            passportNum: bodyMetadata.passportNumber,
+            user_id: userId,
             passport_num: bodyMetadata.passportNumber,
-            passportPlace: bodyMetadata.placeOfIssue,
             passport_place: bodyMetadata.placeOfIssue,
-            passportIssue: bodyMetadata.issueDate,
             passport_issue: bodyMetadata.issueDate,
-            passportExpiry: expiryDate || bodyMetadata.expiryDate,
             passport_expiry: expiryDate || bodyMetadata.expiryDate,
-            updatedAt: new Date().toISOString(),
           },
-          { onConflict: 'userId' },
+          { onConflict: 'user_id' },
         );
       } else if (docType === 'cdc' && bodyMetadata?.cdcNumber) {
         await this.db.from('SeafarerProfile').upsert(
           {
-            userId,
-            cdcNum: bodyMetadata.cdcNumber,
+            user_id: userId,
             cdc_num: bodyMetadata.cdcNumber,
-            cdcPlace: bodyMetadata.placeOfIssue,
             cdc_place: bodyMetadata.placeOfIssue,
-            cdcIssue: bodyMetadata.issueDate,
             cdc_issue: bodyMetadata.issueDate,
-            cdcExpiry: expiryDate || bodyMetadata.expiryDate,
             cdc_expiry: expiryDate || bodyMetadata.expiryDate,
-            updatedAt: new Date().toISOString(),
           },
-          { onConflict: 'userId' },
+          { onConflict: 'user_id' },
         );
       }
     } catch (_) {}
@@ -1125,7 +1355,12 @@ export class SeafarerService {
     };
   }
 
-  async updateDocument(userId: string, docId: string, bodyMetadata: any, file?: any) {
+  async updateDocument(
+    userId: string,
+    docId: string,
+    bodyMetadata: any,
+    file?: any,
+  ) {
     const { data: existingDoc, error: fetchErr } = await this.db
       .from('Document')
       .select('*')
@@ -1145,14 +1380,24 @@ export class SeafarerService {
     const BUCKET = 'seafarer-documents';
 
     if (file && file.buffer && file.buffer.length > 0) {
-      const displayName = cleanDisplayName(file.originalname, `${existingDoc.type}-${docId}`);
-      const safeFileName = sanitizeStorageKey(file.originalname, `${existingDoc.type}-${docId}`);
+      const displayName = cleanDisplayName(
+        file.originalname,
+        `${existingDoc.type}-${docId}`,
+      );
+      const safeFileName = sanitizeStorageKey(
+        file.originalname,
+        `${existingDoc.type}-${docId}`,
+      );
       const mimeType = file.mimetype || 'application/octet-stream';
       storagePath = `${userId}/${docId}/${safeFileName}`;
       fileName = displayName;
 
       // Delete old file if replacing
-      if (existingDoc.url && existingDoc.url !== storagePath && !existingDoc.url.startsWith('/uploads/')) {
+      if (
+        existingDoc.url &&
+        existingDoc.url !== storagePath &&
+        !existingDoc.url.startsWith('/uploads/')
+      ) {
         try {
           await this.db.storage.from(BUCKET).remove([existingDoc.url]);
         } catch (_) {}
@@ -1166,7 +1411,11 @@ export class SeafarerService {
           upsert: true,
         });
 
-      if (storageError && (storageError.message?.toLowerCase().includes('bucket') || storageError.message?.toLowerCase().includes('not found'))) {
+      if (
+        storageError &&
+        (storageError.message?.toLowerCase().includes('bucket') ||
+          storageError.message?.toLowerCase().includes('not found'))
+      ) {
         try {
           await this.db.storage.createBucket(BUCKET, { public: true });
           const retry = await this.db.storage
@@ -1182,14 +1431,20 @@ export class SeafarerService {
       }
 
       if (storageError) {
-        throw new BadRequestException(`File replacement storage failed: ${storageError.message}`);
+        throw new BadRequestException(
+          `File replacement storage failed: ${storageError.message}`,
+        );
       }
     }
 
     let existingMeta: any = {};
     try {
       const remarksStr = existingDoc.remarks || existingDoc.metadata;
-      if (remarksStr && typeof remarksStr === 'string' && remarksStr.startsWith('{')) {
+      if (
+        remarksStr &&
+        typeof remarksStr === 'string' &&
+        remarksStr.startsWith('{')
+      ) {
         existingMeta = JSON.parse(remarksStr);
       }
     } catch (e) {
@@ -1198,7 +1453,8 @@ export class SeafarerService {
 
     const updatedMeta = {
       ...existingMeta,
-      passportNumber: bodyMetadata?.passportNumber ?? existingMeta.passportNumber,
+      passportNumber:
+        bodyMetadata?.passportNumber ?? existingMeta.passportNumber,
       cdcNumber: bodyMetadata?.cdcNumber ?? existingMeta.cdcNumber,
       placeOfIssue: bodyMetadata?.placeOfIssue ?? existingMeta.placeOfIssue,
       issueDate: bodyMetadata?.issueDate ?? existingMeta.issueDate,
@@ -1236,7 +1492,11 @@ export class SeafarerService {
     }
 
     if (error) throw new BadRequestException(error.message);
-    return { ...data, metadata: updatedMeta, message: 'Document updated successfully.' };
+    return {
+      ...data,
+      metadata: updatedMeta,
+      message: 'Document updated successfully.',
+    };
   }
 
   async downloadDocument(userId: string, docId: string, role?: string) {
@@ -1252,8 +1512,15 @@ export class SeafarerService {
     }
 
     // Ownership & authorization check: seafarer can download own doc, MASTER/COMPANY_ADMIN can download any
-    if (doc.userId !== userId && role !== 'MASTER' && role !== 'COMPANY_ADMIN' && role !== 'agent-admin') {
-      throw new BadRequestException('Access denied. You do not have permission to download this document.');
+    if (
+      doc.userId !== userId &&
+      role !== 'MASTER' &&
+      role !== 'COMPANY_ADMIN' &&
+      role !== 'agent-admin'
+    ) {
+      throw new BadRequestException(
+        'Access denied. You do not have permission to download this document.',
+      );
     }
 
     const storedUrl: string = doc.url || '';
@@ -1264,9 +1531,17 @@ export class SeafarerService {
     const signedPathMarker = `/object/sign/${BUCKET}/`;
 
     if (storedUrl.includes(publicPathMarker)) {
-      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(publicPathMarker) + publicPathMarker.length));
+      storagePath = decodeURIComponent(
+        storedUrl.substring(
+          storedUrl.indexOf(publicPathMarker) + publicPathMarker.length,
+        ),
+      );
     } else if (storedUrl.includes(signedPathMarker)) {
-      storagePath = decodeURIComponent(storedUrl.substring(storedUrl.indexOf(signedPathMarker) + signedPathMarker.length));
+      storagePath = decodeURIComponent(
+        storedUrl.substring(
+          storedUrl.indexOf(signedPathMarker) + signedPathMarker.length,
+        ),
+      );
     }
 
     // Check if storagePath is a fake /uploads/ path or empty
@@ -1285,21 +1560,36 @@ export class SeafarerService {
     }
 
     // Fallback Search: If path was /uploads/ or direct path failed, search Supabase Storage bucket for matching file
-    const { data: bucketFiles } = await this.db.storage.from(BUCKET).list('', { limit: 100 });
+    const { data: bucketFiles } = await this.db.storage
+      .from(BUCKET)
+      .list('', { limit: 100 });
     if (bucketFiles && bucketFiles.length > 0) {
       // Find file matching doc.userId, doc.id, or doc.type
-      const matchingFile = bucketFiles.find(f => 
-        (doc.userId && f.name.includes(doc.userId)) ||
-        (doc.id && f.name.includes(doc.id)) ||
-        (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase()))
-      ) || bucketFiles.find(f => f.name.endsWith('.pdf') || f.name.endsWith('.png') || f.name.endsWith('.jpg'));
+      const matchingFile =
+        bucketFiles.find(
+          (f) =>
+            (doc.userId && f.name.includes(doc.userId)) ||
+            (doc.id && f.name.includes(doc.id)) ||
+            (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase())),
+        ) ||
+        bucketFiles.find(
+          (f) =>
+            f.name.endsWith('.pdf') ||
+            f.name.endsWith('.png') ||
+            f.name.endsWith('.jpg'),
+        );
 
       if (matchingFile) {
         storagePath = matchingFile.name;
         // Auto-fix DB record so future downloads are fast
-        await this.db.from('Document').update({ url: storagePath }).eq('id', doc.id);
+        await this.db
+          .from('Document')
+          .update({ url: storagePath })
+          .eq('id', doc.id);
 
-        const { data: signedData } = await this.db.storage.from(BUCKET).createSignedUrl(storagePath, 60);
+        const { data: signedData } = await this.db.storage
+          .from(BUCKET)
+          .createSignedUrl(storagePath, 60);
         if (signedData?.signedUrl) {
           return {
             signedUrl: signedData.signedUrl,
@@ -1309,9 +1599,7 @@ export class SeafarerService {
       }
     }
 
-    throw new BadRequestException(
-      'Document file is unavailable.',
-    );
+    throw new BadRequestException('Document file is unavailable.');
   }
 
   async deleteDocument(userId: string, docId: string) {
@@ -1343,13 +1631,17 @@ export class SeafarerService {
   // ─────────────────────────────────────────────
   async uploadProfilePhoto(userId: string, file: any) {
     if (!file || !file.buffer) {
-      throw new BadRequestException('No image file provided for profile photo upload.');
+      throw new BadRequestException(
+        'No image file provided for profile photo upload.',
+      );
     }
 
     const mimeType = file.mimetype || 'image/jpeg';
     const validMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validMimes.includes(mimeType.toLowerCase())) {
-      throw new BadRequestException('Invalid image format. Only JPG, JPEG, PNG, and WEBP are supported.');
+      throw new BadRequestException(
+        'Invalid image format. Only JPG, JPEG, PNG, and WEBP are supported.',
+      );
     }
 
     if (file.size > 5 * 1024 * 1024) {
@@ -1371,36 +1663,60 @@ export class SeafarerService {
 
     if (uploadErr) {
       console.error('[uploadProfilePhoto] Storage error:', uploadErr);
-      throw new BadRequestException('Profile photo upload failed. Please try again.');
+      throw new BadRequestException(
+        'Profile photo upload failed. Please try again.',
+      );
     }
 
-    const { data: { publicUrl } } = this.db.storage
-      .from('seafarer-documents')
-      .getPublicUrl(storagePath);
+    const {
+      data: { publicUrl },
+    } = this.db.storage.from('seafarer-documents').getPublicUrl(storagePath);
 
-    // Persist immediately to SeafarerProfile record
-    const { data: existingProfile } = await this.db
-      .from('SeafarerProfile')
-      .select('id')
-      .eq('userId', userId)
-      .maybeSingle();
+    // Save/upsert avatar in Document table
+    try {
+      const { data: existingDoc } = await this.db
+        .from('Document')
+        .select('id, remarks')
+        .eq('user_id', userId)
+        .eq('type', 'avatar')
+        .maybeSingle();
 
-    const profileId = existingProfile?.id || randomUUID();
-    const { error: upsertErr } = await this.db
-      .from('SeafarerProfile')
-      .upsert(
+      const docId = existingDoc?.id || randomUUID();
+      await this.db.from('Document').upsert({
+        id: docId,
+        user_id: userId,
+        type: 'avatar',
+        name: 'Profile Photo',
+        url: publicUrl,
+        status: 'verified',
+        remarks: existingDoc?.remarks || null,
+        upload_date: new Date().toISOString(),
+      });
+    } catch (docErr) {
+      console.warn('[uploadProfilePhoto] Document save warning:', docErr);
+    }
+
+    // Safely upsert SeafarerProfile base row
+    try {
+      const { data: existingProfile } = await this.db
+        .from('SeafarerProfile')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const profileId = existingProfile?.id || randomUUID();
+      await this.db.from('SeafarerProfile').upsert(
         {
           id: profileId,
-          userId,
-          profilePicture: publicUrl,
-          updatedAt: new Date().toISOString(),
+          user_id: userId,
         },
-        { onConflict: 'userId' },
+        { onConflict: 'user_id' },
       );
-
-    if (upsertErr) {
-      console.error('[uploadProfilePhoto] Profile update error:', upsertErr);
-      throw new BadRequestException('Failed to save profile picture to database.');
+    } catch (profErr) {
+      console.warn(
+        '[uploadProfilePhoto] SeafarerProfile save warning:',
+        profErr,
+      );
     }
 
     return {
@@ -1416,39 +1732,80 @@ export class SeafarerService {
       .eq('id', userId)
       .maybeSingle();
 
-    const { data: profile } = await this.db
-      .from('SeafarerProfile')
-      .select('*')
-      .eq('userId', userId)
-      .maybeSingle();
+    let profile: any = null;
+    try {
+      const { data: prof } = await this.db
+        .from('SeafarerProfile')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      profile = prof;
+    } catch (_) {}
 
-    const { data: seaServiceRecords } = await this.db
-      .from('SeaServiceRecord')
-      .select('*')
-      .eq('profileId', profile?.id ?? userId);
+    let seaServiceRecords: any[] = [];
+    try {
+      const { data: records } = await this.db
+        .from('sea_service_records')
+        .select('*')
+        .eq('user_id', userId);
+      seaServiceRecords = records ?? [];
+    } catch (_) {}
+
+    let photoUrl = profile?.profilePicture || null;
+    let remarksMeta: any = {};
+    try {
+      const { data: avatarDoc } = await this.db
+        .from('Document')
+        .select('url, remarks')
+        .eq('user_id', userId)
+        .eq('type', 'avatar')
+        .maybeSingle();
+
+      if (avatarDoc?.url) {
+        photoUrl = avatarDoc.url;
+      }
+      if (
+        avatarDoc?.remarks &&
+        typeof avatarDoc.remarks === 'string' &&
+        avatarDoc.remarks.startsWith('{')
+      ) {
+        remarksMeta = JSON.parse(avatarDoc.remarks);
+      }
+    } catch (_) {}
 
     const nameParts = (user?.name || '').trim().split(' ');
-    const firstName = profile?.firstName || nameParts[0] || '';
-    const lastName = profile?.lastName || nameParts.slice(1).join(' ') || '';
+    const firstName =
+      profile?.firstName || remarksMeta.firstName || nameParts[0] || '';
+    const lastName =
+      profile?.lastName ||
+      remarksMeta.lastName ||
+      nameParts.slice(1).join(' ') ||
+      '';
 
-    let parsedAddress = profile?.address ?? '';
-    let parsedCity = profile?.city ?? '';
-    let parsedState = profile?.state ?? '';
-    let parsedCountry = profile?.country ?? profile?.nationality ?? 'India';
-    let parsedPlaceOfBirth = profile?.placeOfBirth ?? profile?.birthPlace ?? '';
-    let parsedAlternatePhone = profile?.alternatePhone ?? profile?.altPhone ?? '';
-
-    if (profile?.address && typeof profile.address === 'string' && profile.address.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(profile.address);
-        parsedAddress = parsed.address ?? parsedAddress;
-        parsedCity = parsed.city ?? parsedCity;
-        parsedState = parsed.state ?? parsedState;
-        parsedCountry = parsed.country ?? parsedCountry;
-        parsedPlaceOfBirth = parsed.placeOfBirth ?? parsedPlaceOfBirth;
-        parsedAlternatePhone = parsed.alternatePhone ?? parsedAlternatePhone;
-      } catch (_) {}
-    }
+    let parsedAddress = profile?.address ?? remarksMeta.address ?? '';
+    let parsedCity = profile?.city ?? remarksMeta.city ?? '';
+    let parsedState = profile?.state ?? remarksMeta.state ?? '';
+    let parsedCountry =
+      profile?.country ??
+      profile?.nationality ??
+      remarksMeta.country ??
+      'India';
+    let parsedPlaceOfBirth =
+      profile?.birth_place ??
+      profile?.placeOfBirth ??
+      remarksMeta.placeOfBirth ??
+      '';
+    let parsedAlternatePhone =
+      profile?.alternatePhone ??
+      profile?.altPhone ??
+      remarksMeta.alternatePhone ??
+      '';
+    const indosNumber =
+      profile?.indos_num ??
+      profile?.indosNumber ??
+      remarksMeta.indosNumber ??
+      '';
+    const dob = profile?.dob ?? remarksMeta.dob ?? '';
 
     let onboardingStatus = null;
     if (user?.role?.toUpperCase() === 'AGENT') {
@@ -1461,8 +1818,6 @@ export class SeafarerService {
         onboardingStatus = meta.onboarding_status;
       }
     }
-
-    const photoUrl = profile?.profilePicture ?? null;
 
     return {
       ...(user ?? {}),
@@ -1478,10 +1833,10 @@ export class SeafarerService {
         email: user?.email,
         phone: user?.phone,
         alternatePhone: parsedAlternatePhone,
-        dob: profile?.dob ?? '',
+        dob,
         placeOfBirth: parsedPlaceOfBirth,
         nationality: parsedCountry,
-        indosNumber: profile?.indosNumber ?? '',
+        indosNumber,
         address: parsedAddress,
         city: parsedCity,
         state: parsedState,
@@ -1489,13 +1844,13 @@ export class SeafarerService {
         profilePicture: photoUrl,
         seaService: (seaServiceRecords ?? []).map((r: any) => ({
           id: r.id,
-          rpsl: r.company,
-          vessel: r.vesselName,
-          vesselType: r.vesselType,
-          imo: r.imoNumber,
+          rpsl: r.rpsl || r.company,
+          vessel: r.vessel || r.vesselName,
+          vesselType: r.vessel_type || r.vesselType,
+          imo: r.imo || r.imoNumber,
           rank: r.rank,
-          signOn: r.signOn,
-          signOff: r.signOff,
+          signOn: r.sign_on || r.signOn,
+          signOff: r.sign_off || r.signOff,
         })),
       },
     };
@@ -1519,7 +1874,10 @@ export class SeafarerService {
       profilePicture,
     } = details;
 
-    const fullName = (firstName && lastName) ? `${firstName.trim()} ${lastName.trim()}` : (name || firstName || '');
+    const fullName =
+      firstName && lastName
+        ? `${firstName.trim()} ${lastName.trim()}`
+        : name || firstName || '';
 
     // 1. Mandatory Fields Validation
     if (!fullName || !fullName.trim()) {
@@ -1568,35 +1926,50 @@ export class SeafarerService {
       .maybeSingle();
 
     if (existingUserWithEmail) {
-      throw new BadRequestException('Email address is already registered to another user.');
+      throw new BadRequestException(
+        'Email address is already registered to another user.',
+      );
     }
 
     // 4. INDOS Number Uniqueness Check
     if (indosNumber && indosNumber.trim()) {
-      const { data: existingProfileWithIndos } = await this.db
-        .from('SeafarerProfile')
-        .select('userId')
-        .eq('indosNumber', indosNumber.trim())
-        .neq('userId', userId)
-        .maybeSingle();
+      try {
+        const { data: existingProfileWithIndos } = await this.db
+          .from('SeafarerProfile')
+          .select('user_id')
+          .eq('indos_num', indosNumber.trim())
+          .neq('user_id', userId)
+          .maybeSingle();
 
-      if (existingProfileWithIndos) {
-        throw new BadRequestException('INDOS Number is already registered to another Seafarer.');
-      }
+        if (existingProfileWithIndos) {
+          throw new BadRequestException(
+            'INDOS Number is already registered to another Seafarer.',
+          );
+        }
+      } catch (_) {}
     }
 
     // Handle profile photo persistence:
     let profilePictureUrl = profilePicture;
 
     // If profilePicture is a base64 string, upload to Supabase Storage
-    if (typeof profilePicture === 'string' && profilePicture.startsWith('data:image/')) {
+    if (
+      typeof profilePicture === 'string' &&
+      profilePicture.startsWith('data:image/')
+    ) {
       try {
-        const matches = profilePicture.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+        const matches = profilePicture.match(
+          /^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/,
+        );
         if (matches) {
           const mime = matches[1];
           const b64Data = matches[2];
           const buffer = Buffer.from(b64Data, 'base64');
-          const ext = mime.includes('png') ? '.png' : mime.includes('webp') ? '.webp' : '.jpg';
+          const ext = mime.includes('png')
+            ? '.png'
+            : mime.includes('webp')
+              ? '.webp'
+              : '.jpg';
           const photoId = randomUUID();
           const storagePath = `avatars/${userId}/${photoId}${ext}`;
 
@@ -1609,18 +1982,27 @@ export class SeafarerService {
             });
 
           if (b64UploadErr) {
-            console.error('[updateUserProfile] base64 upload error:', b64UploadErr);
-            throw new BadRequestException('Profile photo upload failed. Please try again.');
+            console.error(
+              '[updateUserProfile] base64 upload error:',
+              b64UploadErr,
+            );
+            throw new BadRequestException(
+              'Profile photo upload failed. Please try again.',
+            );
           }
 
-          const { data: { publicUrl } } = this.db.storage
+          const {
+            data: { publicUrl },
+          } = this.db.storage
             .from('seafarer-documents')
             .getPublicUrl(storagePath);
           profilePictureUrl = publicUrl;
         }
       } catch (err: any) {
         console.error('[updateUserProfile] photo upload exception:', err);
-        throw new BadRequestException(err?.message || 'Profile photo upload failed. Please try again.');
+        throw new BadRequestException(
+          err?.message || 'Profile photo upload failed. Please try again.',
+        );
       }
     }
 
@@ -1631,54 +2013,78 @@ export class SeafarerService {
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
-        updatedAt: new Date().toISOString(),
       })
       .eq('id', userId);
 
-    // 6. Update/Upsert SeafarerProfile Table
-    const { data: existingProfile } = await this.db
-      .from('SeafarerProfile')
-      .select('id, profilePicture')
-      .eq('userId', userId)
-      .maybeSingle();
-
-    const profileId = existingProfile?.id || randomUUID();
-
-    const finalPhotoUrl = (profilePictureUrl !== undefined)
-      ? (profilePictureUrl === '' ? null : profilePictureUrl)
-      : (existingProfile?.profilePicture ?? null);
-
-    const compositeAddress = JSON.stringify({
+    // 6. Save Avatar and Composite Address in Document table
+    const compositeData = {
+      firstName: firstName?.trim() || '',
+      lastName: lastName?.trim() || '',
       address: address?.trim() || '',
       city: city?.trim() || '',
       state: state?.trim() || '',
       country: country?.trim() || 'India',
       placeOfBirth: placeOfBirth?.trim() || '',
       alternatePhone: alternatePhone?.trim() || '',
-    });
+      indosNumber: indosNumber?.trim() || '',
+      dob: dob || '',
+    };
 
-    const { error: profileUpsertErr } = await this.db
-      .from('SeafarerProfile')
-      .upsert(
-        {
-          id: profileId,
-          userId,
-          dob: dob || null,
-          nationality: country?.trim() || 'Indian',
-          indosNumber: indosNumber?.trim() || null,
-          address: compositeAddress,
-          profilePicture: finalPhotoUrl,
-          updatedAt: new Date().toISOString(),
-        },
-        { onConflict: 'userId' },
-      );
+    try {
+      const { data: existingDoc } = await this.db
+        .from('Document')
+        .select('id, url')
+        .eq('user_id', userId)
+        .eq('type', 'avatar')
+        .maybeSingle();
 
-    if (profileUpsertErr) {
-      console.error('[updateUserProfile] SeafarerProfile upsert error:', profileUpsertErr);
-      throw new BadRequestException(`Failed to save profile details: ${profileUpsertErr.message}`);
+      const docId = existingDoc?.id || randomUUID();
+      const finalUrl =
+        profilePictureUrl !== undefined && profilePictureUrl !== ''
+          ? profilePictureUrl
+          : existingDoc?.url || null;
+
+      await this.db.from('Document').upsert({
+        id: docId,
+        user_id: userId,
+        type: 'avatar',
+        name: 'Profile Photo',
+        url: finalUrl || '',
+        status: 'verified',
+        remarks: JSON.stringify(compositeData),
+        upload_date: new Date().toISOString(),
+      });
+    } catch (docErr) {
+      console.warn('[updateUserProfile] Document save warning:', docErr);
     }
 
-    // 7. Audit Log Entry
+    // 7. Update/Upsert SeafarerProfile Table with valid schema columns
+    try {
+      const { data: existingProfile } = await this.db
+        .from('SeafarerProfile')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const profileId = existingProfile?.id || randomUUID();
+      await this.db.from('SeafarerProfile').upsert(
+        {
+          id: profileId,
+          user_id: userId,
+          dob: dob || null,
+          birth_place: placeOfBirth?.trim() || null,
+          indos_num: indosNumber?.trim() || null,
+        },
+        { onConflict: 'user_id' },
+      );
+    } catch (profileUpsertErr) {
+      console.warn(
+        '[updateUserProfile] SeafarerProfile upsert warning:',
+        profileUpsertErr,
+      );
+    }
+
+    // 8. Audit Log Entry
     try {
       await this.db.from('audit_logs').insert({
         id: randomUUID(),
@@ -1699,42 +2105,18 @@ export class SeafarerService {
   }
 
   async addSeaService(userId: string, record: any) {
-    // Find or create the SeafarerProfile first
-    const { data: profile } = await this.db
-      .from('SeafarerProfile')
-      .select('id')
-      .eq('userId', userId)
-      .single();
-
-    let profileId = profile?.id;
-    if (!profileId) {
-      profileId = randomUUID();
-      const { data: newProfile, error: profileErr } = await this.db
-        .from('SeafarerProfile')
-        .insert({ 
-          id: profileId, 
-          userId, 
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        })
-        .select('id')
-        .single();
-      
-      if (profileErr) throw new BadRequestException('Failed to initialize profile: ' + profileErr.message);
-    }
-
     const { data, error } = await this.db
-      .from('SeaServiceRecord')
+      .from('sea_service_records')
       .insert({
         id: randomUUID(),
-        profileId,
-        company: record.rpsl,
-        vesselName: record.vessel,
-        imoNumber: record.imo,
-        rank: record.rank,
-        signOn: record.signOn,
-        signOff: record.signOff,
-        createdAt: new Date().toISOString(),
+        user_id: userId,
+        rpsl: record.rpsl || record.company || '',
+        vessel: record.vessel || record.vesselName || '',
+        vessel_type: record.vesselType || '',
+        imo: record.imo || record.imoNumber || '',
+        rank: record.rank || '',
+        sign_on: record.signOn || '',
+        sign_off: record.signOff || '',
       })
       .select()
       .single();
@@ -1745,7 +2127,7 @@ export class SeafarerService {
 
   async deleteSeaService(recordId: string) {
     const { error } = await this.db
-      .from('SeaServiceRecord')
+      .from('sea_service_records')
       .delete()
       .eq('id', recordId);
 
@@ -1761,7 +2143,8 @@ export class SeafarerService {
       id: 'TICKET-1001',
       userId: 'demo-seafarer-001',
       subject: 'Certificate Verification Assistance',
-      description: 'I need assistance verifying my STCW BST certificate renewal status.',
+      description:
+        'I need assistance verifying my STCW BST certificate renewal status.',
       status: 'In Progress',
       priority: 'Normal',
       createdAt: '2026-08-05T09:00:00.000Z',
@@ -1769,7 +2152,8 @@ export class SeafarerService {
         {
           id: 'reply-1',
           sender: 'Support Desk',
-          message: 'Hello, your certificate is currently under review by our DGS verification team.',
+          message:
+            'Hello, your certificate is currently under review by our DGS verification team.',
           timestamp: '2026-08-05T11:30:00.000Z',
         },
       ],
@@ -1778,7 +2162,8 @@ export class SeafarerService {
       id: 'TICKET-1002',
       userId: 'demo-seafarer-001',
       subject: 'Course Schedule Inquiry',
-      description: 'Requesting updated dates for Advanced Fire Fighting classroom sessions.',
+      description:
+        'Requesting updated dates for Advanced Fire Fighting classroom sessions.',
       status: 'Resolved',
       priority: 'Low',
       createdAt: '2026-07-20T14:00:00.000Z',
@@ -1786,7 +2171,8 @@ export class SeafarerService {
         {
           id: 'reply-2',
           sender: 'Course Coordinator',
-          message: 'Upcoming AFF batches start on the 1st and 15th of next month.',
+          message:
+            'Upcoming AFF batches start on the 1st and 15th of next month.',
           timestamp: '2026-07-21T08:45:00.000Z',
         },
       ],
@@ -1794,11 +2180,11 @@ export class SeafarerService {
   ];
 
   async getTickets(userId: string) {
-    return this.inMemoryTickets.filter(t => t.userId === userId);
+    return this.inMemoryTickets.filter((t) => t.userId === userId);
   }
 
   async getTicketById(userId: string, ticketId: string) {
-    const ticket = this.inMemoryTickets.find(t => t.id === ticketId);
+    const ticket = this.inMemoryTickets.find((t) => t.id === ticketId);
     return ticket || null;
   }
 
@@ -1818,7 +2204,7 @@ export class SeafarerService {
   }
 
   async addReply(userId: string, ticketId: string, message: string) {
-    const ticket = this.inMemoryTickets.find(t => t.id === ticketId);
+    const ticket = this.inMemoryTickets.find((t) => t.id === ticketId);
     if (!ticket) throw new BadRequestException('Ticket not found');
     const reply = {
       id: `reply-${Date.now()}`,
