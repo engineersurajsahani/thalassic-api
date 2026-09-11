@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthService, ROLES } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -15,7 +19,7 @@ const mockSupabaseClient = {
   ilike: jest.fn().mockReturnThis(),
   single: jest.fn(),
   insert: jest.fn().mockReturnThis(),
-  maybeSingle: jest.fn(),
+  maybeSingle: jest.fn().mockImplementation(() => mockSupabaseClient.single()),
   upsert: jest.fn(),
 };
 
@@ -27,7 +31,13 @@ const mockSupabaseService = {
 // Mock JwtService
 const mockJwtService = {
   sign: jest.fn().mockReturnValue('mock-jwt-token'),
-  verify: jest.fn().mockReturnValue({ sub: 'test-id', email: 'test@example.com', role: 'SEAFARER' }),
+  verify: jest
+    .fn()
+    .mockReturnValue({
+      sub: 'test-id',
+      email: 'test@example.com',
+      role: 'SEAFARER',
+    }),
 };
 
 // Mock ConfigService
@@ -63,6 +73,9 @@ describe('AuthService', () => {
 
     service = module.get<AuthService>(AuthService);
     supabaseService = module.get<SupabaseService>(SupabaseService);
+    mockSupabaseClient.maybeSingle.mockImplementation(() =>
+      mockSupabaseClient.single(),
+    );
   });
 
   afterEach(() => {
@@ -71,33 +84,59 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should throw BadRequestException when user not found', async () => {
-      mockSupabaseClient.maybeSingle.mockResolvedValue({ data: null, error: { message: 'Not found' } });
+      mockSupabaseClient.maybeSingle.mockResolvedValue({
+        data: null,
+        error: { message: 'Not found' },
+      });
 
       await expect(
-        service.login({ email: 'nonexistent@example.com', password: 'password' } as LoginDto),
+        service.login({
+          email: 'nonexistent@example.com',
+          password: 'password',
+        } as LoginDto),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when password is invalid', async () => {
       mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: { id: '1', email: 'test@example.com', password: '$2a$10$hashedpassword', name: 'Test', role: 'SEAFARER', phone: '123' },
+        data: {
+          id: '1',
+          email: 'test@example.com',
+          password: '$2a$10$hashedpassword',
+          name: 'Test',
+          role: 'SEAFARER',
+          phone: '123',
+        },
         error: null,
       });
       jest.spyOn(require('bcryptjs'), 'compare').mockResolvedValue(false);
 
       await expect(
-        service.login({ email: 'test@example.com', password: 'wrongpassword' } as LoginDto),
+        service.login({
+          email: 'test@example.com',
+          password: 'wrongpassword',
+        } as LoginDto),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should return token and user when credentials are valid', async () => {
       mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: { id: '1', email: 'test@example.com', password: '$2a$10$hashedpassword', name: 'Test User', role: ROLES.SEAFARER, phone: '+91 123' },
+        data: {
+          id: '1',
+          email: 'test@example.com',
+          password: '$2a$10$hashedpassword',
+          name: 'Test User',
+          role: ROLES.SEAFARER,
+          phone: '+91 123',
+        },
         error: null,
       });
       jest.spyOn(require('bcryptjs'), 'compare').mockResolvedValue(true);
 
-      const result = await service.login({ email: 'test@example.com', password: 'password' } as LoginDto);
+      const result = await service.login({
+        email: 'test@example.com',
+        password: 'password',
+      } as LoginDto);
 
       expect(result).toHaveProperty('token');
       expect(result.user).toHaveProperty('id', '1');
@@ -108,7 +147,10 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('should throw ConflictException when email already exists', async () => {
-      mockSupabaseClient.single.mockResolvedValue({ data: { id: 'existing' }, error: null });
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { id: 'existing' },
+        error: null,
+      });
 
       await expect(
         service.register({
@@ -122,8 +164,15 @@ describe('AuthService', () => {
     it('should create user with SEAFARER role by default', async () => {
       mockSupabaseClient.single
         .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: null, error: null })
         .mockResolvedValueOnce({
-          data: { id: 'new-id', email: 'new@example.com', name: 'New User', role: ROLES.SEAFARER, phone: null },
+          data: {
+            id: 'new-id',
+            email: 'new@example.com',
+            name: 'New User',
+            role: ROLES.SEAFARER,
+            phone: null,
+          },
           error: null,
         });
       mockSupabaseClient.insert.mockReturnThis();
@@ -142,8 +191,15 @@ describe('AuthService', () => {
     it('should normalize email to lowercase', async () => {
       mockSupabaseClient.single
         .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: null, error: null })
         .mockResolvedValueOnce({
-          data: { id: 'new-id', email: 'test@example.com', name: 'Test User', role: ROLES.SEAFARER, phone: null },
+          data: {
+            id: 'new-id',
+            email: 'test@example.com',
+            name: 'Test User',
+            role: ROLES.SEAFARER,
+            phone: null,
+          },
           error: null,
         });
       mockSupabaseClient.insert.mockReturnThis();
@@ -169,15 +225,25 @@ describe('AuthService', () => {
         throw new Error('Invalid token');
       });
 
-      await expect(
-        service.getProfile('invalid-token'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.getProfile('invalid-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should return user profile from database', async () => {
-      mockJwtService.verify.mockReturnValue({ sub: 'user-id', email: 'test@example.com', role: 'SEAFARER' });
+      mockJwtService.verify.mockReturnValue({
+        sub: 'user-id',
+        email: 'test@example.com',
+        role: 'SEAFARER',
+      });
       mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: { id: 'user-id', email: 'test@example.com', name: 'Test User', role: 'SEAFARER', phone: '+91 123' },
+        data: {
+          id: 'user-id',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'SEAFARER',
+          phone: '+91 123',
+        },
         error: null,
       });
 
