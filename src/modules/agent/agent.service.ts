@@ -523,7 +523,7 @@ export class AgentService {
       purchaseDate: '2026-09-08T14:13:38.134Z',
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       purchaseSource: 'Partner Portal',
     },
     {
@@ -539,7 +539,7 @@ export class AgentService {
       purchaseDate: '2026-09-05T10:30:00.000Z',
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       purchaseSource: 'Partner Portal',
     },
     {
@@ -555,7 +555,7 @@ export class AgentService {
       purchaseDate: '2026-08-28T16:45:00.000Z',
       purchaseStatus: 'Completed',
       settlementStatus: 'Settled',
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       purchaseSource: 'Partner Portal',
     },
   ];
@@ -592,7 +592,7 @@ export class AgentService {
                   : p.status === 'Submitted'
                     ? 'Submitted'
                     : 'Pending',
-              trainingType: 'Physical / Offline Training',
+              trainingType: 'Classroom Training',
               purchaseSource: 'Partner Portal',
             });
           }
@@ -610,9 +610,36 @@ export class AgentService {
           dueDate: string | null;
         }
       >();
+      const proofMap = new Map<
+        string,
+        { proofUrl: string; proofFileName: string }
+      >();
       const settledPurchaseIds = new Set<string>();
 
       settlements.forEach((s: any) => {
+        const rels = s.related_purchases || s.relatedPurchases || s.purchases || [];
+        rels.forEach((rel: any) => {
+          const pid = rel.id;
+          if (pid && !this.mockPurchases.some((m) => m.id === pid)) {
+            this.mockPurchases.push({
+              id: pid,
+              agentId: s.agentId || s.agent_id || agentId,
+              seafarerId: rel.seafarerId || rel.seafarer_id || 'sef-102',
+              seafarerName: rel.seafarerName || rel.customer_name || 'Rajesh Kumar',
+              indosNumber: rel.indosNumber || rel.indos_number || '18BN9021',
+              courseId: rel.courseId || rel.course_id || 'crs-102',
+              courseCode: rel.courseCode || rel.course_code || 'AFF-OFF-02',
+              courseName: rel.courseName || rel.course_name || 'Advanced Fire Fighting',
+              payableAmount: Number(rel.payableAmount || rel.hariom_payable || 10500),
+              purchaseDate: rel.date || s.createdAt || s.created_at || new Date().toISOString(),
+              purchaseStatus: 'Completed',
+              settlementStatus: Number(s.remainingAmount ?? s.remaining_amount ?? 0) > 0 ? 'Partial' : 'Pending',
+              trainingType: 'Classroom Training',
+              purchaseSource: 'Partner Portal',
+            });
+          }
+        });
+
         const ids = s.purchaseIds || s.purchase_ids || [];
         const isFullCompleted =
           s.status === 'Paid' ||
@@ -622,8 +649,16 @@ export class AgentService {
           s.paymentMode === 'partial' ||
           s.payment_mode === 'partial' ||
           Number(s.remainingAmount || s.remaining_amount || 0) > 0;
+        const pUrl = s.proofUrl || s.proof_url || s.bank_statement_url || null;
+        const pName =
+          s.proofFileName ||
+          s.proof_file_name ||
+          (pUrl ? 'Bank_Remittance_Receipt.pdf' : null);
 
         ids.forEach((id: string) => {
+          if (pUrl) {
+            proofMap.set(id, { proofUrl: pUrl, proofFileName: pName });
+          }
           if (isFullCompleted) {
             settledPurchaseIds.add(id);
           } else if (isPartial) {
@@ -665,6 +700,8 @@ export class AgentService {
           dueDate = info.dueDate;
         }
 
+        const proof = proofMap.get(m.id);
+
         return {
           ...m,
           originalCourseFee: origFee,
@@ -674,6 +711,12 @@ export class AgentService {
           remainingAmount: remaining,
           settlementStatus: status,
           expectedDueDate: dueDate,
+          proofUrl: proof?.proofUrl || m.proofUrl || null,
+          proofFileName:
+            proof?.proofFileName ||
+            m.proofFileName ||
+            'Bank_Remittance_Receipt.pdf',
+          settlementProofUrl: proof?.proofUrl || m.proofUrl || null,
         };
       });
     } catch (err: any) {
@@ -710,7 +753,8 @@ export class AgentService {
       const { data, error } = await db
         .from('Document')
         .select('*')
-        .eq('userId', agentId);
+        .eq('userId', agentId)
+        .order('uploadDate', { ascending: false });
 
       if (error) {
         console.warn('[getDocuments] Query warning:', error.message);
@@ -1392,6 +1436,9 @@ export class AgentService {
       remainingAmount?: number;
       expectedDueDate?: string;
       totalAmount?: number;
+      proofUrl?: string;
+      proofFileName?: string;
+      bank_statement_url?: string;
     },
   ) {
     const settlements = this.loadSettlementsFromDisk();
@@ -1409,12 +1456,13 @@ export class AgentService {
 
     const purchaseIds = dto.purchaseIds || [];
 
+    const allAgentPurchases = await this.getPurchases(agentId);
+    const selectedPurchases = allAgentPurchases.filter((p: any) => purchaseIds.includes(p.id));
+
     // Calculate total amount from selected purchases or fallback
     let totalAmount = dto.totalAmount || 0;
-    if (!totalAmount && purchaseIds.length > 0) {
-      const purchases = await this.getPurchases(agentId);
-      const selected = purchases.filter((p: any) => purchaseIds.includes(p.id));
-      totalAmount = selected.reduce(
+    if (!totalAmount && selectedPurchases.length > 0) {
+      totalAmount = selectedPurchases.reduce(
         (acc: number, curr: any) => acc + Number(curr.payableAmount || 0),
         0,
       );
@@ -1422,6 +1470,24 @@ export class AgentService {
     if (!totalAmount) {
       totalAmount = purchaseIds.length > 0 ? purchaseIds.length * 10000 : 15000;
     }
+
+    const relatedPurchasesList = (selectedPurchases.length > 0 ? selectedPurchases : (purchaseIds.length > 0 ? purchaseIds.map(id => ({ id })) : [{ id: 'pur-1' }])).map((p: any) => ({
+      id: p.id,
+      invoice_number: p.invoiceNumber || `HAC-2026-${(p.id || '').substring(0, 6).toUpperCase()}`,
+      customer_name: p.seafarerName || p.seafarer_name || 'Priya Singh',
+      seafarerName: p.seafarerName || p.seafarer_name || 'Priya Singh',
+      course_name: p.courseName || p.course_name || 'Medical Care on Board Ships',
+      courseName: p.courseName || p.course_name || 'Medical Care on Board Ships',
+      hariom_payable: Number(p.payableAmount || p.course_fee || (totalAmount / (purchaseIds.length || 1))),
+      payableAmount: Number(p.payableAmount || p.course_fee || (totalAmount / (purchaseIds.length || 1))),
+      date: p.purchaseDate
+        ? new Date(p.purchaseDate).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+        : '09 Sept 2026',
+    }));
 
     const paymentMode = dto.paymentMode === 'partial' ? 'partial' : 'full';
     const paidAmount =
@@ -1431,6 +1497,87 @@ export class AgentService {
     const remainingAmount =
       paymentMode === 'partial' ? Math.max(0, totalAmount - paidAmount) : 0;
     const expectedDueDate = dto.expectedDueDate || null;
+
+    // Check if an existing settlement row already exists for these purchaseIds
+    const existingSettlement = settlements.find((s: any) => {
+      const sIds = s.purchaseIds || s.purchase_ids || (s.related_purchases ? s.related_purchases.map((r: any) => r.id) : []);
+      return purchaseIds.some((pid) => sIds.includes(pid) || s.id === pid);
+    });
+
+    if (existingSettlement) {
+      const currentSettled = Number(existingSettlement.amount_settled || existingSettlement.paid_amount || existingSettlement.paidAmount || 0);
+      const payable = Number(existingSettlement.amount_payable || existingSettlement.total_amount || existingSettlement.totalAmount || totalAmount);
+      const newSettled = Math.min(payable, currentSettled + paidAmount);
+      const newPending = Math.max(0, payable - newSettled);
+
+      existingSettlement.amount_settled = newSettled;
+      existingSettlement.amountSettled = newSettled;
+      existingSettlement.paid_amount = newSettled;
+      existingSettlement.paidAmount = newSettled;
+      existingSettlement.pending_amount = newPending;
+      existingSettlement.pendingAmount = newPending;
+      existingSettlement.remaining_amount = newPending;
+      existingSettlement.remainingAmount = newPending;
+
+      if (existingSettlement.status !== 'Completed') {
+        if (newSettled > 0 && newPending > 0) {
+          existingSettlement.status = 'Partial';
+        } else {
+          existingSettlement.status = 'Pending';
+        }
+      }
+
+      existingSettlement.is_partial = true;
+      existingSettlement.was_partial = true;
+      existingSettlement.payment_mode = "partial";
+      existingSettlement.paymentMode = "partial";
+
+      const firstAmt = currentSettled || Math.floor(payable * 0.47);
+      const secondAmt = payable - firstAmt;
+      const firstDate = existingSettlement.created_at ? new Date(existingSettlement.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "10 Sept 2026";
+      const secondDate = new Date(nowIso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+      existingSettlement.installments = [
+        {
+          name: "1st Installment",
+          date: firstDate,
+          amount: firstAmt,
+          utr: existingSettlement.reference_number || "UTR-12345678",
+          status: "Paid"
+        },
+        {
+          name: "2nd Installment",
+          date: secondDate,
+          amount: secondAmt,
+          utr: dto.referenceNumber || existingSettlement.reference_number || "UTR-87654321",
+          status: "Paid"
+        }
+      ];
+
+      if (dto.referenceNumber) {
+        existingSettlement.reference_number = dto.referenceNumber;
+        existingSettlement.referenceNumber = dto.referenceNumber;
+      }
+      existingSettlement.updated_at = nowIso;
+      existingSettlement.updatedAt = nowIso;
+
+      this.saveSettlementsToDisk(settlements);
+
+      if (newPending === 0) {
+        purchaseIds.forEach((pid: string) => {
+          const match = this.mockPurchases.find((m) => m.id === pid);
+          if (match) {
+            match.settlementStatus = 'Completed';
+          }
+        });
+      }
+
+      return existingSettlement;
+    }
+
+    const proofUrl = dto.proofUrl || dto.bank_statement_url || null;
+    const proofFileName =
+      dto.proofFileName || (proofUrl ? 'Bank_Statement_Proof.pdf' : null);
 
     const newSettlement = {
       id: randomUUID(),
@@ -1442,10 +1589,16 @@ export class AgentService {
       agent_name: agentName,
       totalAmount,
       total_amount: totalAmount,
+      amount_payable: totalAmount,
+      amountPayable: totalAmount,
       paidAmount,
       paid_amount: paidAmount,
+      amount_settled: paidAmount,
+      amountSettled: paidAmount,
       remainingAmount,
       remaining_amount: remainingAmount,
+      pendingAmount: remainingAmount,
+      pending_amount: remainingAmount,
       paymentMode,
       payment_mode: paymentMode,
       expectedDueDate,
@@ -1455,14 +1608,24 @@ export class AgentService {
       status:
         paymentMode === 'partial' && remainingAmount > 0
           ? 'Partial'
+          : remainingAmount === 0
+          ? 'Completed'
           : 'Pending',
       referenceNumber: dto.referenceNumber || 'UTR-' + Date.now(),
       reference_number: dto.referenceNumber || 'UTR-' + Date.now(),
       paymentMethod: dto.paymentMethod || 'Bank Transfer',
       payment_date: dto.paymentDate || nowIso,
       remarks: dto.remarks || 'Settlement submitted by partner',
+      proofUrl,
+      proof_url: proofUrl,
+      bank_statement_url: proofUrl,
+      proofFileName,
+      proof_file_name: proofFileName,
       purchaseIds,
       purchase_ids: purchaseIds,
+      related_purchases: relatedPurchasesList,
+      relatedPurchases: relatedPurchasesList,
+      purchases: relatedPurchasesList,
       createdAt: nowIso,
       created_at: nowIso,
       updatedAt: nowIso,
@@ -1520,7 +1683,17 @@ export class AgentService {
     if (!s) {
       throw new NotFoundException('Settlement record not found');
     }
-    return s;
+    const pids = s.purchaseIds || s.purchase_ids || [];
+    const allPurchases = await this.getPurchases(agentId);
+    const matchedPurchases = pids
+      .map((pid: string) => allPurchases.find((p: any) => p.id === pid))
+      .filter(Boolean);
+
+    return {
+      ...s,
+      purchases: matchedPurchases,
+      related_purchases: matchedPurchases,
+    };
   }
 
   async getFinancials(agentId: string) {
@@ -1579,7 +1752,104 @@ export class AgentService {
       passportNum: 'Z3902184',
       indosNum: '18BN9021',
       cdcNum: 'MUM-892102',
+      rank: 'Master',
+      department: 'Deck',
+      status: 'Active',
+      address: 'Flat 402, Sea Breeze Apts, Bandra West, Mumbai – 400 050',
       hasHariOmAccount: true,
+      documents: [
+        {
+          id: 'doc-101-1',
+          name: 'Certificate of Competency (CoC) – Master',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2028-03-15',
+        },
+        {
+          id: 'doc-101-2',
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2033-08-20',
+        },
+        {
+          id: 'doc-101-3',
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2030-11-19',
+        },
+        {
+          id: 'doc-101-4',
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2026-06-30',
+        },
+      ],
+      seaService: [
+        {
+          id: 'ss-101-1',
+          vesselName: 'MV Thalassic Wave',
+          vesselType: 'Crude Oil Tanker',
+          rank: 'Master',
+          signOn: '2025-01-15',
+          signOff: '2025-07-20',
+          duration: 186,
+        },
+        {
+          id: 'ss-101-2',
+          vesselName: 'MV Pacific Star',
+          vesselType: 'Container Vessel',
+          rank: 'Chief Mate',
+          signOn: '2024-02-10',
+          signOff: '2024-08-08',
+          duration: 179,
+        },
+        {
+          id: 'ss-101-3',
+          vesselName: 'MT Bombay Express',
+          vesselType: 'LPG Tanker',
+          rank: 'Chief Mate',
+          signOn: '2023-03-01',
+          signOff: '2023-09-01',
+          duration: 184,
+        },
+      ],
+      enrollments: [
+        {
+          id: 'enr-101-1',
+          courseName: 'Basic Safety Training (BST)',
+          trainingType: 'Classroom Training',
+          enrollmentDate: '2026-08-01',
+          status: 'Completed',
+        },
+        {
+          id: 'enr-101-2',
+          courseName: 'Advanced Firefighting (AFF)',
+          trainingType: 'Classroom Training',
+          enrollmentDate: '2026-08-20',
+          status: 'Ongoing',
+        },
+      ],
+      purchases: [
+        {
+          id: 'PUR-101-A',
+          courseName: 'Basic Safety Training (BST)',
+          trainingType: 'Classroom Training',
+          purchaseSource: 'Partner',
+          purchaseDate: '2026-08-01',
+          purchaseStatus: 'Completed',
+        },
+        {
+          id: 'PUR-101-B',
+          courseName: 'Advanced Firefighting (AFF)',
+          trainingType: 'Classroom Training',
+          purchaseSource: 'Direct',
+          purchaseDate: '2026-08-20',
+          purchaseStatus: 'Active',
+        },
+      ],
       purchaseHistory: [
         {
           courseName: 'Basic Safety Training (BST)',
@@ -1606,7 +1876,102 @@ export class AgentService {
       passportNum: 'P8921045',
       indosNum: '15GL4401',
       cdcNum: 'KOL-774012',
+      rank: 'Chief Engineer',
+      department: 'Engine',
+      status: 'On Leave',
+      address: 'House 12B, Lake Town, Block A, Kolkata – 700 089',
       hasHariOmAccount: true,
+      documents: [
+        {
+          id: 'doc-102-1',
+          name: 'Certificate of Competency (CoC) – Chief Engineer',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2027-06-10',
+        },
+        {
+          id: 'doc-102-2',
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2031-12-01',
+        },
+        {
+          id: 'doc-102-3',
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2029-05-14',
+        },
+        {
+          id: 'doc-102-4',
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Approved',
+          expiryDate: '2027-02-28',
+        },
+        {
+          id: 'doc-102-5',
+          name: 'GMDSS General Operator Certificate',
+          type: 'GMDSS',
+          status: 'Approved',
+          expiryDate: '2028-09-30',
+        },
+      ],
+      seaService: [
+        {
+          id: 'ss-102-1',
+          vesselName: 'MV Eastern Horizon',
+          vesselType: 'Bulk Carrier',
+          rank: 'Chief Engineer',
+          signOn: '2024-11-01',
+          signOff: '2025-05-02',
+          duration: 182,
+        },
+        {
+          id: 'ss-102-2',
+          vesselName: 'MV Bengal Star',
+          vesselType: 'General Cargo',
+          rank: 'Second Engineer',
+          signOn: '2023-07-15',
+          signOff: '2024-01-10',
+          duration: 179,
+        },
+      ],
+      enrollments: [
+        {
+          id: 'enr-102-1',
+          courseName: 'Medical First Aid (MFA)',
+          trainingType: 'Classroom Training',
+          enrollmentDate: '2026-07-01',
+          status: 'Completed',
+        },
+        {
+          id: 'enr-102-2',
+          courseName: 'Survival Craft & Rescue Boats (SCRB)',
+          trainingType: 'Simulator Training',
+          enrollmentDate: '2026-09-05',
+          status: 'Scheduled',
+        },
+      ],
+      purchases: [
+        {
+          id: 'PUR-102-A',
+          courseName: 'Medical First Aid (MFA)',
+          trainingType: 'Classroom Training',
+          purchaseSource: 'Partner',
+          purchaseDate: '2026-07-01',
+          purchaseStatus: 'Completed',
+        },
+        {
+          id: 'PUR-102-B',
+          courseName: 'Survival Craft & Rescue Boats (SCRB)',
+          trainingType: 'Simulator Training',
+          purchaseSource: 'Direct',
+          purchaseDate: '2026-09-05',
+          purchaseStatus: 'Scheduled',
+        },
+      ],
       purchaseHistory: [
         {
           courseName: 'Medical First Aid (MFA)',
@@ -1627,41 +1992,389 @@ export class AgentService {
       passportNum: 'V7721098',
       indosNum: '21CH5510',
       cdcNum: 'CHD-551090',
+      rank: 'Electrical Officer',
+      department: 'Electro-Technical',
+      status: 'Active',
+      address: 'Sector 22-C, House 45, Chandigarh – 160 022',
       hasHariOmAccount: false,
+      documents: [
+        {
+          id: 'doc-103-1',
+          name: 'Certificate of Competency (CoC) – ETO',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2029-11-05',
+        },
+        {
+          id: 'doc-103-2',
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2034-03-22',
+        },
+        {
+          id: 'doc-103-3',
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2031-08-17',
+        },
+        {
+          id: 'doc-103-4',
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2026-01-15',
+        },
+      ],
+      seaService: [
+        {
+          id: 'ss-103-1',
+          vesselName: 'MV Oceanic Pride',
+          vesselType: 'RoRo Vessel',
+          rank: 'Electrical Officer',
+          signOn: '2025-03-10',
+          signOff: '2025-09-10',
+          duration: 184,
+        },
+        {
+          id: 'ss-103-2',
+          vesselName: 'MV Northern Cross',
+          vesselType: 'Offshore Supply Vessel',
+          rank: 'Junior ETO',
+          signOn: '2024-01-20',
+          signOff: '2024-07-18',
+          duration: 179,
+        },
+        {
+          id: 'ss-103-3',
+          vesselName: 'MV Indus Spirit',
+          vesselType: 'Chemical Tanker',
+          rank: 'ETO Trainee',
+          signOn: '2023-06-01',
+          signOff: '2023-11-30',
+          duration: 182,
+        },
+      ],
+      enrollments: [],
+      purchases: [],
       purchaseHistory: [],
     },
   ];
+
+  // Deterministic unique value generator — ensures each DB user gets
+  // different (but stable across requests) maritime data based on their id.
+  private _seaFallback(id: string, pool: string[]): string {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    }
+    return pool[hash % pool.length];
+  }
+
+  private _buildDbSeafarer(u: any, profile: any, seaRecords: any[]) {
+    const id = u.id as string;
+
+    // Unique fallback pools — all values are realistic maritime data
+    const indosPools = [
+      '20MU3491',
+      '17KL8820',
+      '22CH1105',
+      '19GJ5543',
+      '21WB6678',
+      '18OR9900',
+      '23MH4412',
+      '16TN2234',
+    ];
+    const passportPools = [
+      'A7841023',
+      'B3392841',
+      'C9201834',
+      'F4481029',
+      'G7720193',
+      'H1193847',
+      'J5528310',
+      'K8841029',
+    ];
+    const cdcPools = [
+      'MUM-334901',
+      'CHE-221048',
+      'KOL-558812',
+      'KOC-119034',
+      'VIZ-443291',
+      'GOA-778102',
+      'MNG-330218',
+      'POR-661034',
+    ];
+    const dobPools = [
+      '1988-03-12',
+      '1991-07-25',
+      '1985-11-08',
+      '1993-04-19',
+      '1987-09-30',
+      '1990-02-14',
+      '1994-06-05',
+      '1983-12-22',
+    ];
+    const addressPools = [
+      'Plot 12, Miramar Colony, Panaji, Goa – 403 001',
+      'Flat 8B, Seaview Residency, Vizag – 530 003',
+      "H.No 45, Fishermen's Colony, Kochi – 682 001",
+      'Door 22, Marina Enclave, Chennai – 600 028',
+      'Block C-3, Port View Apts, Mangalore – 575 001',
+      '14, Harbour Road, Paradip, Odisha – 754 142',
+      'Qtr 7, Marine Drive Colony, Mumbai – 400 002',
+      "Lane 5, Sailors' Town, Kolkata – 700 043",
+    ];
+    const rankPools = [
+      'Second Officer',
+      'Chief Mate',
+      'Second Engineer',
+      'Third Engineer',
+      'Bosun',
+      'Able Seaman',
+      'Electro-Technical Officer',
+      'Deck Cadet',
+    ];
+    const deptPools = [
+      'Deck',
+      'Engine',
+      'Deck',
+      'Engine',
+      'Deck',
+      'Deck',
+      'Electro-Technical',
+      'Deck',
+    ];
+    const statusPools = [
+      'Active',
+      'Active',
+      'Active',
+      'On Leave',
+      'Active',
+      'Active',
+      'Standby',
+      'Active',
+    ];
+    const vesselPools = [
+      { vesselName: 'MV Coastal Queen', vesselType: 'Container Vessel' },
+      { vesselName: 'MT Sagar Mitra', vesselType: 'Product Tanker' },
+      { vesselName: 'MV Navodaya', vesselType: 'Bulk Carrier' },
+      { vesselName: 'MT Arabian Star', vesselType: 'Crude Oil Tanker' },
+      { vesselName: 'MV Bay Express', vesselType: 'RoRo Vessel' },
+      { vesselName: 'MV Konkan Pride', vesselType: 'General Cargo' },
+      { vesselName: 'OSV Deep Driller', vesselType: 'Offshore Supply Vessel' },
+      { vesselName: 'MV Deccan Voyager', vesselType: 'LPG Tanker' },
+    ];
+
+    const rankIdx = Math.abs(
+      (id.charCodeAt(0) + id.charCodeAt(2)) % rankPools.length,
+    );
+    const vesselIdx = Math.abs(
+      (id.charCodeAt(1) + id.charCodeAt(3)) % vesselPools.length,
+    );
+
+    // Prefer real DB profile data, fall back to unique deterministic values
+    const indosNum = profile?.indos_num || this._seaFallback(id, indosPools);
+    const passportNum =
+      profile?.passport_num || this._seaFallback(id + 'p', passportPools);
+    const cdcNum = profile?.cdc_num || this._seaFallback(id + 'c', cdcPools);
+    const dob = profile?.dob || this._seaFallback(id + 'd', dobPools);
+    const birthPlace = profile?.birth_place || 'India';
+    const rank = this._seaFallback(id + 'r', rankPools);
+    const dept = deptPools[rankIdx];
+    const status = statusPools[rankIdx];
+    const address = this._seaFallback(id + 'a', addressPools);
+    const vessel = vesselPools[vesselIdx];
+
+    // Build sea service from real DB records or generate one unique entry
+    const seaService =
+      seaRecords.length > 0
+        ? seaRecords.map((r: any, i: number) => ({
+            id: `ss-db-${id.slice(0, 8)}-${i}`,
+            vesselName: r.vessel,
+            vesselType: r.vessel_type || 'General Cargo',
+            rank: r.rank,
+            signOn: r.sign_on,
+            signOff: r.sign_off || 'Present',
+            duration: r.sign_off
+              ? Math.round(
+                  (new Date(r.sign_off).getTime() -
+                    new Date(r.sign_on).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                )
+              : 90,
+          }))
+        : [
+            {
+              id: `ss-db-${id.slice(0, 8)}-0`,
+              vesselName: vessel.vesselName,
+              vesselType: vessel.vesselType,
+              rank,
+              signOn: '2024-09-01',
+              signOff: '2025-03-01',
+              duration: 181,
+            },
+          ];
+
+    // Unique documents per seafarer based on their rank pool index
+    const docSets = [
+      [
+        {
+          id: `doc-db-${id.slice(0, 6)}-1`,
+          name: 'Certificate of Competency (CoC)',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2028-06-30',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-2`,
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2032-01-15',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-3`,
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2030-08-20',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-4`,
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2026-03-01',
+        },
+      ],
+      [
+        {
+          id: `doc-db-${id.slice(0, 6)}-1`,
+          name: 'Certificate of Competency (CoC)',
+          type: 'CoC',
+          status: 'Approved',
+          expiryDate: '2027-11-10',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-2`,
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2031-05-22',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-3`,
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2029-12-18',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-4`,
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Approved',
+          expiryDate: '2027-07-14',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-5`,
+          name: 'GMDSS Radio Operator Certificate',
+          type: 'GMDSS',
+          status: 'Approved',
+          expiryDate: '2028-02-28',
+        },
+      ],
+      [
+        {
+          id: `doc-db-${id.slice(0, 6)}-1`,
+          name: 'Certificate of Proficiency (CoP)',
+          type: 'CoP',
+          status: 'Approved',
+          expiryDate: '2029-04-01',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-2`,
+          name: 'Continuous Discharge Certificate (CDC)',
+          type: 'CDC',
+          status: 'Approved',
+          expiryDate: '2033-09-10',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-3`,
+          name: 'Indian Passport',
+          type: 'Passport',
+          status: 'Approved',
+          expiryDate: '2031-03-25',
+        },
+        {
+          id: `doc-db-${id.slice(0, 6)}-4`,
+          name: 'Medical Fitness Certificate (ENG1)',
+          type: 'Medical',
+          status: 'Expired',
+          expiryDate: '2025-11-30',
+        },
+      ],
+    ];
+    const documents = docSets[rankIdx % docSets.length];
+
+    return {
+      id,
+      name: u.name || 'Seafarer User',
+      email: u.email,
+      phone: u.phone || '+91 99999 00000',
+      dob,
+      birthPlace,
+      nationality: 'Indian',
+      passportNum,
+      indosNum,
+      cdcNum,
+      rank,
+      department: dept,
+      status,
+      address,
+      hasHariOmAccount: true,
+      documents,
+      seaService,
+      enrollments: [],
+      purchases: [],
+      purchaseHistory: [],
+    };
+  }
 
   async searchSeafarers(query?: string) {
     try {
       const db = this.getDb();
       const q = (query || '').trim().toLowerCase();
 
+      // Fetch users + their seafarer profiles in one call
       const { data: dbSeafarers } = await db
         .from('User')
-        .select('id, name, email, phone')
+        .select('id, name, email, phone, role')
         .eq('role', 'SEAFARER');
 
       let list = [...this.mockSeafarers];
       if (dbSeafarers && dbSeafarers.length > 0) {
-        dbSeafarers.forEach((u: any) => {
-          if (!list.some((s) => s.id === u.id || s.email === u.email)) {
-            list.push({
-              id: u.id,
-              name: u.name || 'Seafarer User',
-              email: u.email,
-              phone: u.phone || '+91 99999 00000',
-              dob: '1994-01-01',
-              birthPlace: 'India',
-              nationality: 'Indian',
-              passportNum: 'P1234567',
-              indosNum: '19IN1234',
-              cdcNum: 'MUM-123456',
-              hasHariOmAccount: true,
-              purchaseHistory: [],
-            });
-          }
+        // Bulk-fetch all seafarer profiles
+        const userIds = dbSeafarers.map((u: any) => u.id);
+        const { data: profiles } = await db
+          .from('SeafarerProfile')
+          .select('user_id, indos_num, passport_num, cdc_num, dob, birth_place')
+          .in('user_id', userIds);
+
+        const profileMap: Record<string, any> = {};
+        (profiles || []).forEach((p: any) => {
+          profileMap[p.user_id] = p;
         });
+
+        for (const u of dbSeafarers) {
+          if (!list.some((s) => s.id === u.id || s.email === u.email)) {
+            const profile = profileMap[u.id] || null;
+            // Sea service records fetched per-user only if needed (lightweight list view)
+            list.push(this._buildDbSeafarer(u, profile, []));
+          }
+        }
       }
 
       if (!q) return list;
@@ -1686,12 +2399,45 @@ export class AgentService {
   }
 
   async getSeafarerById(id: string) {
-    const list = await this.searchSeafarers();
-    const found = list.find((s) => s.id === id);
-    if (!found) {
-      return list[0];
+    // Check mock seafarers first (sef-101, sef-102, sef-103)
+    const mockFound = this.mockSeafarers.find((s) => s.id === id);
+    if (mockFound) return mockFound;
+
+    // For DB seafarers, do a deep fetch including sea service records
+    try {
+      const db = this.getDb();
+
+      const { data: users } = await db
+        .from('User')
+        .select('id, name, email, phone')
+        .eq('id', id)
+        .limit(1);
+
+      if (!users || users.length === 0) {
+        // fallback: return first mock
+        return this.mockSeafarers[0];
+      }
+
+      const u = users[0];
+
+      const { data: profiles } = await db
+        .from('SeafarerProfile')
+        .select('user_id, indos_num, passport_num, cdc_num, dob, birth_place')
+        .eq('user_id', id)
+        .limit(1);
+
+      const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+
+      const { data: seaRecords } = await db
+        .from('sea_service_records')
+        .select('vessel, vessel_type, rank, sign_on, sign_off')
+        .eq('user_id', id);
+
+      return this._buildDbSeafarer(u, profile, seaRecords || []);
+    } catch (err: any) {
+      console.warn('[getSeafarerById] Exception:', err.message);
+      return this.mockSeafarers[0];
     }
-    return found;
   }
 
   async createSeafarer(dto: any) {
@@ -1706,14 +2452,22 @@ export class AgentService {
       passportNum: dto.passportNum || 'P9999999',
       indosNum: dto.indosNum || '24IN9999',
       cdcNum: dto.cdcNum || 'MUM-999999',
+      rank: dto.rank || 'Deck Officer',
+      department: dto.department || 'Deck',
+      status: 'Active',
+      address: dto.address || 'India',
       hasHariOmAccount: true,
-      purchaseHistory: [],
+      documents: [] as any[],
+      seaService: [] as any[],
+      enrollments: [] as any[],
+      purchases: [] as any[],
+      purchaseHistory: [] as any[],
     };
     this.mockSeafarers.unshift(newSeafarer);
     return newSeafarer;
   }
 
-  // --- 12. Physical Courses & Partner Pricing ---
+  // --- 12. Courses & Partner Pricing ---
   private mockCourses = [
     {
       id: 'crs-101',
@@ -1722,7 +2476,7 @@ export class AgentService {
       duration: '12 Days',
       standardFee: 18500,
       payableAmount: 16500,
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       description:
         'Mandatory STCW BST course covering Personal Survival Techniques, Fire Prevention & Fire Fighting, Elementary First Aid, and PSSR.',
     },
@@ -1733,7 +2487,7 @@ export class AgentService {
       duration: '6 Days',
       standardFee: 14500,
       payableAmount: 13000,
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       description:
         'Advanced firefighting tactical operations, command strategies, and shipboard emergency control.',
     },
@@ -1744,7 +2498,7 @@ export class AgentService {
       duration: '4 Days',
       standardFee: 9500,
       payableAmount: 8500,
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       description:
         'Immediate medical care training for shipboard officers and crew in accordance with STCW Table A-VI/4-1.',
     },
@@ -1755,7 +2509,7 @@ export class AgentService {
       duration: '5 Days',
       standardFee: 12000,
       payableAmount: 10800,
-      trainingType: 'Physical / Offline Training',
+      trainingType: 'Classroom Training',
       description:
         'Operation of lifeboats, liferafts, rescue boats, and survival equipment.',
     },
@@ -1787,7 +2541,7 @@ export class AgentService {
         standardFee: Number(c.fees || c.standardFee) || 12000,
         payableAmount:
           Number(c.discountedFee || c.payableAmount || c.fees) || 10500,
-        trainingType: c.trainingType || 'Physical / Offline Training',
+        trainingType: c.trainingType || 'Classroom Training',
         description: c.description || 'Certified DG Shipping Maritime Training',
       }));
     } catch (err: any) {
@@ -1812,23 +2566,49 @@ export class AgentService {
 
   async createPurchase(agentId: string, dto: any) {
     const courses = await this.getCourses();
-    const course = courses.find((c) => c.id === dto.courseId) || courses[0];
+    const course =
+      courses.find(
+        (c) =>
+          c.id === dto.courseId ||
+          c.code === dto.courseCode ||
+          c.name === dto.courseName,
+      ) || null;
+
     const purchaseId = randomUUID();
     const now = new Date().toISOString();
+
+    let seafarerName = dto.seafarerName || dto.seafarer_name || dto.customerName;
+    let indosNumber = dto.indosNumber || dto.indosNum;
+    if (!seafarerName && dto.seafarerId) {
+      try {
+        const sf = await this.getSeafarerById(dto.seafarerId);
+        if (sf) {
+          seafarerName = sf.name;
+          indosNumber = indosNumber || (sf as any).indosNum || (sf as any).indos_num;
+        }
+      } catch (_) {}
+    }
+
+    const courseName = dto.courseName || dto.course_name || (course ? course.name : 'STCW Training Course');
+    const courseCode = dto.courseCode || (course ? course.code : 'STCW-01');
+    const payableAmount = Number(
+      dto.payableAmount || (course ? course.payableAmount || course.standardFee : 10500),
+    );
 
     const newPurchase = {
       id: purchaseId,
       agentId,
       seafarerId: dto.seafarerId || 'sef-101',
-      seafarerName: dto.seafarerName || 'Rajesh Kumar',
-      courseId: course.id,
-      courseCode: course.code,
-      courseName: course.name,
-      payableAmount: course.payableAmount,
+      seafarerName: seafarerName || 'Priya Singh',
+      indosNumber: indosNumber || '21N5678',
+      courseId: course ? course.id : (dto.courseId || 'crs-101'),
+      courseCode: courseCode,
+      courseName: courseName,
+      payableAmount: payableAmount,
       purchaseDate: now,
       purchaseStatus: 'Completed',
       settlementStatus: 'Pending',
-      trainingType: course.trainingType,
+      trainingType: course?.trainingType || 'Classroom Training',
       purchaseSource: 'Partner Portal',
     };
 
@@ -1841,10 +2621,10 @@ export class AgentService {
         id: purchaseId,
         agent_id: agentId,
         seafarer_name: newPurchase.seafarerName,
-        course_name: course.name,
-        course_fee: course.payableAmount,
+        course_name: courseName,
+        course_fee: payableAmount,
         commission_rate: 5,
-        commission_amount: Math.round(course.payableAmount * 0.05),
+        commission_amount: Math.round(payableAmount * 0.05),
         status: 'Pending',
         purchase_id: purchaseId,
         created_at: now,
@@ -1876,7 +2656,7 @@ export class AgentService {
         purchaseDate: new Date().toISOString(),
         purchaseStatus: 'Completed',
         settlementStatus: 'Pending',
-        trainingType: 'Physical / Offline Training',
+        trainingType: 'Classroom Training',
         purchaseSource: 'Partner Portal',
       };
     } catch (err: any) {
@@ -1893,7 +2673,7 @@ export class AgentService {
         purchaseDate: new Date().toISOString(),
         purchaseStatus: 'Completed',
         settlementStatus: 'Pending',
-        trainingType: 'Physical / Offline Training',
+        trainingType: 'Classroom Training',
         purchaseSource: 'Partner Portal',
       };
     }

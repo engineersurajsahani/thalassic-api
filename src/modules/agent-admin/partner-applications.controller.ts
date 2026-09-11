@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { PartnerApplicationsService } from './partner-applications.service';
 import { CreatePartnerApplicationDto } from './dto/create-partner-application.dto';
 import { AuthGuard } from '../auth/auth.guard';
