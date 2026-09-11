@@ -355,4 +355,28 @@ export class MasterController {
   updateUserStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.masterService.updateUserStatus(id, status);
   }
+
+  // =========================================================================
+  // 11. Master Notifications
+  // =========================================================================
+  @Get('notifications')
+  getMasterNotifications(@Req() req: any) {
+    const adminId =
+      req.user?.id || req.user?.sub || 'a0000000-0000-0000-0000-000000000000';
+    return this.masterService.getMasterNotifications(adminId);
+  }
+
+  @Patch('notifications/:id/read')
+  markNotificationRead(@Req() req: any, @Param('id') id: string) {
+    const adminId =
+      req.user?.id || req.user?.sub || 'a0000000-0000-0000-0000-000000000000';
+    return this.masterService.markMasterNotificationRead(adminId, id);
+  }
+
+  @Post('notifications/read-all')
+  markAllNotificationsRead(@Req() req: any) {
+    const adminId =
+      req.user?.id || req.user?.sub || 'a0000000-0000-0000-0000-000000000000';
+    return this.masterService.markAllMasterNotificationsRead(adminId);
+  }
 }
