@@ -36,6 +36,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
+      - name: Create PostgreSQL root role
+        run: |
+          docker exec $(docker ps -q --filter ancestor=postgres:15) psql -U postgres -c "CREATE USER root WITH SUPERUSER PASSWORD 'postgres';" || true
+          docker exec $(docker ps -q --filter ancestor=postgres:15) psql -U postgres -c "CREATE DATABASE root OWNER root;" || true
+          docker exec $(docker ps -q --filter ancestor=postgres:15) psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE test_db TO root;" || true
+
       - name: Install dependencies
         run: npm ci
 
@@ -50,6 +56,13 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
           DB_NAME: test_db
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: test_db
+          USER: postgres
+          USERNAME: postgres
           NODE_ENV: test
 
       - name: Run unit tests
@@ -63,6 +76,13 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
           DB_NAME: test_db
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: test_db
+          USER: postgres
+          USERNAME: postgres
           NODE_ENV: test
 
       - name: Run lint
