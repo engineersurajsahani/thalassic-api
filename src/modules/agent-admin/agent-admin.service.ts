@@ -2109,7 +2109,7 @@ export class AgentAdminService {
   }
 
   // --- 6. Reports ---
-  async getReports() {
+  async getReports(month?: string) {
     const db = this.getDb();
 
     // 1. Agent Performance
