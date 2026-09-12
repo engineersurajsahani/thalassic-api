@@ -1,8 +1,20 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { MasterService } from './master.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles, ROLES } from '../../common/decorators/roles.decorator';
+import { UserStatus } from '../../entities';
 
 @Controller('master')
 @UseGuards(AuthGuard, RolesGuard)
@@ -10,118 +22,89 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 export class MasterController {
   constructor(private readonly masterService: MasterService) {}
 
-  // --- 1. Dashboard API ---
-  @Get('dashboard')
-  getDashboard() {
-    return this.masterService.getDashboardData();
+  @Get('dashboard/stats')
+  getDashboardStats() {
+    return this.masterService.getDashboardStats();
   }
 
-  @Get('reports')
-  getReports(@Query('days') days?: string) {
-    return this.masterService.getReportsData(days);
-  }
-
-  // --- 2. Course Management APIs ---
+  // --- Courses ---
   @Get('courses')
   getCourses() {
     return this.masterService.getCourses();
   }
 
-  @Post('courses')
-  createCourse(@Body() dto: any) {
-    return this.masterService.createCourse(dto);
+  @Get('courses/:id')
+  getCourseById(@Param('id') id: string) {
+    return this.masterService.getCourseById(id);
   }
 
-  @Patch('courses/:id')
-  updateCourse(@Param('id') id: string, @Body() dto: any) {
-    return this.masterService.updateCourse(id, dto);
+  @Post('courses')
+  createCourse(@Body() data: any, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.createCourse(data, userId);
+  }
+
+  @Put('courses/:id')
+  updateCourse(@Param('id') id: string, @Body() data: any, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.updateCourse(id, data, userId);
   }
 
   @Delete('courses/:id')
-  deleteCourse(@Param('id') id: string) {
-    return this.masterService.deleteCourse(id);
+  deleteCourse(@Param('id') id: string, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.deleteCourse(id, userId);
   }
 
-  // --- 3. User Management APIs ---
-  @Get('users')
-  getUsers(@Query('role') role?: string) {
-    return this.masterService.getUsers(role);
+  // --- Institutes ---
+  @Get('institutes')
+  getInstitutes() {
+    return this.masterService.getInstitutes();
   }
 
-  @Post('users')
-  createUser(@Body() dto: any) {
-    return this.masterService.createUser(dto);
+  @Post('institutes')
+  createInstitute(@Body() data: any, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.createInstitute(data, userId);
   }
 
-  @Get('users/:id/profile')
-  getUserProfile(@Param('id') id: string) {
-    return this.masterService.getUserProfile(id);
+  // --- Seafarer Audits ---
+  @Get('seafarers')
+  getSeafarers() {
+    return this.masterService.getSeafarers();
   }
 
-  @Patch('users/:id/status')
-  updateUserStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.masterService.updateUserStatus(id, status);
+  @Patch('seafarers/:id/audit')
+  auditSeafarer(
+    @Param('id') id: string,
+    @Body('status') status: UserStatus,
+    @Body('notes') notes: string,
+    @Req() req: any,
+  ) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.auditSeafarer(id, status, notes, userId);
   }
 
-  // --- 4. Settings APIs ---
+  @Patch('documents/:id/verify')
+  verifyDocument(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Body('remarks') remarks: string,
+    @Req() req: any,
+  ) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.verifyDocument(id, status, remarks, userId);
+  }
+
+  // --- Settings ---
   @Get('settings')
   getSettings() {
     return this.masterService.getSettings();
   }
 
-  @Patch('settings')
-  updateSettings(@Body() dto: any) {
-    return this.masterService.updateSettings(dto);
-  }
-
-  @Patch('profile')
-  updateProfile(@Req() req: any, @Body() dto: any) {
-    const adminId = req.user?.id || req.user?.sub;
-    return this.masterService.updateAdminProfile(adminId, dto);
-  }
-
-  // --- 5. Finance Module APIs (Master Only) ---
-  @Get('finance/payments')
-  getPayments(@Req() req: any, @Query() query: any) {
-    return this.masterService.getPayments(query);
-  }
-
-  @Get('finance/invoices')
-  getInvoices(@Req() req: any, @Query() query: any) {
-    return this.masterService.getInvoices(req.user, query);
-  }
-
-  @Get('finance/invoices/:id/pdf')
-  getInvoicePdf(@Req() req: any, @Param('id') id: string) {
-    return this.masterService.getInvoicePdf(id, req.user);
-  }
-
-  @Post('finance/invoices/:id/resend')
-  resendInvoice(@Req() req: any, @Param('id') id: string) {
-    return this.masterService.resendInvoice(id, req.user);
-  }
-
-  @Get('finance/commissions')
-  getCommissions(@Req() req: any) {
-    return this.masterService.getCommissionsOverview();
-  }
-
-  @Get('finance/settlements')
-  getSettlements(@Req() req: any) {
-    return this.masterService.getSettlements();
-  }
-
-  @Post('finance/settlements/:id/approve')
-  approveSettlement(@Req() req: any, @Param('id') id: string) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Master Admin';
-    return this.masterService.approveSettlement(id, adminId, adminName);
-  }
-
-  @Post('finance/settlements/:id/pay')
-  paySettlement(@Req() req: any, @Param('id') id: string) {
-    const adminId = req.user?.id || 'system';
-    const adminName = req.user?.name || 'Master Admin';
-    return this.masterService.paySettlement(id, adminId, adminName);
+  @Put('settings')
+  updateSettings(@Body() data: any, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.masterService.updateSettings(data, userId);
   }
 }

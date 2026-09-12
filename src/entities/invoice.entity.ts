@@ -1,106 +1,127 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 import { User } from './user.entity';
-import { Enrollment } from './enrollment.entity';
-import { Commission } from './commission.entity';
+import { Partner } from './partner.entity';
 import { Company } from './company.entity';
+import { Enrollment } from './enrollment.entity';
+import { Payment } from './payment.entity';
+
+export enum InvoiceType {
+  HOC = 'HOC',
+  HAC = 'HAC',
+  COMPANY = 'COMPANY',
+}
+
+export enum InvoiceStatus {
+  ISSUED = 'Issued',
+  PAID = 'Paid',
+  PARTIALLY_PAID = 'Partially Paid',
+  CANCELLED = 'Cancelled',
+  REFUNDED = 'Refunded',
+}
 
 @Entity('invoices')
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'invoice_number', nullable: true, unique: true })
+  @Column({ type: 'varchar', name: 'invoice_number', unique: true, length: 50 })
   invoiceNumber: string;
 
-  @Column({ name: 'invoice_type', nullable: true })
-  invoiceType: string;
+  @Column({
+    name: 'invoice_type',
+
+    enum: InvoiceType,
+  })
+  invoiceType: InvoiceType;
 
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
-  userId: string;
+  userId: string | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'user_id' })
-  user: User;
-
-  @Column({ name: 'purchase_id', type: 'uuid', nullable: true })
-  purchaseId: string;
-
-  @ManyToOne(() => Enrollment, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'purchase_id' })
-  enrollment: Enrollment;
-
-  @Column({ name: 'agent_id', type: 'uuid', nullable: true })
-  agentId: string;
-
-  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'agent_id' })
-  agent: User;
-
-  @Column({ name: 'commission_snapshot_id', type: 'uuid', nullable: true })
-  commissionSnapshotId: string;
-
-  @ManyToOne(() => Commission, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'commission_snapshot_id' })
-  commissionSnapshot: Commission;
-
-  @Column({ name: 'customer_name', nullable: true })
-  customerName: string;
-
-  @Column({ name: 'customer_email', nullable: true })
-  customerEmail: string;
-
-  @Column({ name: 'customer_phone', nullable: true })
-  customerPhone: string;
-
-  @Column({ name: 'agent_name', nullable: true })
-  agentName: string;
-
-  @Column({ name: 'agent_referral_code', nullable: true })
-  agentReferralCode: string;
-
-  @Column({ name: 'course_name', nullable: true })
-  courseName: string;
-
-  @Column({ name: 'course_fee', type: 'decimal', precision: 10, scale: 2, nullable: true })
-  courseFee: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.00 })
-  discount: number;
-
-  @Column({ name: 'final_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
-  finalAmount: number;
-
-  @Column({ name: 'payment_gateway', default: 'razorpay' })
-  paymentGateway: string;
-
-  @Column({ name: 'transaction_id', nullable: true, unique: true })
-  transactionId: string;
-
-  @Column({ name: 'payment_method', default: 'Online UPI/Card' })
-  paymentMethod: string;
-
-  @Column({ name: 'payment_date', type: 'timestamp with time zone', nullable: true })
-  paymentDate: Date;
+  @Column({ name: 'partner_id', type: 'uuid', nullable: true })
+  partnerId: string | null;
 
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
-  companyId: string;
+  companyId: string | null;
 
-  @ManyToOne(() => Company, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'company_id' })
-  company: Company;
+  @Column({ name: 'enrollment_id', type: 'uuid', nullable: true })
+  enrollmentId: string | null;
 
-  @Column({ nullable: true })
-  amount: string;
+  @Column({ name: 'total_amount', type: 'numeric', precision: 10, scale: 2 })
+  totalAmount: number;
 
-  @Column({ name: 'pdf_url', nullable: true })
-  pdfUrl: string;
+  @Column({
+    name: 'tax_amount',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0.0,
+  })
+  taxAmount: number;
 
-  @Column({ name: 'email_sent', default: false })
-  emailSent: boolean;
+  @Column({
+    name: 'discount_amount',
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0.0,
+  })
+  discountAmount: number;
 
-  @Column({ default: 'Paid' })
-  status: string;
+  @Column({ name: 'net_payable', type: 'numeric', precision: 10, scale: 2 })
+  netPayable: number;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
+  @Column({
+    enum: InvoiceStatus,
+    default: InvoiceStatus.ISSUED,
+  })
+  status: InvoiceStatus;
+
+  @Column({ name: 'issue_date', type: 'date' })
+  issueDate: string;
+
+  @Column({ name: 'due_date', type: 'date' })
+  dueDate: string;
+
+  @Column({ name: 'paid_date', type: 'date', nullable: true })
+  paidDate: string | null;
+
+  @Column({ name: 'pdf_url', type: 'text', nullable: true })
+  pdfUrl: string | null;
+
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'user_id' })
+  user: User | null;
+
+  @ManyToOne(() => Partner, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'partner_id' })
+  partner: Partner | null;
+
+  @ManyToOne(() => Company, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'company_id' })
+  company: Company | null;
+
+  @ManyToOne(() => Enrollment, (e) => e.invoices, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'enrollment_id' })
+  enrollment: Enrollment | null;
+
+  @OneToMany(() => Payment, (p) => p.invoice)
+  payments: Payment[];
 }

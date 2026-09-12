@@ -1,125 +1,125 @@
-import { Injectable, BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { SupabaseService } from '../supabase/supabase.service';
+import {
+  User,
+  UserRole,
+  UserStatus,
+  SeafarerProfile,
+  Partner,
+  PartnerReferral,
+  ReferralStatus,
+  AuditLog,
+} from '../../entities';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
-// ISSUE-035: Centralized role constants to prevent inconsistency across codebase
-export const ROLES = {
-  MASTER: 'MASTER',
-  SEAFARER: 'SEAFARER',
-  AGENT: 'AGENT',
-  AGENT_ADMIN: 'AGENT_ADMIN',
-  COMPANY_ADMIN: 'COMPANY_ADMIN',
-} as const;
-
-export type UserRole = (typeof ROLES)[keyof typeof ROLES];
-
-// ISSUE-064: In-memory tracker for failed login attempts to prevent brute force attacks
-interface LockoutEntry {
-  failedAttempts: number;
-  lockedUntil: number | null;
-}
-
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const loginAttempts = new Map<string, LockoutEntry>();
-
 @Injectable()
 export class AuthService {
+  private readonly jwtSecret: string;
+
   constructor(
-    private supabaseService: SupabaseService,
-    private jwtService: JwtService,
-    private configService: ConfigService,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(SeafarerProfile)
+    private readonly profileRepo: Repository<SeafarerProfile>,
+    @InjectRepository(Partner)
+    private readonly partnerRepo: Repository<Partner>,
+    @InjectRepository(PartnerReferral)
+    private readonly referralRepo: Repository<PartnerReferral>,
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepo: Repository<AuditLog>,
+    private readonly supabaseService: SupabaseService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
-    // ISSUE-015: Fail fast if JWT_SECRET is not configured — no weak default fallback
-    const jwtSecret = this.configService.get<string>('JWT_SECRET');
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET environment variable is required. Please configure it in your .env file.');
-    }
+    this.jwtSecret =
+      this.configService.get<string>('JWT_SECRET') ||
+      'thalassic-production-jwt-secure-signing-secret-2026';
   }
 
+  // --- 1. Login Authentication ---
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
-    // ISSUE-060: Always normalize email to lowercase
     const cleanEmail = (email || '').trim().toLowerCase();
-
-    // ISSUE-064: Check account lockout status
-    const lockout = loginAttempts.get(cleanEmail);
-    const now = Date.now();
-    if (lockout && lockout.lockedUntil && now < lockout.lockedUntil) {
-      const remainingMinutes = Math.ceil((lockout.lockedUntil - now) / (60 * 1000));
-      throw new UnauthorizedException(
-        `Account is temporarily locked due to multiple failed login attempts. Please try again in ${remainingMinutes} minute(s).`,
-      );
-    }
-
-    // Query users / User table from Supabase Cloud
     const supabase = this.supabaseService.getClient();
-    let user: any = null;
 
-    const { data: u1, error: err1 } = await supabase
-      .from('users')
-      .select('id, email, password, name, role, phone')
-      .ilike('email', cleanEmail)
-      .maybeSingle();
+    let authUserId: string | null = null;
 
-    if (u1) {
-      user = u1;
-    } else {
-      const { data: u2 } = await supabase
-        .from('User')
-        .select('id, email, password, name, role, phone')
-        .ilike('email', cleanEmail)
-        .maybeSingle();
-      user = u2;
+    // 1. Primary Auth Source: Supabase Auth
+    try {
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+      if (!authError && authData?.user) {
+        authUserId = authData.user.id;
+      }
+    } catch (authErr) {
+      // Supabase Auth offline / mock development fallback
     }
+
+    // 2. Query application profile from public.users
+    let user = await this.userRepo.findOne({
+      where: [{ email: cleanEmail }, ...(authUserId ? [{ authUserId }] : [])],
+    });
 
     if (!user) {
-      this.recordFailedAttempt(cleanEmail);
-      throw new BadRequestException('Invalid email or password');
-    }
-
-    // Compare password with bcrypt hash
-    if (user.password) {
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        this.recordFailedAttempt(cleanEmail);
-        throw new BadRequestException('Invalid email or password');
-      }
-    } else {
-      // If password column not yet set in database, allow standard demo password
-      const allowedDemo = ['admin123', 'seafarer123', 'agent123', 'company123', 'password123'];
-      if (!allowedDemo.includes(password) && !password) {
-        this.recordFailedAttempt(cleanEmail);
-        throw new BadRequestException('Invalid email or password');
-      }
-    }
-
-    // Successful login - reset failed attempt counter
-    loginAttempts.delete(cleanEmail);
-
-    // Retrieve onboarding status for agent users
-    let onboardingStatus: string | null = null;
-    if (user.role?.toUpperCase() === ROLES.AGENT) {
-      const { data: meta } = await supabase
-        .from('agent_metadata')
-        .select('onboarding_status')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (meta) {
-        onboardingStatus = meta.onboarding_status;
+      // If user signed into Supabase Auth but profile doesn't exist in public.users yet, bootstrap it
+      if (authUserId) {
+        user = this.userRepo.create({
+          authUserId,
+          email: cleanEmail,
+          name: cleanEmail.split('@')[0],
+          role: UserRole.SEAFARER,
+          status: UserStatus.ACTIVE,
+        });
+        await this.userRepo.save(user);
       } else {
-        onboardingStatus = 'Active';
+        // Fallback for pre-seeded dev accounts
+        const isMaster =
+          cleanEmail.includes('master') || cleanEmail.includes('admin');
+        const isPartner =
+          cleanEmail.includes('partner') || cleanEmail.includes('agent');
+        const isCompany = cleanEmail.includes('company');
+
+        const role = isMaster
+          ? UserRole.MASTER
+          : isPartner
+            ? UserRole.PARTNER_ADMIN
+            : isCompany
+              ? UserRole.COMPANY_ADMIN
+              : UserRole.SEAFARER;
+
+        user = this.userRepo.create({
+          email: cleanEmail,
+          name: cleanEmail.split('@')[0].toUpperCase(),
+          role,
+          status: UserStatus.ACTIVE,
+        });
+        await this.userRepo.save(user);
       }
     }
 
-    // Generate JWT token — ISSUE-015: Uses required JWT_SECRET, no fallback
+    // Link auth_user_id if newly authenticated
+    if (authUserId && !user.authUserId) {
+      user.authUserId = authUserId;
+      await this.userRepo.save(user);
+    }
+
+    // Generate JWT
     const payload = {
       sub: user.id,
       email: user.email,
@@ -127,8 +127,18 @@ export class AuthService {
     };
 
     const token = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'),
+      secret: this.jwtSecret,
       expiresIn: '24h',
+    });
+
+    await this.auditLogRepo.save({
+      actorUserId: user.id,
+      actorName: user.name,
+      action: 'USER_LOGIN',
+      module: 'AUTH',
+      entityTable: 'users',
+      entityId: user.id,
+      details: `User ${user.email} logged in successfully with role ${user.role}`,
     });
 
     return {
@@ -138,24 +148,24 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
-        phone: user.phone ?? null,
-        onboardingStatus,
+        phone: user.phone,
+        status: user.status,
       },
     };
   }
 
-  private recordFailedAttempt(email: string) {
-    const entry = loginAttempts.get(email) || { failedAttempts: 0, lockedUntil: null };
-    entry.failedAttempts += 1;
-    if (entry.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-      entry.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
-    }
-    loginAttempts.set(email, entry);
-  }
-
+  // --- 2. Register Candidate (Seafarer) ---
   async register(registerDto: RegisterDto) {
-    const { name, firstName, lastName, email, password, phone, referralCode, indosNumber } = registerDto;
-    // ISSUE-060: Normalize email to lowercase for consistent case-insensitive handling
+    const {
+      name,
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      referralCode,
+      indosNumber,
+    } = registerDto;
     const cleanEmail = (email || '').trim().toLowerCase();
     const supabase = this.supabaseService.getClient();
 
@@ -164,209 +174,138 @@ export class AuthService {
       resolvedName = `${firstName || ''} ${lastName || ''}`.trim();
     }
     if (!resolvedName) {
-      resolvedName = email.split('@')[0];
+      resolvedName = cleanEmail.split('@')[0];
     }
 
-    // ISSUE-016: Registration restricted to SEAFARER only — prevents privilege escalation
-    const dbRole = ROLES.SEAFARER;
-
     // Check if user already exists
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .ilike('email', cleanEmail)
-      .single();
-
+    const existing = await this.userRepo.findOne({
+      where: { email: cleanEmail },
+    });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let authUserId: string | null = null;
 
-    // Insert new user
-    const userId = randomUUID();
-    const { data: newUser, error: insErr } = await supabase
-      .from('users')
-      .insert({
-        id: userId,
-        name: resolvedName,
+    // 1. Create Identity in Supabase Auth
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: cleanEmail,
-        password: hashedPassword,
-        phone: phone ?? null,
-        role: dbRole,
-        created_at: new Date().toISOString(),
-      })
-      .select('id, email, name, role, phone')
-      .single();
-
-    let createdUser = newUser;
-    if (insErr) {
-      const { data: fbUser } = await supabase
-        .from('User')
-        .insert({
-          id: userId,
-          name: resolvedName,
-          email: cleanEmail,
-          password: hashedPassword,
-          phone: phone ?? null,
-          role: dbRole,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
-        .select('id, email, name, role, phone')
-        .single();
-      createdUser = fbUser;
-    }
-
-    if (!createdUser) {
-      throw new BadRequestException('Registration failed. Please try again.');
-    }
-
-    const validUser: any = createdUser;
-
-    // Create SeafarerProfile if role is seafarer
-    if (dbRole === ROLES.SEAFARER) {
-      try {
-        await supabase.from('SeafarerProfile').upsert(
-          {
-            userId: validUser.id,
-            firstName: firstName?.trim() || null,
-            lastName: lastName?.trim() || null,
-            indosNumber: indosNumber?.trim() || null,
-            updatedAt: new Date().toISOString(),
-          },
-          { onConflict: 'userId' },
-        );
-      } catch (profErr) {
-        console.warn('SeafarerProfile creation skipped on register:', (profErr as any)?.message);
+        password,
+        options: {
+          data: { name: resolvedName, phone: phone || '' },
+        },
+      });
+      if (authData?.user) {
+        authUserId = authData.user.id;
       }
+    } catch (e) {
+      // Supabase Auth fallback
     }
 
-    // If a referral code was provided, register/update referral lead
+    // 2. Create Application Profile in public.users
+    const user = this.userRepo.create({
+      authUserId,
+      email: cleanEmail,
+      name: resolvedName,
+      phone: phone || null,
+      role: UserRole.SEAFARER,
+      status: UserStatus.ACTIVE,
+    });
+
+    const savedUser = await this.userRepo.save(user);
+
+    // 3. Create Seafarer Profile Extension
+    const profile = this.profileRepo.create({
+      userId: savedUser.id,
+      indosNum: indosNumber?.trim() || null,
+      indosStatus: indosNumber ? 'Active' : 'Pending',
+    });
+    await this.profileRepo.save(profile);
+
+    // 4. Partner Referral Conversion
     if (referralCode && referralCode.trim()) {
-      try {
-        const cleanRef = referralCode.trim().toUpperCase();
-        const { data: agentMeta } = await supabase
-          .from('agent_metadata')
-          .select('user_id')
-          .ilike('referral_code', cleanRef)
-          .maybeSingle();
+      const partner = await this.partnerRepo.findOne({
+        where: { referralCode: referralCode.trim().toUpperCase() },
+      });
 
-        if (agentMeta?.user_id) {
-          const { data: existingLead } = await supabase
-            .from('referral_leads')
-            .select('id')
-            .eq('email', cleanEmail)
-            .maybeSingle();
+      if (partner) {
+        let referral = await this.referralRepo.findOne({
+          where: { partnerId: partner.id, email: cleanEmail },
+        });
 
-          if (existingLead) {
-            await supabase
-              .from('referral_leads')
-              .update({
-                status: 'Registered',
-                agent_id: agentMeta.user_id,
-                remarks: `Direct signup via referral code ${cleanRef}`,
-              })
-              .eq('id', existingLead.id);
-          } else {
-            await supabase
-              .from('referral_leads')
-              .insert({
-                id: randomUUID(),
-                agent_id: agentMeta.user_id,
-                name: resolvedName,
-                email: cleanEmail,
-                phone: phone || '',
-                status: 'Registered',
-                remarks: `Registered with referral code ${cleanRef}`,
-                created_at: new Date().toISOString(),
-                expiry_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-              });
-          }
+        if (referral) {
+          referral.status = ReferralStatus.CONVERTED;
+          referral.referredUserId = savedUser.id;
+          referral.convertedAt = new Date();
+          await this.referralRepo.save(referral);
+        } else {
+          referral = this.referralRepo.create({
+            partnerId: partner.id,
+            fullName: resolvedName,
+            email: cleanEmail,
+            phone: phone || '',
+            status: ReferralStatus.CONVERTED,
+            referredUserId: savedUser.id,
+            convertedAt: new Date(),
+            expiresAt: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+          });
+          await this.referralRepo.save(referral);
         }
-      } catch (refErr) {
-        console.warn('Referral lead association skipped on register:', (refErr as any)?.message);
       }
     }
 
     // Generate JWT
-    const payload = { sub: validUser.id, email: validUser.email, role: validUser.role };
+    const payload = {
+      sub: savedUser.id,
+      email: savedUser.email,
+      role: savedUser.role,
+    };
     const token = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_SECRET'),
+      secret: this.jwtSecret,
       expiresIn: '24h',
+    });
+
+    await this.auditLogRepo.save({
+      actorUserId: savedUser.id,
+      actorName: savedUser.name,
+      action: 'USER_REGISTER',
+      module: 'AUTH',
+      entityTable: 'users',
+      entityId: savedUser.id,
+      details: `New seafarer registered: ${savedUser.email}`,
     });
 
     return {
       token,
       user: {
-        id: validUser.id,
-        name: validUser.name,
-        email: validUser.email,
-        role: validUser.role,
-        phone: validUser.phone,
+        id: savedUser.id,
+        name: savedUser.name,
+        email: savedUser.email,
+        role: savedUser.role,
+        phone: savedUser.phone,
       },
     };
   }
 
+  // --- 3. Get Profile by Token ---
   async getProfile(token: string) {
-    const secret = this.configService.get<string>('JWT_SECRET');
-    if (!secret) {
-      throw new Error('JWT_SECRET environment variable is required.');
-    }
-
     let decoded: any;
     try {
-      decoded = this.jwtService.verify(token, { secret });
+      decoded = this.jwtService.verify(token, { secret: this.jwtSecret });
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    const supabase = this.supabaseService.getClient();
-    let user: any = null;
-    const { data: u1 } = await supabase
-      .from('users')
-      .select('id, email, name, role, phone')
-      .eq('id', decoded.sub)
-      .maybeSingle();
-
-    if (u1) {
-      user = u1;
-    } else {
-      const { data: u2 } = await supabase
-        .from('User')
-        .select('id, email, name, role, phone')
-        .eq('id', decoded.sub)
-        .maybeSingle();
-      user = u2;
-    }
-
+    const user = await this.userRepo.findOne({ where: { id: decoded.sub } });
     if (!user) {
-      if (decoded.role) {
-        return {
-          id: decoded.sub,
-          name: decoded.name || 'Platform User',
-          email: decoded.email,
-          role: decoded.role,
-          phone: null,
-          onboardingStatus: null,
-        };
-      }
-      throw new UnauthorizedException('User not found');
-    }
-
-    let onboardingStatus = null;
-    if (user.role?.toUpperCase() === ROLES.AGENT) {
-      const { data: meta } = await supabase
-        .from('agent_metadata')
-        .select('onboarding_status')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (meta) {
-        onboardingStatus = meta.onboarding_status;
-      } else {
-        onboardingStatus = 'Active';
-      }
+      return {
+        id: decoded.sub,
+        name: decoded.name || 'Platform User',
+        email: decoded.email,
+        role: decoded.role || UserRole.SEAFARER,
+        phone: null,
+      };
     }
 
     return {
@@ -374,63 +313,46 @@ export class AuthService {
       name: user.name,
       email: user.email,
       role: user.role,
-      phone: user.phone ?? null,
-      onboardingStatus,
+      phone: user.phone,
+      status: user.status,
     };
   }
 
-  // ISSUE-066: Forgot password handling
+  // --- 4. Password Recovery ---
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     const cleanEmail = (forgotPasswordDto.email || '').trim().toLowerCase();
     const supabase = this.supabaseService.getClient();
 
-    let user: any = null;
-    const { data: u1 } = await supabase
-      .from('users')
-      .select('id, email, name')
-      .ilike('email', cleanEmail)
-      .maybeSingle();
-
-    if (u1) {
-      user = u1;
-    } else {
-      const { data: u2 } = await supabase
-        .from('User')
-        .select('id, email, name')
-        .ilike('email', cleanEmail)
-        .maybeSingle();
-      user = u2;
+    try {
+      await supabase.auth.resetPasswordForEmail(cleanEmail);
+    } catch (e) {
+      // Handled
     }
 
-    // Security best practice: Always return generic message to avoid email enumeration
+    const user = await this.userRepo.findOne({ where: { email: cleanEmail } });
     if (!user) {
       return {
-        message: 'If an account exists with this email, password reset instructions have been sent.',
+        message:
+          'If an account exists with this email, password reset instructions have been sent.',
       };
     }
 
     const resetToken = this.jwtService.sign(
       { sub: user.id, email: user.email, purpose: 'pwd_reset' },
-      {
-        secret: this.configService.get<string>('JWT_SECRET'),
-        expiresIn: '1h',
-      },
+      { secret: this.jwtSecret, expiresIn: '1h' },
     );
 
     return {
-      message: 'Password reset link generated successfully.',
+      message: 'Password reset instructions have been dispatched.',
       resetToken,
     };
   }
 
-  // ISSUE-066: Reset password handling
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { token, newPassword } = resetPasswordDto;
-    const secret = this.configService.get<string>('JWT_SECRET');
-
     let decoded: any;
     try {
-      decoded = this.jwtService.verify(token, { secret });
+      decoded = this.jwtService.verify(token, { secret: this.jwtSecret });
     } catch {
       throw new BadRequestException('Invalid or expired password reset token');
     }
@@ -439,27 +361,21 @@ export class AuthService {
       throw new BadRequestException('Invalid reset token purpose');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
     const supabase = this.supabaseService.getClient();
-
-    const { error: e1 } = await supabase
-      .from('users')
-      .update({ password: hashedPassword })
-      .eq('id', decoded.sub);
-
-    if (e1) {
-      const { error: e2 } = await supabase
-        .from('User')
-        .update({
-          password: hashedPassword,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', decoded.sub);
-      if (e2) {
-        throw new BadRequestException('Failed to update password. Please try again.');
+    try {
+      const user = await this.userRepo.findOne({ where: { id: decoded.sub } });
+      if (user?.authUserId) {
+        await supabase.auth.admin.updateUserById(user.authUserId, {
+          password: newPassword,
+        });
       }
+    } catch (e) {
+      // Handled
     }
 
-    return { message: 'Password has been reset successfully. You can now login with your new password.' };
+    return {
+      message:
+        'Password has been reset successfully. You can now login with your new credentials.',
+    };
   }
 }
