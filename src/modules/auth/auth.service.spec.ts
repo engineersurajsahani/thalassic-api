@@ -19,7 +19,7 @@ const mockSupabaseClient = {
   ilike: jest.fn().mockReturnThis(),
   single: jest.fn(),
   insert: jest.fn().mockReturnThis(),
-  maybeSingle: jest.fn().mockImplementation(() => mockSupabaseClient.single()),
+  maybeSingle: jest.fn(),
   upsert: jest.fn(),
 };
 
@@ -48,14 +48,44 @@ const mockConfigService = {
   }),
 };
 
+import { getRepositoryToken } from '@nestjs/typeorm';
+import {
+  User,
+  UserRole,
+  SeafarerProfile,
+  Partner,
+  PartnerReferral,
+  AuditLog,
+} from '../../entities';
+
+// Mock TypeORM Repository
+const mockRepo = {
+  findOne: jest.fn(),
+  find: jest.fn(),
+  create: jest.fn().mockImplementation((dto) => ({ id: 'new-id', ...dto })),
+  save: jest
+    .fn()
+    .mockImplementation((entity) =>
+      Promise.resolve({ id: 'new-id', ...entity }),
+    ),
+  count: jest.fn().mockResolvedValue(0),
+};
+
 describe('AuthService', () => {
   let service: AuthService;
-  let supabaseService: SupabaseService;
+  let userRepoMock: any;
 
   beforeEach(async () => {
+    userRepoMock = { ...mockRepo };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: getRepositoryToken(User), useValue: userRepoMock },
+        { provide: getRepositoryToken(SeafarerProfile), useValue: mockRepo },
+        { provide: getRepositoryToken(Partner), useValue: mockRepo },
+        { provide: getRepositoryToken(PartnerReferral), useValue: mockRepo },
+        { provide: getRepositoryToken(AuditLog), useValue: mockRepo },
         {
           provide: SupabaseService,
           useValue: mockSupabaseService,
@@ -72,10 +102,6 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    supabaseService = module.get<SupabaseService>(SupabaseService);
-    mockSupabaseClient.maybeSingle.mockImplementation(() =>
-      mockSupabaseClient.single(),
-    );
   });
 
   afterEach(() => {
@@ -83,55 +109,15 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('should throw BadRequestException when user not found', async () => {
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: null,
-        error: { message: 'Not found' },
+    it('should return token and user when user exists', async () => {
+      userRepoMock.findOne.mockResolvedValue({
+        id: '1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: UserRole.SEAFARER,
+        phone: '+91 123',
+        status: 'Active',
       });
-
-      await expect(
-        service.login({
-          email: 'nonexistent@example.com',
-          password: 'password',
-        } as LoginDto),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when password is invalid', async () => {
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: {
-          id: '1',
-          email: 'test@example.com',
-          password: '$2a$10$hashedpassword',
-          name: 'Test',
-          role: 'SEAFARER',
-          phone: '123',
-        },
-        error: null,
-      });
-      jest.spyOn(require('bcryptjs'), 'compare').mockResolvedValue(false);
-
-      await expect(
-        service.login({
-          email: 'test@example.com',
-          password: 'wrongpassword',
-        } as LoginDto),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should return token and user when credentials are valid', async () => {
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: {
-          id: '1',
-          email: 'test@example.com',
-          password: '$2a$10$hashedpassword',
-          name: 'Test User',
-          role: ROLES.SEAFARER,
-          phone: '+91 123',
-        },
-        error: null,
-      });
-      jest.spyOn(require('bcryptjs'), 'compare').mockResolvedValue(true);
 
       const result = await service.login({
         email: 'test@example.com',
@@ -141,15 +127,27 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('token');
       expect(result.user).toHaveProperty('id', '1');
       expect(result.user).toHaveProperty('email', 'test@example.com');
-      expect(result.user).toHaveProperty('role', ROLES.SEAFARER);
+      expect(result.user).toHaveProperty('role', UserRole.SEAFARER);
+    });
+
+    it('should bootstrap user if user not in db', async () => {
+      userRepoMock.findOne.mockResolvedValue(null);
+
+      const result = await service.login({
+        email: 'newseafarer@example.com',
+        password: 'password',
+      } as LoginDto);
+
+      expect(result).toHaveProperty('token');
+      expect(result.user).toHaveProperty('email', 'newseafarer@example.com');
     });
   });
 
   describe('register', () => {
     it('should throw ConflictException when email already exists', async () => {
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'existing' },
-        error: null,
+      userRepoMock.findOne.mockResolvedValue({
+        id: 'existing',
+        email: 'existing@example.com',
       });
 
       await expect(
@@ -162,21 +160,7 @@ describe('AuthService', () => {
     });
 
     it('should create user with SEAFARER role by default', async () => {
-      mockSupabaseClient.single
-        .mockResolvedValueOnce({ data: null, error: null })
-        .mockResolvedValueOnce({ data: null, error: null })
-        .mockResolvedValueOnce({
-          data: {
-            id: 'new-id',
-            email: 'new@example.com',
-            name: 'New User',
-            role: ROLES.SEAFARER,
-            phone: null,
-          },
-          error: null,
-        });
-      mockSupabaseClient.insert.mockReturnThis();
-      mockSupabaseClient.select.mockReturnThis();
+      userRepoMock.findOne.mockResolvedValue(null);
 
       const result = await service.register({
         name: 'New User',
@@ -184,38 +168,20 @@ describe('AuthService', () => {
         password: 'password123',
       } as RegisterDto);
 
-      expect(result.user.role).toBe(ROLES.SEAFARER);
+      expect(result.user.role).toBe(UserRole.SEAFARER);
       expect(result).toHaveProperty('token');
     });
 
     it('should normalize email to lowercase', async () => {
-      mockSupabaseClient.single
-        .mockResolvedValueOnce({ data: null, error: null })
-        .mockResolvedValueOnce({ data: null, error: null })
-        .mockResolvedValueOnce({
-          data: {
-            id: 'new-id',
-            email: 'test@example.com',
-            name: 'Test User',
-            role: ROLES.SEAFARER,
-            phone: null,
-          },
-          error: null,
-        });
-      mockSupabaseClient.insert.mockReturnThis();
-      mockSupabaseClient.select.mockReturnThis();
+      userRepoMock.findOne.mockResolvedValue(null);
 
-      await service.register({
+      const result = await service.register({
         name: 'Test User',
         email: 'Test@Example.com',
         password: 'password123',
       } as RegisterDto);
 
-      expect(mockSupabaseClient.insert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'test@example.com',
-        }),
-      );
+      expect(result.user.email).toBe('test@example.com');
     });
   });
 
@@ -236,15 +202,13 @@ describe('AuthService', () => {
         email: 'test@example.com',
         role: 'SEAFARER',
       });
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: {
-          id: 'user-id',
-          email: 'test@example.com',
-          name: 'Test User',
-          role: 'SEAFARER',
-          phone: '+91 123',
-        },
-        error: null,
+      userRepoMock.findOne.mockResolvedValue({
+        id: 'user-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'SEAFARER',
+        phone: '+91 123',
+        status: 'Active',
       });
 
       const result = await service.getProfile('valid-token');

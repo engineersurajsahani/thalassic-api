@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Put, Patch, Delete, Query, Param, Body, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Query,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -6,7 +18,13 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller('invoices')
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(ROLES.MASTER, ROLES.AGENT_ADMIN, ROLES.AGENT, ROLES.COMPANY_ADMIN, ROLES.SEAFARER)
+@Roles(
+  ROLES.MASTER,
+  ROLES.AGENT_ADMIN,
+  ROLES.AGENT,
+  ROLES.COMPANY_ADMIN,
+  ROLES.SEAFARER,
+)
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 

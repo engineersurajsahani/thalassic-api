@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('notifications')
@@ -9,22 +16,22 @@ export class Notification {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user: User;
-
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   title: string;
 
   @Column({ type: 'text' })
   message: string;
 
-  @Column({ default: 'unread' })
-  status: string;
+  @Column({ name: 'is_read', type: 'boolean', default: false })
+  isRead: boolean;
 
-  @Column({ nullable: true })
-  link: string;
+  @Column({ name: 'action_url', type: 'text', nullable: true })
+  actionUrl: string | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @ManyToOne(() => User, (u) => u.notifications, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 }
