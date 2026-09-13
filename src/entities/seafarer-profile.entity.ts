@@ -1,42 +1,89 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
-@Entity('SeafarerProfile')
+@Entity('seafarer_profiles')
 export class SeafarerProfile {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => User)
-  @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
-  user: User;
-
-  @Column({ name: 'userId', type: 'uuid', unique: true })
+  @Column({ name: 'user_id', type: 'uuid', unique: true })
   userId: string;
 
-  @Column({ nullable: true })
-  firstName: string;
+  @Column({ type: 'date', nullable: true })
+  dob: string | null;
 
-  @Column({ nullable: true })
-  lastName: string;
+  @Column({ name: 'birth_place', type: 'varchar', length: 255, nullable: true })
+  birthPlace: string | null;
 
-  @Column({ nullable: true })
-  indosNumber: string;
+  @Column({ name: 'father_name', type: 'varchar', length: 255, nullable: true })
+  fatherName: string | null;
 
-  @Column({ nullable: true })
-  nationality: string;
+  @Column({
+    name: 'passport_num',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  passportNum: string | null;
 
-  @Column({ nullable: true })
-  status: string;
+  @Column({ name: 'passport_issue', type: 'date', nullable: true })
+  passportIssue: string | null;
 
-  @Column({ nullable: true })
-  dob: string;
+  @Column({ name: 'passport_expiry', type: 'date', nullable: true })
+  passportExpiry: string | null;
 
-  @Column({ nullable: true })
-  address: string;
+  @Column({
+    name: 'passport_place',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
+  passportPlace: string | null;
 
-  @Column({ nullable: true })
-  profilePicture: string;
+  @Column({ name: 'indos_num', type: 'varchar', length: 100, nullable: true })
+  indosNum: string | null;
 
-  @Column({ nullable: true })
-  updatedAt: string;
+  @Column({ name: 'indos_issue', type: 'date', nullable: true })
+  indosIssue: string | null;
+
+  @Column({
+    name: 'indos_status',
+    type: 'varchar',
+    length: 50,
+    default: 'Pending',
+  })
+  indosStatus: string;
+
+  @Column({ name: 'cdc_num', type: 'varchar', length: 100, nullable: true })
+  cdcNum: string | null;
+
+  @Column({ name: 'cdc_issue', type: 'date', nullable: true })
+  cdcIssue: string | null;
+
+  @Column({ name: 'cdc_expiry', type: 'date', nullable: true })
+  cdcExpiry: string | null;
+
+  @Column({ name: 'cdc_place', type: 'varchar', length: 100, nullable: true })
+  cdcPlace: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  education: string | null;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+
+  @OneToOne(() => User, (user) => user.profile, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 }

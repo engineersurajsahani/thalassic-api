@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { SupabaseService } from '../supabase/supabase.service';
-import { ROLES } from './auth.service';
+import { ROLES } from '../../common/decorators/roles.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -16,104 +16,82 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
 
-    // ISSUE-018: REMOVED query string token support (?token= or ?auth=)
-    // Tokens should ONLY be passed via Authorization header for security
-
     let token = '';
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     }
 
-    if (
-      !token ||
-      token.startsWith('mock-') ||
-      token === 'undefined' ||
-      token === 'null'
-    ) {
-      const customRole = (
-        request.headers['x-role'] ||
-        request.headers['x-auth-role'] ||
-        ''
-      )
-        .toString()
-        .toUpperCase();
-      const defaultRole = request.url?.includes('agent-admin')
-        ? 'AGENT_ADMIN'
-        : request.url?.includes('master')
-          ? 'MASTER'
-          : 'AGENT';
-      request.user = {
-        id: (
-          request.headers['x-user-id'] || 'd0000000-0000-0000-0000-000000000000'
-        ).toString(),
-        email: 'kishan1@gmail.com',
-        name: 'Authorized User',
-        role: customRole || defaultRole,
-        status: 'Active',
-      };
-      return true;
+    if (!token) {
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
     }
 
     // Try verifying as NestJS local JWT first
     try {
-      const secret = process.env.JWT_SECRET || 'your-secret-key';
-      let decoded: any;
-      try {
-        decoded = jwt.verify(token, secret);
-      } catch {
-        decoded = jwt.decode(token);
-      }
-      if (decoded && (decoded.role || decoded.sub || decoded.email)) {
+      const secret =
+        process.env.JWT_SECRET ||
+        'thalassic-production-jwt-secure-signing-secret-2026';
+      const decoded = jwt.verify(token, secret) as any;
+      if (decoded && decoded.role) {
         request.user = {
-          id: decoded.sub || 'd0000000-0000-0000-0000-000000000000',
-          email: decoded.email || 'kishan1@gmail.com',
-          role: (decoded.role || 'AGENT').toUpperCase(),
+          id: decoded.sub,
+          sub: decoded.sub,
+          email: decoded.email,
+          role: decoded.role.toUpperCase(),
           status: 'Active',
         };
         return true;
       }
     } catch (e) {
-      // Not a valid NestJS JWT, proceed to Supabase check
+      // Not a valid local JWT, proceed to Supabase check
     }
 
     const supabase = this.supabaseService.getClient();
 
     // Verify token with Supabase Auth
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(token);
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser(token);
 
-    if (error || !user) {
-      // Dev mode fallback for expired session tokens
+      if (error || !user) {
+        throw new UnauthorizedException(
+          'Invalid or expired authentication session',
+        );
+      }
+
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('id, email, name, role, status')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (!dbUser) {
+        request.user = {
+          id: user.id,
+          sub: user.id,
+          email: user.email,
+          role: ROLES.SEAFARER,
+          status: 'Active',
+        };
+        return true;
+      }
+
       request.user = {
-        id: 'd0000000-0000-0000-0000-000000000000',
-        email: 'kishan1@gmail.com',
-        role: 'AGENT',
-        status: 'Active',
+        id: dbUser.id,
+        sub: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role,
+        status: dbUser.status,
       };
       return true;
+    } catch (err) {
+      throw new UnauthorizedException(
+        'Invalid or expired authentication session',
+      );
     }
-
-    // Fetch custom user profile info (role, status) from our PostgreSQL User table
-    const { data: dbUser, error: dbError } = await supabase
-      .from('User')
-      .select('id, email, name, role, status')
-      .eq('email', user.email)
-      .single();
-
-    if (dbError || !dbUser) {
-      // Return basic auth user if not mapped in public.users yet
-      request.user = {
-        id: user.id,
-        email: user.email,
-        role: ROLES.SEAFARER,
-        status: 'Pending Audit',
-      };
-      return true;
-    }
-
-    request.user = dbUser;
-    return true;
   }
 }

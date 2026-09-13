@@ -4,578 +4,366 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { SupabaseService } from '../supabase/supabase.service';
-import { randomUUID } from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import {
+  Invoice,
+  InvoiceType,
+  InvoiceStatus,
+  InvoiceCounter,
+  Payment,
+  PaymentStatus,
+  PaymentMethod,
+  AuditLog,
+  PlatformSettings,
+  User,
+  Partner,
+  Enrollment,
+} from '../../entities';
 
 @Injectable()
 export class InvoicesService {
-  private storageFilePath = path.join(process.cwd(), 'invoices_data.json');
-  private inMemoryInvoices: any[] = [];
+  constructor(
+    @InjectRepository(Invoice)
+    private readonly invoiceRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceCounter)
+    private readonly counterRepo: Repository<InvoiceCounter>,
+    @InjectRepository(Payment)
+    private readonly paymentRepo: Repository<Payment>,
+    @InjectRepository(AuditLog)
+    private readonly auditLogRepo: Repository<AuditLog>,
+    @InjectRepository(PlatformSettings)
+    private readonly settingsRepo: Repository<PlatformSettings>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(Partner)
+    private readonly partnerRepo: Repository<Partner>,
+    @InjectRepository(Enrollment)
+    private readonly enrollmentRepo: Repository<Enrollment>,
+    private readonly dataSource: DataSource,
+  ) {}
 
-  constructor(private readonly supabaseService: SupabaseService) {
-    this.loadInvoicesFromDisk();
-  }
+  // Atomic sequential invoice number generator using database row locking
+  async generateNextInvoiceNumber(type: InvoiceType): Promise<string> {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const ym = `${yy}${mm}`;
+    const prefix = type;
 
-  private get db() {
-    return this.supabaseService.getClient();
-  }
-
-  private loadInvoicesFromDisk() {
-    try {
-      if (fs.existsSync(this.storageFilePath)) {
-        const raw = fs.readFileSync(this.storageFilePath, 'utf8');
-        this.inMemoryInvoices = JSON.parse(raw);
-      } else {
-        this.inMemoryInvoices = [];
-        this.saveInvoicesToDisk();
-      }
-    } catch (e) {
-      console.error('Error loading invoices from disk:', e);
-      this.inMemoryInvoices = [];
-    }
-  }
-
-  private saveInvoicesToDisk() {
-    try {
-      fs.writeFileSync(
-        this.storageFilePath,
-        JSON.stringify(this.inMemoryInvoices, null, 2),
-        'utf8',
-      );
-    } catch (e) {
-      console.error('Error saving invoices to disk:', e);
-    }
-  }
-
-  // Log invoice activities to audit_logs
-  async logAction(
-    userId: string,
-    userName: string,
-    action: string,
-    entityId: string,
-    details: string,
-    ipAddress = '127.0.0.1',
-  ) {
-    try {
-      await this.db.from('audit_logs').insert({
-        id: randomUUID(),
-        user_id: userId,
-        user_name: userName,
-        action,
-        module: 'Invoices',
-        entity_id: entityId,
-        details,
-        ip_address: ipAddress,
-        created_at: new Date().toISOString(),
+    return await this.dataSource.transaction(async (manager) => {
+      let counter = await manager.findOne(InvoiceCounter, {
+        where: { yearMonth: ym },
+        lock: { mode: 'pessimistic_write' },
       });
-    } catch (e) {
-      console.warn('Audit log write warning:', e);
-    }
+
+      if (!counter) {
+        counter = manager.create(InvoiceCounter, {
+          yearMonth: ym,
+          hocCounter: 0,
+          hacCounter: 0,
+          companyCounter: 0,
+        });
+        await manager.save(counter);
+        counter = await manager.findOne(InvoiceCounter, {
+          where: { yearMonth: ym },
+          lock: { mode: 'pessimistic_write' },
+        });
+      }
+
+      let nextNum = 1;
+      if (type === InvoiceType.HOC) {
+        counter!.hocCounter += 1;
+        nextNum = counter!.hocCounter;
+      } else if (type === InvoiceType.HAC) {
+        counter!.hacCounter += 1;
+        nextNum = counter!.hacCounter;
+      } else {
+        counter!.companyCounter += 1;
+        nextNum = counter!.companyCounter;
+      }
+
+      await manager.save(counter);
+      const seqStr = String(nextNum).padStart(5, '0');
+      return `${prefix}${ym}${seqStr}`;
+    });
   }
 
-  // --- 1. Automatic & Manual Idempotent Invoice Generation ---
   async generateInvoice(params: {
     userId?: string;
-    purchaseId?: string;
-    agentId?: string;
-    commissionSnapshotId?: string;
-    customerName?: string;
-    customerEmail?: string;
-    customerPhone?: string;
-    agentName?: string;
-    agentReferralCode?: string;
-    courseName?: string;
-    courseFee?: number;
-    discount?: number;
-    finalAmount?: number;
-    hariomPayable?: number;
-    paymentGateway?: string;
-    transactionId?: string;
-    paymentMethod?: string;
-    paymentDate?: string;
-    invoiceNumber?: string;
-  }) {
+    partnerId?: string;
+    companyId?: string;
+    enrollmentId?: string;
+    invoiceType?: InvoiceType;
+    totalAmount: number;
+    taxAmount?: number;
+    discountAmount?: number;
+    netPayable?: number;
+    paymentMethod?: PaymentMethod;
+    gatewayTransactionId?: string;
+    gatewayOrderId?: string;
+    actorUserId?: string;
+  }): Promise<Invoice> {
     const {
-      userId = 'd0000000-0000-0000-0000-000000000000',
-      purchaseId = randomUUID(),
-      agentId = 'd0000000-0000-0000-0000-000000000000',
-      commissionSnapshotId,
-      customerName = 'Seafarer',
-      customerEmail = 'seafarer@merchantnavy.org',
-      customerPhone = '',
-      agentName = 'Kishan Manning Agency',
-      agentReferralCode,
-      courseName = 'STCW Course',
-      courseFee = 10500,
-      discount = 0,
-      finalAmount = 10500,
-      hariomPayable,
-      paymentGateway = 'Manual Settlement',
-      transactionId = 'STL-000000',
-      paymentMethod = 'Bank Transfer',
-      paymentDate = new Date().toISOString(),
-      invoiceNumber: customInvNum,
+      userId,
+      partnerId,
+      companyId,
+      enrollmentId,
+      totalAmount,
+      taxAmount = 0,
+      discountAmount = 0,
+      paymentMethod = PaymentMethod.RAZORPAY,
+      gatewayTransactionId,
+      gatewayOrderId,
+      actorUserId,
     } = params;
 
-    // 1. Reload from disk to get latest state
-    this.loadInvoicesFromDisk();
-
-    // 2. Idempotency Check
-    const existingInMem = this.inMemoryInvoices.find(
-      (i) =>
-        (customInvNum && i.invoice_number === customInvNum) ||
-        (purchaseId && i.purchase_id === purchaseId),
-    );
-    if (existingInMem) {
-      console.log(
-        `[Invoice] Duplicate invoice generation ignored for purchaseId/invoiceNumber: ${customInvNum || purchaseId}`,
-      );
-      return existingInMem;
-    }
-
-    // 3. Determine Invoice Type (HOC vs HAC)
-    const isHac = !!(agentId || agentReferralCode || commissionSnapshotId || agentName);
-    const invoiceType = isHac ? 'HAC' : 'HOC';
-
-    // 4. Determine Invoice Number
-    let invoiceNumber = customInvNum;
-    if (!invoiceNumber) {
-      const now = new Date();
-      const yy = String(now.getFullYear()).slice(-2);
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const periodPrefix = `${invoiceType}${yy}${mm}`;
-      const count = this.inMemoryInvoices.filter(
-        (i) =>
-          i.invoice_type === invoiceType &&
-          i.invoice_number &&
-          i.invoice_number.startsWith(periodPrefix),
-      ).length;
-      const seqNum = String(count + 1).padStart(5, '0');
-      invoiceNumber = `${periodPrefix}${seqNum}`;
-    }
-
-    const invoiceId = randomUUID();
-    const createdAt = new Date().toISOString();
-    const payableAmt = hariomPayable ?? finalAmount;
-
-    const invoiceObj = {
-      id: invoiceId,
-      invoice_number: invoiceNumber,
-      invoice_type: invoiceType,
-      user_id: userId,
-      purchase_id: purchaseId,
-      agent_id: agentId || null,
-      commission_snapshot_id: commissionSnapshotId || null,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      customer_phone: customerPhone,
-      agent_name: agentName || null,
-      agent_referral_code: agentReferralCode || null,
-      course_name: courseName,
-      institute_name: 'Hari Om Thalassic Maritime Training Institute',
-      course_fee: courseFee,
-      discount,
-      final_amount: finalAmount,
-      hariom_payable_amount: payableAmt,
-      payment_gateway: paymentGateway,
-      transaction_id: transactionId,
-      payment_method: paymentMethod,
-      payment_date: paymentDate,
-      status: 'Paid',
-      created_at: createdAt,
-    };
-
-    // Save locally
-    this.inMemoryInvoices.unshift(invoiceObj);
-    this.saveInvoicesToDisk();
-
-    // Attempt DB insert silently
-    try {
-      await this.db.from('invoices').insert(invoiceObj);
-    } catch (e) {
-      console.warn('Supabase invoice insert warning:', e);
-    }
-
-    await this.logAction(
-      userId,
-      customerName,
-      'INVOICE_GENERATED',
-      invoiceNumber,
-      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${payableAmt.toLocaleString('en-IN')})`,
-    );
-
-    return invoiceObj;
-  }
-
-  // --- 2. List Invoices with Role-Based Scope, Search & Filtering ---
-  async getInvoices(user: any, query: any = {}) {
-    const { search, type, status, course, startDate, endDate } = query;
-    const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
-
-    let invoiceList: any[] = [];
-
-    try {
-      let dbQuery = this.db
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (roleNorm === 'SEAFARER') {
-        dbQuery = dbQuery.eq('user_id', user.id);
-      } else if (roleNorm === 'AGENT') {
-        dbQuery = dbQuery.eq('agent_id', user.id);
-      }
-
-      if (type && type !== 'all') {
-        dbQuery = dbQuery.eq('invoice_type', type.toUpperCase());
-      }
-      if (status && status !== 'all') {
-        dbQuery = dbQuery.ilike('status', status);
-      }
-      if (course && course !== 'all') {
-        dbQuery = dbQuery.ilike('course_name', `%${course}%`);
-      }
-      if (startDate) {
-        dbQuery = dbQuery.gte('created_at', new Date(startDate).toISOString());
-      }
-      if (endDate) {
-        dbQuery = dbQuery.lte('created_at', new Date(endDate).toISOString());
-      }
-
-      const { data: invoices, error } = await dbQuery;
-
-      if (!error && invoices && invoices.length > 0) {
-        invoiceList = invoices;
+    let invoiceType = params.invoiceType;
+    if (!invoiceType) {
+      if (companyId) {
+        invoiceType = InvoiceType.COMPANY;
+      } else if (partnerId) {
+        invoiceType = InvoiceType.HAC;
       } else {
-        invoiceList = this.filterInMemoryInvoices(user, query);
+        invoiceType = InvoiceType.HOC;
       }
-    } catch (e) {
-      console.warn('[Invoices] DB query fallback to memory:', e);
-      invoiceList = this.filterInMemoryInvoices(user, query);
     }
 
-    // In-memory Search
-    if (search && search.trim().length > 0) {
-      const q = search.trim().toLowerCase();
-      invoiceList = invoiceList.filter(
-        (inv: any) =>
-          inv.invoice_number?.toLowerCase().includes(q) ||
-          inv.customer_name?.toLowerCase().includes(q) ||
-          inv.transaction_id?.toLowerCase().includes(q) ||
-          inv.agent_name?.toLowerCase().includes(q),
+    const netPayable =
+      params.netPayable ?? totalAmount + taxAmount - discountAmount;
+    const invoiceNumber = await this.generateNextInvoiceNumber(invoiceType);
+
+    const invoice = this.invoiceRepo.create({
+      invoiceNumber,
+      invoiceType,
+      userId: userId || null,
+      partnerId: partnerId || null,
+      companyId: companyId || null,
+      enrollmentId: enrollmentId || null,
+      totalAmount,
+      taxAmount,
+      discountAmount,
+      netPayable,
+      status: InvoiceStatus.PAID,
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0],
+      paidDate: new Date().toISOString().split('T')[0],
+    });
+
+    const savedInvoice = await this.invoiceRepo.save(invoice);
+
+    // Record corresponding payment transaction receipt
+    if (gatewayTransactionId || netPayable > 0) {
+      const paymentNumber = `PAY-${Date.now().toString().slice(-8)}`;
+      const payment = this.paymentRepo.create({
+        paymentNumber,
+        invoiceId: savedInvoice.id,
+        enrollmentId: enrollmentId || null,
+        userId: userId || null,
+        partnerId: partnerId || null,
+        companyId: companyId || null,
+        amount: netPayable,
+        paymentMethod,
+        gatewayTransactionId: gatewayTransactionId || `GATEWAY-${Date.now()}`,
+        gatewayOrderId: gatewayOrderId || null,
+        status: PaymentStatus.SUCCESSFUL,
+        paidAt: new Date(),
+      });
+      await this.paymentRepo.save(payment);
+    }
+
+    // Audit log
+    await this.auditLogRepo.save({
+      actorUserId: actorUserId || userId || null,
+      action: 'INVOICE_GENERATED',
+      module: 'INVOICES',
+      entityTable: 'invoices',
+      entityId: savedInvoice.id,
+      partnerId: partnerId || null,
+      companyId: companyId || null,
+      details: `Generated ${invoiceType} Invoice ${invoiceNumber} for amount ₹${netPayable}`,
+      newState: {
+        invoiceNumber,
+        totalAmount,
+        netPayable,
+        status: InvoiceStatus.PAID,
+      },
+    });
+
+    return savedInvoice;
+  }
+
+  async getInvoices(user: any, query: any = {}) {
+    const { search, type, status, startDate, endDate } = query;
+    const role = (user?.role || '').toUpperCase().replace('-', '_');
+
+    const qb = this.invoiceRepo
+      .createQueryBuilder('inv')
+      .leftJoinAndSelect('inv.user', 'user')
+      .leftJoinAndSelect('inv.partner', 'partner')
+      .leftJoinAndSelect('inv.company', 'company')
+      .leftJoinAndSelect('inv.enrollment', 'enrollment')
+      .leftJoinAndSelect('enrollment.courseInstitute', 'courseInstitute')
+      .leftJoinAndSelect('courseInstitute.course', 'course')
+      .orderBy('inv.createdAt', 'DESC');
+
+    if (role === 'SEAFARER') {
+      qb.andWhere('inv.userId = :userId', { userId: user.id });
+    } else if (
+      role === 'PARTNER_ADMIN' ||
+      role === 'AGENT_ADMIN' ||
+      role === 'AGENT'
+    ) {
+      // Find partner ID mapped to user
+      const partner = await this.partnerRepo
+        .createQueryBuilder('p')
+        .innerJoin('partner_admins', 'pa', 'pa.partner_id = p.id')
+        .where('pa.user_id = :userId', { userId: user.id })
+        .getOne();
+
+      if (partner) {
+        qb.andWhere('inv.partnerId = :partnerId', { partnerId: partner.id });
+      } else {
+        qb.andWhere('inv.partnerId = :userId', { userId: user.id });
+      }
+    } else if (role === 'COMPANY_ADMIN') {
+      const companyAdmin = await this.dataSource
+        .getRepository('company_admins')
+        .findOne({ where: { userId: user.id } });
+      if (companyAdmin) {
+        qb.andWhere('inv.companyId = :companyId', {
+          companyId: (companyAdmin as any).companyId,
+        });
+      }
+    }
+
+    if (type && type !== 'all') {
+      qb.andWhere('inv.invoiceType = :type', { type: type.toUpperCase() });
+    }
+
+    if (status && status !== 'all') {
+      qb.andWhere('inv.status = :status', { status });
+    }
+
+    if (startDate) {
+      qb.andWhere('inv.createdAt >= :startDate', {
+        startDate: new Date(startDate),
+      });
+    }
+
+    if (endDate) {
+      qb.andWhere('inv.createdAt <= :endDate', { endDate: new Date(endDate) });
+    }
+
+    if (search && search.trim()) {
+      const s = `%${search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(inv.invoiceNumber) LIKE :s OR LOWER(user.name) LIKE :s OR LOWER(partner.agencyName) LIKE :s OR LOWER(company.name) LIKE :s)',
+        { s },
       );
     }
 
-    // Fetch referral leads to match registration/lead converted date for AGENT
-    let leads: any[] = [];
-    if (roleNorm === 'AGENT' && user?.id) {
-      try {
-        const { data } = await this.db
-          .from('referral_leads')
-          .select('name, created_at')
-          .eq('agent_id', user.id);
-        if (data) leads = data;
-      } catch (e) {
-        console.warn(
-          'Failed to fetch leads for invoice converted_at mapping:',
-          e,
-        );
-      }
-    }
+    const invoices = await qb.getMany();
 
-    const leadsMap = new Map();
-    leads.forEach((l: any) => {
-      if (l.name) {
-        leadsMap.set(l.name.toLowerCase().trim(), l.created_at);
-      }
-    });
-
-    const purchasesMap = new Map<string, any>([
-      [
-        '7cc68d00-6905-4437-b779-a83def1d1fe3',
-        {
-          seafarerName: 'Capt. Vikramaditya Singh',
-          seafarerEmail: 'vikramaditya@thalassic.in',
-          courseName: 'Advanced Oil Tanker Cargo Operations (TASCO)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        '7f0aeaa2-fb64-4e05-a2c7-8620ccbd5e3e',
-        {
-          seafarerName: 'Capt. Vikramaditya Singh',
-          seafarerEmail: 'vikramaditya@thalassic.in',
-          courseName: 'Advanced Oil Tanker Cargo Operations (TASCO)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        'STL-164560',
-        {
-          seafarerName: 'Capt. Vikramaditya Singh',
-          seafarerEmail: 'vikramaditya@thalassic.in',
-          courseName: 'Advanced Oil Tanker Cargo Operations (TASCO)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        'pur-88201',
-        {
-          seafarerName: 'Rajesh Kumar Sharma',
-          seafarerEmail: 'rajesh@thalassic.in',
-          courseName: 'Basic Safety Training (STCW BST)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        '2e03d90e-0b10-46ee-a801-d95d496ca831',
-        {
-          seafarerName: 'Rajesh Kumar Sharma',
-          seafarerEmail: 'rajesh@thalassic.in',
-          courseName: 'Basic Safety Training (STCW BST)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        'STL-116190',
-        {
-          seafarerName: 'Rajesh Kumar Sharma',
-          seafarerEmail: 'rajesh@thalassic.in',
-          courseName: 'Basic Safety Training (STCW BST)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        'pur-88202',
-        {
-          seafarerName: 'Amitabh Deshmukh',
-          seafarerEmail: 'amitabh@thalassic.in',
-          courseName: 'Medical First Aid (MFA)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        'e1d8e39a-5cd1-4859-8616-28c1a36f61c1',
-        {
-          seafarerName: 'Amitabh Deshmukh',
-          seafarerEmail: 'amitabh@thalassic.in',
-          courseName: 'Medical First Aid (MFA)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-      [
-        'STL-747322',
-        {
-          seafarerName: 'Amitabh Deshmukh',
-          seafarerEmail: 'amitabh@thalassic.in',
-          courseName: 'Medical First Aid (MFA)',
-          instituteName: 'Hari Om Thalassic Maritime Training Institute',
-        },
-      ],
-    ]);
-
-    return invoiceList.map((inv: any) => {
-      let seafarerName = inv.customer_name;
-      let seafarerEmail = inv.customer_email;
-      let courseName = inv.course_name;
-      let instituteName =
-        inv.institute_name || 'Hari Om Thalassic Maritime Training Institute';
-
-      const isGenericAgent =
-        !seafarerName ||
-        seafarerName === 'Partner Agent' ||
-        seafarerName === 'Agent User' ||
-        seafarerName === 'Admin';
-      const isGenericCourse =
-        !courseName ||
-        courseName.startsWith('Commission Settlement for') ||
-        courseName.startsWith('Settlement for');
-
-      if (isGenericAgent || isGenericCourse) {
-        const match =
-          purchasesMap.get(inv.purchase_id) ||
-          purchasesMap.get(inv.transaction_id) ||
-          purchasesMap.get(inv.invoice_number);
-
-        if (match) {
-          if (isGenericAgent) {
-            seafarerName = match.seafarerName;
-            seafarerEmail = match.seafarerEmail;
-          }
-          if (isGenericCourse) {
-            courseName = match.courseName;
-          }
-          instituteName = match.instituteName;
-        } else {
-          if (isGenericAgent) {
-            seafarerName = 'Capt. Vikramaditya Singh';
-            seafarerEmail = 'vikramaditya@thalassic.in';
-          }
-          if (isGenericCourse) {
-            courseName = 'Advanced Oil Tanker Cargo Operations (TASCO)';
-          }
-        }
-      }
-
-      const seafarerKey = (seafarerName || '').toLowerCase().trim();
-      const convertedAt = leadsMap.get(seafarerKey) || inv.created_at;
-
-      return {
-        ...inv,
-        customer_name: seafarerName,
-        customer_email: seafarerEmail,
-        course_name: courseName,
-        institute_name: instituteName,
-        converted_at: convertedAt,
-      };
-    });
+    // Map to normalized response for API consumers
+    return invoices.map((inv) => ({
+      id: inv.id,
+      invoice_number: inv.invoiceNumber,
+      invoice_type: inv.invoiceType,
+      status: inv.status,
+      total_amount: Number(inv.totalAmount),
+      tax_amount: Number(inv.taxAmount),
+      discount_amount: Number(inv.discountAmount),
+      net_payable: Number(inv.netPayable),
+      final_amount: Number(inv.netPayable),
+      course_fee: Number(inv.totalAmount),
+      customer_name: inv.user?.name || 'Walk-in Seafarer',
+      customer_email: inv.user?.email || '',
+      customer_phone: inv.user?.phone || '',
+      agent_name: inv.partner?.agencyName || null,
+      partner_name: inv.partner?.agencyName || null,
+      company_name: inv.company?.name || null,
+      course_name:
+        inv.enrollment?.courseInstitute?.course?.name ||
+        'Maritime STCW Training',
+      payment_date: inv.paidDate || inv.createdAt,
+      created_at: inv.createdAt,
+      pdf_url: inv.pdfUrl || null,
+    }));
   }
 
-  private filterInMemoryInvoices(user: any, query: any) {
-    const { type, status, course, startDate, endDate } = query;
-    const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
-
-    // Reload fresh invoices from disk
-    this.loadInvoicesFromDisk();
-
-    return this.inMemoryInvoices.filter((inv) => {
-      if (roleNorm === 'SEAFARER' && inv.user_id !== user?.id) return false;
-      if (
-        roleNorm === 'AGENT' &&
-        inv.agent_id &&
-        user?.id &&
-        inv.agent_id !== user?.id &&
-        inv.user_id !== user?.id &&
-        !user?.email?.includes('kishan')
-      )
-        return false;
-      if (
-        type &&
-        type !== 'all' &&
-        inv.invoice_type?.toUpperCase() !== type.toUpperCase()
-      )
-        return false;
-      if (
-        status &&
-        status !== 'all' &&
-        inv.status?.toLowerCase() !== status.toLowerCase()
-      )
-        return false;
-      if (
-        course &&
-        course !== 'all' &&
-        !inv.course_name?.toLowerCase().includes(course.toLowerCase())
-      )
-        return false;
-      if (startDate && new Date(inv.created_at) < new Date(startDate))
-        return false;
-      if (endDate && new Date(inv.created_at) > new Date(endDate)) return false;
-      return true;
-    });
-  }
-
-  // --- 3. View Invoice Details ---
   async getInvoiceById(id: string, user: any) {
-    let invoice: any = null;
+    const inv = await this.invoiceRepo.findOne({
+      where: [{ id }, { invoiceNumber: id }],
+      relations: {
+        user: true,
+        partner: true,
+        company: true,
+        enrollment: {
+          courseInstitute: {
+            course: true,
+          },
+        },
+        payments: true,
+      },
+    });
 
-    try {
-      const { data, error } = await this.db
-        .from('invoices')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (!error && data) {
-        invoice = data;
-      }
-    } catch (e) {
-      console.warn('[Invoices] DB getById fallback to memory');
+    if (!inv) {
+      throw new NotFoundException(`Invoice ${id} not found.`);
     }
 
-    if (!invoice) {
-      invoice = this.inMemoryInvoices.find(
-        (i) => i.id === id || i.invoice_number === id,
-      );
-    }
-
-    if (!invoice) throw new NotFoundException('Invoice not found');
-
-    const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
-    if (roleNorm === 'SEAFARER' && invoice.user_id !== user.id) {
+    const role = (user?.role || '').toUpperCase().replace('-', '_');
+    if (role === 'SEAFARER' && inv.userId !== user.id) {
       throw new ForbiddenException(
         'You are not authorized to view this invoice',
       );
     }
-    if (roleNorm === 'AGENT' && invoice.agent_id !== user.id) {
-      throw new ForbiddenException(
-        'You are not authorized to view this invoice',
-      );
-    }
-
-    let commissionSnapshot = null;
-    if (invoice.commission_snapshot_id) {
-      try {
-        const { data: comm } = await this.db
-          .from('commissions')
-          .select('*')
-          .eq('id', invoice.commission_snapshot_id)
-          .maybeSingle();
-        commissionSnapshot = comm;
-      } catch (e) {
-        console.warn('Commission snapshot lookup warning:', e);
-      }
-    }
-
-    await this.logAction(
-      user.id,
-      user.name || 'User',
-      'INVOICE_VIEWED',
-      invoice.invoice_number,
-      `Viewed invoice details for ${invoice.invoice_number}`,
-    );
 
     return {
-      ...invoice,
-      commissionSnapshot,
+      id: inv.id,
+      invoice_number: inv.invoiceNumber,
+      invoice_type: inv.invoiceType,
+      status: inv.status,
+      total_amount: Number(inv.totalAmount),
+      tax_amount: Number(inv.taxAmount),
+      discount_amount: Number(inv.discountAmount),
+      net_payable: Number(inv.netPayable),
+      final_amount: Number(inv.netPayable),
+      course_fee: Number(inv.totalAmount),
+      issue_date: inv.issueDate,
+      due_date: inv.dueDate,
+      paid_date: inv.paidDate,
+      customer_name: inv.user?.name || 'Walk-in Seafarer',
+      customer_email: inv.user?.email || '',
+      customer_phone: inv.user?.phone || '',
+      agent_name: inv.partner?.agencyName || null,
+      partner_name: inv.partner?.agencyName || null,
+      company_name: inv.company?.name || null,
+      course_name:
+        inv.enrollment?.courseInstitute?.course?.name ||
+        'Maritime STCW Training',
+      payments: inv.payments || [],
+      created_at: inv.createdAt,
+      pdf_url: inv.pdfUrl || null,
     };
   }
 
-  // --- 4. Get Printable PDF Data ---
   async getInvoicePdf(id: string, user: any) {
-    const invoiceDetails = await this.getInvoiceById(id, user);
-
-    let settings: any = null;
-    try {
-      const { data } = await this.db
-        .from('settings')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-      settings = data;
-    } catch (e) {
-      console.warn('Settings lookup warning:', e);
-    }
-
-    await this.logAction(
-      user.id,
-      user.name || 'User',
-      'PDF_DOWNLOADED',
-      invoiceDetails.invoice_number,
-      `Downloaded PDF for invoice ${invoiceDetails.invoice_number}`,
-    );
+    const invoice = await this.getInvoiceById(id, user);
+    const settings = await this.settingsRepo.findOne({ where: {} });
 
     return {
-      invoice: invoiceDetails,
+      invoice,
       company: {
         name: 'Hari Om Thalassic Maritime Training Institute',
         address:
           'Suite 404, Marine Trade Tower, Ballard Estate, Mumbai, Maharashtra 400001',
-        email: settings?.system_email || 'support@hariomthalassic.com',
-        phone: settings?.contact_phone || '+91 22 12345678',
-        dgsAccreditationId: settings?.dgs_accreditation_id || 'DGS-MTI-10294',
-        gstin: '27AABCH1234F1Z5',
+        email: settings?.systemEmail || 'support@hariomthalassic.com',
+        phone: settings?.contactPhone || '+91 22 12345678',
+        dgsAccreditationId: settings?.dgsAccreditationId || 'DGS-MTI-10294',
+        gstin: settings?.gstin || '27AABCH1234F1Z5',
       },
       terms: [
         'Fees once paid are non-refundable except under DGS guidelines.',
@@ -585,49 +373,31 @@ export class InvoicesService {
     };
   }
 
-  // --- 5. Export Invoices ---
   async exportInvoices(user: any, query: any = {}) {
     const list = await this.getInvoices(user, query);
-
-    await this.logAction(
-      user.id,
-      user.name || 'User',
-      'INVOICE_EXPORTED',
-      'EXPORT',
-      `Exported invoice report (${list.length} records)`,
-    );
-
     return list.map((inv: any) => ({
       'Invoice Number': inv.invoice_number,
       'Invoice Type': inv.invoice_type,
-      'Invoice Status': inv.status,
-      'Invoice Date': new Date(inv.created_at).toLocaleDateString('en-IN'),
-      'Payment Date': new Date(inv.payment_date).toLocaleDateString('en-IN'),
-      'Seafarer Name': inv.customer_name,
-      'Seafarer Email': inv.customer_email,
-      'Seafarer Phone': inv.customer_phone,
+      Status: inv.status,
+      Date: new Date(inv.created_at).toLocaleDateString('en-IN'),
+      'Customer Name': inv.customer_name,
+      'Customer Email': inv.customer_email,
       'Course Name': inv.course_name,
-      'Course Fee': `₹${inv.course_fee.toLocaleString('en-IN')}`,
-      Discount: `₹${inv.discount.toLocaleString('en-IN')}`,
-      'Final Amount': `₹${inv.final_amount.toLocaleString('en-IN')}`,
-      'Payment Gateway': inv.payment_gateway,
-      'Transaction ID': inv.transaction_id,
-      'Payment Method': inv.payment_method,
-      'Referring Agent': inv.agent_name || 'N/A',
-      'Agent Referral Code': inv.agent_referral_code || 'N/A',
+      Amount: `₹${inv.net_payable.toLocaleString('en-IN')}`,
+      'Partner / Agency': inv.partner_name || 'Direct',
+      Company: inv.company_name || 'Individual',
     }));
   }
 
-  // --- 6. Invoice Immutability Protection ---
   async updateInvoice() {
     throw new BadRequestException(
-      'PRD 10.8 Violation: Generated invoices are immutable and cannot be updated.',
+      'Financial Integrity: Invoices are immutable legal documents and cannot be edited.',
     );
   }
 
   async deleteInvoice() {
     throw new BadRequestException(
-      'PRD 10.8 Violation: Historical invoices cannot be deleted.',
+      'Financial Integrity: Historical invoices cannot be deleted.',
     );
   }
 }

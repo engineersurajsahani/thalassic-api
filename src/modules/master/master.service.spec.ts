@@ -1,52 +1,62 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MasterService } from './master.service';
-import { SupabaseService } from '../supabase/supabase.service';
-import { InvoicesService } from '../invoices/invoices.service';
-import { AgentAdminService } from '../agent-admin/agent-admin.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import {
+  User,
+  Course,
+  Institute,
+  CourseInstitute,
+  Enrollment,
+  Partner,
+  PartnerCoursePricing,
+  PartnerPricingProposal,
+  PartnerPayable,
+  Settlement,
+  Document,
+  AuditLog,
+  PlatformSettings,
+  SupportTicket,
+  Notification,
+} from '../../entities';
 
 describe('MasterService', () => {
   let service: MasterService;
 
-  let queryBuilder: any;
-  let mockSupabase: any;
+  const mockRepo = {
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn().mockResolvedValue(null),
+    count: jest.fn().mockResolvedValue(0),
+    create: jest.fn().mockImplementation((dto) => dto),
+    save: jest
+      .fn()
+      .mockImplementation((dto) => Promise.resolve({ id: 'saved-id', ...dto })),
+  };
 
   beforeEach(async () => {
-    queryBuilder = {
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      single: jest
-        .fn()
-        .mockResolvedValue({ data: { id: 'test-id' }, error: null }),
-      then: jest.fn((resolve) => resolve({ data: [], error: null })),
-    };
-
-    mockSupabase = {
-      from: jest.fn().mockReturnValue(queryBuilder),
-    };
-
-    const mockSupabaseService = {
-      getClient: jest.fn().mockReturnValue(mockSupabase),
-    };
-
-    const mockInvoicesService = {
-      getInvoices: jest.fn().mockResolvedValue([]),
-      getInvoiceById: jest.fn().mockResolvedValue({ id: 'inv-1' }),
-    };
-
-    const mockAgentAdminService = {
-      getAgents: jest.fn().mockResolvedValue([]),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MasterService,
-        { provide: SupabaseService, useValue: mockSupabaseService },
-        { provide: InvoicesService, useValue: mockInvoicesService },
-        { provide: AgentAdminService, useValue: mockAgentAdminService },
+        { provide: getRepositoryToken(User), useValue: mockRepo },
+        { provide: getRepositoryToken(Course), useValue: mockRepo },
+        { provide: getRepositoryToken(Institute), useValue: mockRepo },
+        { provide: getRepositoryToken(CourseInstitute), useValue: mockRepo },
+        { provide: getRepositoryToken(Enrollment), useValue: mockRepo },
+        { provide: getRepositoryToken(Partner), useValue: mockRepo },
+        {
+          provide: getRepositoryToken(PartnerCoursePricing),
+          useValue: mockRepo,
+        },
+        {
+          provide: getRepositoryToken(PartnerPricingProposal),
+          useValue: mockRepo,
+        },
+        { provide: getRepositoryToken(PartnerPayable), useValue: mockRepo },
+        { provide: getRepositoryToken(Settlement), useValue: mockRepo },
+        { provide: getRepositoryToken(Document), useValue: mockRepo },
+        { provide: getRepositoryToken(AuditLog), useValue: mockRepo },
+        { provide: getRepositoryToken(PlatformSettings), useValue: mockRepo },
+        { provide: getRepositoryToken(SupportTicket), useValue: mockRepo },
+        { provide: getRepositoryToken(Notification), useValue: mockRepo },
       ],
     }).compile();
 
@@ -58,10 +68,9 @@ describe('MasterService', () => {
   });
 
   it('should return courses list', async () => {
-    queryBuilder.order.mockResolvedValueOnce({
-      data: [{ id: 'course-1', name: 'Safety Training', code: 'BST' }],
-      error: null,
-    });
+    mockRepo.find.mockResolvedValueOnce([
+      { id: 'course-1', name: 'Safety Training', code: 'BST' },
+    ]);
 
     const courses = await service.getCourses();
     expect(Array.isArray(courses)).toBe(true);
@@ -69,16 +78,13 @@ describe('MasterService', () => {
     expect(courses[0].code).toBe('BST');
   });
 
-  it('should return users list with role filter', async () => {
-    queryBuilder.then = jest.fn((resolve) =>
-      resolve({
-        data: [{ id: 'u1', name: 'John Doe', role: 'SEAFARER' }],
-        error: null,
-      }),
-    );
+  it('should return seafarers list', async () => {
+    mockRepo.find.mockResolvedValueOnce([
+      { id: 'u1', name: 'John Doe', role: 'SEAFARER' },
+    ]);
 
-    const users = await service.getUsers('seafarer');
+    const users = await service.getSeafarers();
     expect(Array.isArray(users)).toBe(true);
-    expect(users.length).toBeGreaterThanOrEqual(1);
+    expect(users.length).toBe(1);
   });
 });

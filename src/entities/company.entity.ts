@@ -1,30 +1,66 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { CompanyAdmin } from './company-admin.entity';
-import { CompanyCrew } from './company-crew.entity';
+import { CompanySeafarer } from './company-seafarer.entity';
 
 @Entity('companies')
 export class Company {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ unique: true, nullable: true })
-  rpsl: string;
+  @Column({
+    type: 'varchar',
+    name: 'registration_number',
+    length: 100,
+    nullable: true,
+  })
+  registrationNumber: string | null;
+
+  @Column({ type: 'varchar', name: 'rpsl_number', length: 100, unique: true })
+  rpslNumber: string;
 
   @Column({ type: 'text', nullable: true })
-  address: string;
+  address: string | null;
 
-  @Column({ name: 'contact_email', nullable: true })
-  contactEmail: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  city: string | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  state: string | null;
+
+  @Column({ type: 'varchar', length: 100, default: 'India' })
+  country: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  email: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  phone: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  website: string | null;
+
+  @Column({ type: 'varchar', length: 50, default: 'Active' })
+  status: string;
+
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @OneToMany(() => CompanyAdmin, admin => admin.company)
-  admins: CompanyAdmin[];
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
-  @OneToMany(() => CompanyCrew, crew => crew.company)
-  crew: CompanyCrew[];
+  @OneToMany(() => CompanyAdmin, (ca) => ca.company)
+  companyAdmins: CompanyAdmin[];
+
+  @OneToMany(() => CompanySeafarer, (cs) => cs.company)
+  employedSeafarers: CompanySeafarer[];
 }
