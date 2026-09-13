@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { MasterService } from './master.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -19,6 +30,22 @@ export class MasterController {
   @Get('reports')
   getReports(@Query('days') days?: string) {
     return this.masterService.getReportsData(days);
+  }
+
+  // --- Notifications APIs ---
+  @Get('notifications')
+  getNotifications() {
+    return this.masterService.getNotifications();
+  }
+
+  @Patch('notifications/:id/read')
+  markNotificationAsRead(@Param('id') id: string) {
+    return this.masterService.markNotificationAsRead(id);
+  }
+
+  @Post('notifications/read-all')
+  markAllNotificationsAsRead() {
+    return this.masterService.markAllNotificationsAsRead();
   }
 
   // --- 2. Course Management APIs ---

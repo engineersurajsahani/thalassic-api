@@ -1,5 +1,151 @@
 [
   {
+    "id": "92ac8548-d690-432b-b1e3-dde9557f9a6c",
+    "user_id": "master-1",
+    "user_name": "Master Admin",
+    "action": "PAYMENT_RECEIVED",
+    "module": "Payments",
+    "entity_id": "TXN-TEST-999",
+    "company_id": null,
+    "details": "Received ₹15,000 for BST course",
+    "previous_value": {
+      "status": "Pending"
+    },
+    "updated_value": {
+      "status": "Successful",
+      "amount": 15000
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:35.788Z"
+  },
+  {
+    "id": "551cb493-615d-460b-98ed-d41000220658",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "settlements_history",
+    "company_id": null,
+    "details": "Exported Settlement History & Audit Ledger in PDF format (5 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "settlements_history",
+      "format": "pdf",
+      "recordCount": 5
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:35.786Z"
+  },
+  {
+    "id": "40028e46-cc87-4ef6-a9d7-376a97a3ae78",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "invoices_summary",
+    "company_id": null,
+    "details": "Exported Platform Invoice Summary Report in XLSX format (17 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "invoices_summary",
+      "format": "xlsx",
+      "recordCount": 17
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:35.784Z"
+  },
+  {
+    "id": "95b96432-bf06-4990-95d5-931cad1c1abb",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "revenue_daily",
+    "company_id": null,
+    "details": "Exported Daily Revenue Report in CSV format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "revenue_daily",
+      "format": "csv",
+      "recordCount": 4
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:35.772Z"
+  },
+  {
+    "id": "373d8d3b-0f0d-464d-9a9b-1097ea4fc585",
+    "user_id": "master-1",
+    "user_name": "Master Admin",
+    "action": "PAYMENT_RECEIVED",
+    "module": "Payments",
+    "entity_id": "TXN-TEST-999",
+    "company_id": null,
+    "details": "Received ₹15,000 for BST course",
+    "previous_value": {
+      "status": "Pending"
+    },
+    "updated_value": {
+      "status": "Successful",
+      "amount": 15000
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:09.885Z"
+  },
+  {
+    "id": "da642549-7d9e-4a6a-ba49-b11001a87e8a",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "settlements_history",
+    "company_id": null,
+    "details": "Exported Settlement History & Audit Ledger in PDF format (5 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "settlements_history",
+      "format": "pdf",
+      "recordCount": 5
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:09.882Z"
+  },
+  {
+    "id": "16ec606a-e959-49b7-a32d-2491cf0d751f",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "invoices_summary",
+    "company_id": null,
+    "details": "Exported Platform Invoice Summary Report in XLSX format (17 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "invoices_summary",
+      "format": "xlsx",
+      "recordCount": 17
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:09.880Z"
+  },
+  {
+    "id": "cef485e6-2ff8-4b07-ba3d-28102d52901f",
+    "user_id": "a0000000-0000-0000-0000-000000000001",
+    "user_name": "Master Admin",
+    "action": "REPORT_EXPORTED",
+    "module": "Reports",
+    "entity_id": "revenue_daily",
+    "company_id": null,
+    "details": "Exported Daily Revenue Report in CSV format (4 records)",
+    "previous_value": null,
+    "updated_value": {
+      "reportType": "revenue_daily",
+      "format": "csv",
+      "recordCount": 4
+    },
+    "ip_address": "127.0.0.1",
+    "created_at": "2026-09-13T19:24:09.872Z"
+  },
+  {
     "id": "5ca846a8-641a-4007-9255-3e3ffdf5cf75",
     "user_id": "master-1",
     "user_name": "Master Admin",

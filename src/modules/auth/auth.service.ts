@@ -77,13 +77,6 @@ export class AuthService {
 
     if (u1) {
       user = u1;
-    } else {
-      const { data: u2 } = await supabase
-        .from('User')
-        .select('*')
-        .or(`auth_user_id.eq.${authUserId},email.eq.${cleanEmail}`)
-        .maybeSingle();
-      user = u2;
     }
 
     const resolveRoleForEmail = (e: string, currentRole?: string) => {
@@ -101,7 +94,7 @@ export class AuthService {
         return 'MASTER';
       if (e.startsWith('partneradmin') || e.startsWith('agentadmin'))
         return 'PARTNER_ADMIN';
-      if (e.startsWith('partner') || e.startsWith('agent')) return 'AGENT';
+      if (e.startsWith('partner') || e.startsWith('agent')) return 'PARTNER';
       if (e.startsWith('company')) return 'COMPANY_ADMIN';
       return currentRole || 'SEAFARER';
     };
@@ -271,11 +264,11 @@ export class AuthService {
 
     // 3. Create Seafarer Profile Extension
     try {
-      await supabase.from('SeafarerProfile').insert({
+      await supabase.from('seafarer_profiles').insert({
         id: randomUUID(),
-        userId: finalUser.id,
-        indosNumber: indosNumber?.trim() || null,
-        status: indosNumber ? 'Active' : 'Pending',
+        user_id: finalUser.id,
+        indos_num: indosNumber?.trim() || null,
+        indos_status: indosNumber ? 'Active' : 'Pending',
       });
     } catch {
       // Handled

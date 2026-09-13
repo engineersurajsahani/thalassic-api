@@ -98,11 +98,11 @@ export class AgentAdminService {
       db
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .in('role', ['AGENT', 'PARTNER']),
+        .eq('role', 'PARTNER'),
       db
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .in('role', ['AGENT', 'PARTNER'])
+        .eq('role', 'PARTNER')
         .eq('status', 'Active'),
       db
         .from('partners')
@@ -370,11 +370,11 @@ export class AgentAdminService {
   async getAgents() {
     const db = this.getDb();
 
-    // Fetch all user accounts with role AGENT / PARTNER
+    // Fetch all user accounts with role PARTNER
     const { data: users, error: userError } = await db
       .from('users')
       .select('id, name, email, phone, role, status, created_at')
-      .in('role', ['AGENT', 'PARTNER']);
+      .eq('role', 'PARTNER');
 
     if (userError) throw new BadRequestException(userError.message);
 
@@ -417,7 +417,7 @@ export class AgentAdminService {
 
     // Check email uniqueness using maybeSingle (single() throws PGRST116 on 0 rows)
     const { data: existingUser } = await db
-      .from('User')
+      .from('users')
       .select('id')
       .eq('email', email)
       .maybeSingle();
@@ -430,22 +430,21 @@ export class AgentAdminService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 1. Create User record
-    const { error: userError } = await db.from('User').insert({
+    const { error: userError } = await db.from('users').insert({
       id: agentId,
       name,
       email,
       password: hashedPassword,
       phone: phone || null,
-      role: 'agent',
+      role: 'PARTNER',
       status: 'Pending Audit',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     });
 
     if (userError) throw new BadRequestException(userError.message);
 
     // 2. Create agent metadata with auto-generated referral code
-    const cleanName = (name || 'AGENT')
+    const cleanName = (name || 'PARTNER')
       .replace(/[^a-zA-Z0-9]/g, '')
       .toUpperCase()
       .substring(0, 5);
@@ -463,28 +462,30 @@ export class AgentAdminService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-    } catch (e) {
-      console.warn('Agent metadata insert warning:', e);
+    } catch (e: any) {
+      console.error(
+        `Failed to create agent_metadata for agent ${agentId}:`,
+        e.message,
+      );
     }
 
-    // 3. Log audit action
     await this.logAction(
       adminId,
       adminName,
-      'CREATE_AGENT',
-      'Agent Management',
+      'CREATE_PARTNER',
+      'Partner Management',
       agentId,
-      `Created agent account for ${name} (${email}) with general commission of ${generalCommission}%`,
+      `Created partner ${name} (${email}) with referral code ${autoRefCode}`,
     );
 
     return {
       id: agentId,
       name,
       email,
-      phone,
+      phone: phone || null,
+      role: 'agent',
       status: 'Pending Audit',
-      onboardingStatus: 'Invited',
-      generalCommission,
+      referralCode: autoRefCode,
     };
   }
 
@@ -497,15 +498,15 @@ export class AgentAdminService {
     const db = this.getDb();
 
     const { data: agent } = await db
-      .from('User')
+      .from('users')
       .select('name, email')
       .eq('id', agentId)
       .single();
     if (!agent) throw new NotFoundException('Agent not found');
 
     const { error } = await db
-      .from('User')
-      .update({ status, updatedAt: new Date().toISOString() })
+      .from('users')
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', agentId);
 
     if (error) throw new BadRequestException(error.message);
@@ -532,10 +533,10 @@ export class AgentAdminService {
     await this.logAction(
       adminId,
       adminName,
-      'UPDATE_AGENT_STATUS',
-      'Agent Management',
+      'UPDATE_PARTNER_STATUS',
+      'Partner Management',
       agentId,
-      `Updated status of agent ${agent.name} to ${status}`,
+      `Updated status of partner ${agent.name} to ${status}`,
     );
 
     return { id: agentId, status };
@@ -551,7 +552,7 @@ export class AgentAdminService {
     const db = this.getDb();
 
     const { data: agent } = await db
-      .from('User')
+      .from('users')
       .select('name')
       .eq('id', agentId)
       .single();
@@ -571,10 +572,10 @@ export class AgentAdminService {
     await this.logAction(
       adminId,
       adminName,
-      'UPDATE_AGENT_COMMISSION',
-      'Agent Management',
+      'UPDATE_PARTNER_COMMISSION',
+      'Partner Management',
       agentId,
-      `Updated commissions for agent ${agent.name}: General = ${generalCommission}%, Course-specific overrides saved.`,
+      `Updated settlement terms for partner ${agent.name}: General = ${generalCommission}%, Course-specific overrides saved.`,
     );
 
     return { id: agentId, generalCommission, courseCommissions };
@@ -592,7 +593,7 @@ export class AgentAdminService {
     if (!password) throw new BadRequestException('Password is required');
 
     const { data: agent } = await db
-      .from('User')
+      .from('users')
       .select('name')
       .eq('id', agentId)
       .single();
@@ -601,8 +602,11 @@ export class AgentAdminService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const { error } = await db
-      .from('User')
-      .update({ password: hashedPassword, updatedAt: new Date().toISOString() })
+      .from('users')
+      .update({
+        password: hashedPassword,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', agentId);
 
     if (error) throw new BadRequestException(error.message);
@@ -610,10 +614,10 @@ export class AgentAdminService {
     await this.logAction(
       adminId,
       adminName,
-      'RESET_AGENT_PASSWORD',
-      'Agent Management',
+      'RESET_PARTNER_PASSWORD',
+      'Partner Management',
       agentId,
-      `Reset password for agent ${agent.name}`,
+      `Reset password for partner ${agent.name}`,
     );
 
     return { id: agentId, success: true };
@@ -659,9 +663,9 @@ export class AgentAdminService {
     ];
 
     const { data: documents } = await db
-      .from('Document')
+      .from('documents')
       .select('*')
-      .eq('userId', agentId);
+      .eq('user_id', agentId);
 
     return {
       agentId,
@@ -1142,7 +1146,7 @@ export class AgentAdminService {
     // Fallback to local settlements
     let userMap = new Map();
     try {
-      const { data: users } = await db.from('User').select('id, name');
+      const { data: users } = await db.from('users').select('id, name');
       userMap = new Map((users || []).map((u: any) => [u.id, u.name]));
     } catch (e) {
       console.warn('Error getting users map for settlements:', e);
@@ -1354,7 +1358,7 @@ export class AgentAdminService {
     try {
       // 1. Get Agent details
       const { data: agentUser } = await db
-        .from('User')
+        .from('users')
         .select('*')
         .eq('id', settlement.agent_id)
         .maybeSingle();
@@ -1447,11 +1451,11 @@ export class AgentAdminService {
   async getReports() {
     const db = this.getDb();
 
-    // 1. Agent Performance
+    // 1. Partner Performance
     const { data: agents } = await db
       .from('users')
       .select('id, name')
-      .in('role', ['AGENT', 'PARTNER']);
+      .eq('role', 'PARTNER');
     const { data: comms } = await db
       .from('commissions')
       .select('agent_id, commission_amount, course_fee');
@@ -1561,19 +1565,19 @@ export class AgentAdminService {
     const { name, email, phone, agencyName, officeAddress } = dto;
 
     const { data: agent } = await db
-      .from('User')
+      .from('users')
       .select('name, email, phone')
       .eq('id', agentId)
       .single();
     if (!agent) throw new NotFoundException('Agent not found');
 
     const { error: userErr } = await db
-      .from('User')
+      .from('users')
       .update({
         name: name ?? agent.name,
         email: email ?? agent.email,
         phone: phone ?? agent.phone,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', agentId);
 
@@ -1593,10 +1597,10 @@ export class AgentAdminService {
     await this.logAction(
       adminId,
       adminName,
-      'UPDATE_AGENT_DETAILS',
-      'Agent Management',
+      'UPDATE_PARTNER_DETAILS',
+      'Partner Management',
       agentId,
-      `Updated profile details for agent ${name || agent.name} (${email || agent.email})`,
+      `Updated profile details for partner ${name || agent.name} (${email || agent.email})`,
     );
 
     return { id: agentId, name, email, phone, agencyName, officeAddress };
@@ -1613,38 +1617,38 @@ export class AgentAdminService {
     const db = this.getDb();
 
     const { data: doc, error } = await db
-      .from('Document')
+      .from('documents')
       .update({
         status,
         name: remarks ? `${status} - Remarks: ${remarks}` : status,
       })
       .eq('id', docId)
-      .eq('userId', agentId)
+      .eq('user_id', agentId)
       .select()
       .single();
 
     if (error) throw new BadRequestException(error.message);
 
     const notifId = randomUUID();
-    await db.from('Notification').insert({
+    await db.from('notifications').insert({
       id: notifId,
-      userId: agentId,
+      user_id: agentId,
       title: status === 'Verified' ? 'Document Verified' : 'Document Rejected',
       message:
         status === 'Verified'
           ? `Your uploaded document of type "${doc.type}" has been successfully verified by the admin.`
           : `Your uploaded document of type "${doc.type}" was rejected. Reason: ${remarks || 'Please re-upload.'}`,
-      isRead: false,
-      createdAt: new Date().toISOString(),
+      status: 'unread',
+      created_at: new Date().toISOString(),
     });
 
     await this.logAction(
       adminId,
       adminName,
-      'VERIFY_AGENT_DOCUMENT',
-      'Agent Management',
+      'VERIFY_PARTNER_DOCUMENT',
+      'Partner Management',
       agentId,
-      `Document "${doc.type}" of agent has been marked as ${status} by admin (Remarks: ${remarks || 'None'})`,
+      `Document "${doc.type}" of partner has been marked as ${status} by admin (Remarks: ${remarks || 'None'})`,
     );
 
     return { docId, status, remarks };
@@ -1686,7 +1690,7 @@ export class AgentAdminService {
 
       if (!grouped.has(email)) {
         const { data: userRec } = await db
-          .from('User')
+          .from('users')
           .select('id')
           .ilike('email', email)
           .maybeSingle();
@@ -1760,7 +1764,7 @@ export class AgentAdminService {
       const seafarerName = comm.seafarer_name;
       // Search for email matching seafarer_name in User table
       const { data: sfUser } = await db
-        .from('User')
+        .from('users')
         .select('email')
         .ilike('name', seafarerName)
         .maybeSingle();
@@ -1883,13 +1887,13 @@ export class AgentAdminService {
           ? `Your conflicting referral lead for ${seafarerName} has been approved by Admin. You now have active referral attribution!`
           : `Your conflicting referral lead for ${seafarerName} was assigned to another referring agent by Admin.`;
 
-        await db.from('Notification').insert({
+        await db.from('notifications').insert({
           id: randomUUID(),
-          userId: lead.agent_id,
+          user_id: lead.agent_id,
           title: notifyTitle,
           message: notifyMsg,
-          isRead: false,
-          createdAt: nowIso,
+          status: 'unread',
+          created_at: nowIso,
         });
       }
     }
@@ -1940,9 +1944,9 @@ export class AgentAdminService {
   async getTickets() {
     const db = this.getDb();
     const { data, error } = await db
-      .from('SupportTicket')
-      .select('*, User:userId(name, email, role)')
-      .order('createdAt', { ascending: false });
+      .from('support_tickets')
+      .select('*, users:user_id(name, email, role)')
+      .order('created_at', { ascending: false });
     if (error) throw new BadRequestException(error.message);
     return data || [];
   }
@@ -1955,7 +1959,7 @@ export class AgentAdminService {
   ) {
     const db = this.getDb();
     const { data: ticket, error: fetchErr } = await db
-      .from('SupportTicket')
+      .from('support_tickets')
       .select('*')
       .eq('id', ticketId)
       .single();
@@ -1965,16 +1969,16 @@ export class AgentAdminService {
     replies.push({
       id: randomUUID(),
       senderName: adminName,
-      senderRole: 'agent_admin',
+      senderRole: 'partner_admin',
       message,
       createdAt: new Date().toISOString(),
     });
 
     const { error: updateErr } = await db
-      .from('SupportTicket')
+      .from('support_tickets')
       .update({
         replies: JSON.stringify(replies),
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         status: 'replied',
       })
       .eq('id', ticketId);
@@ -2001,10 +2005,10 @@ export class AgentAdminService {
   ) {
     const db = this.getDb();
     const { error } = await db
-      .from('SupportTicket')
+      .from('support_tickets')
       .update({
         status,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', ticketId);
 

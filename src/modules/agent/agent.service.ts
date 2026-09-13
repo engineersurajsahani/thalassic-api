@@ -225,7 +225,7 @@ export class AgentService {
 
     if (!refCodeClean) {
       // Auto-generate a unique permanent referral code (e.g. KISH25 or OCEAN25)
-      const baseName = (data.name || 'AGENT')
+      const baseName = (data.name || 'PARTNER')
         .trim()
         .toUpperCase()
         .replace(/[^A-Z]/g, '');
@@ -274,19 +274,19 @@ export class AgentService {
 
     // 4. Update profile details in User
     const { data: userRecord } = await db
-      .from('User')
+      .from('users')
       .select('name')
       .eq('id', agentId)
       .single();
     const userName = userRecord?.name || 'Agent';
 
     const { error: userErr } = await db
-      .from('User')
+      .from('users')
       .update({
         name: data.name || userName,
         phone: data.phone || null,
         status: 'Active',
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', agentId);
 
@@ -296,7 +296,7 @@ export class AgentService {
     await this.logAction(
       agentId,
       data.name || userName,
-      'AGENT_ONBOARDED',
+      'PARTNER_ONBOARDED',
       'Onboarding',
       agentId,
       `Completed onboarding setup. Chosen referral code: ${refCodeClean}`,
@@ -490,7 +490,7 @@ export class AgentService {
   async getSeafarers(query?: string) {
     const db = this.getDb();
     try {
-      let q = db
+      const q = db
         .from('users')
         .select('id, name, email, phone')
         .eq('role', 'SEAFARER')
@@ -1047,7 +1047,7 @@ export class AgentService {
       name: user?.name || metadata.contact_person || 'Partner Operations',
       email: user?.email || metadata.contact_email || 'partner@gmail.com',
       phone: user?.phone || metadata.contact_phone || '',
-      role: user?.role || 'AGENT',
+      role: user?.role || 'PARTNER',
       status: user?.status || 'Active',
       alternatePhone: metadata.alternate_phone || '',
       address: metadata.address || '',
@@ -1466,10 +1466,10 @@ export class AgentService {
   async getNotifications(agentId: string) {
     const db = this.getDb();
     const { data, error } = await db
-      .from('Notification')
+      .from('notifications')
       .select('*')
-      .eq('userId', agentId)
-      .order('createdAt', { ascending: false });
+      .eq('user_id', agentId)
+      .order('created_at', { ascending: false });
 
     if (error) throw new BadRequestException(error.message);
     return data || [];
@@ -1478,10 +1478,10 @@ export class AgentService {
   async markNotificationRead(agentId: string, notificationId: string) {
     const db = this.getDb();
     const { error } = await db
-      .from('Notification')
-      .update({ isRead: true })
+      .from('notifications')
+      .update({ status: 'read' })
       .eq('id', notificationId)
-      .eq('userId', agentId);
+      .eq('user_id', agentId);
 
     if (error) throw new BadRequestException(error.message);
     return { success: true };
@@ -1490,10 +1490,10 @@ export class AgentService {
   async deleteNotification(agentId: string, notificationId: string) {
     const db = this.getDb();
     const { error } = await db
-      .from('Notification')
+      .from('notifications')
       .delete()
       .eq('id', notificationId)
-      .eq('userId', agentId);
+      .eq('user_id', agentId);
 
     if (error) throw new BadRequestException(error.message);
     return { success: true };
@@ -1503,7 +1503,7 @@ export class AgentService {
   async changePassword(agentId: string, oldPass: string, newPass: string) {
     const db = this.getDb();
     const { data: user, error: userErr } = await db
-      .from('User')
+      .from('users')
       .select('password, name')
       .eq('id', agentId)
       .single();
@@ -1518,10 +1518,10 @@ export class AgentService {
 
     const hashedNew = await bcrypt.hash(newPass, 10);
     const { error } = await db
-      .from('User')
+      .from('users')
       .update({
         password: hashedNew,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', agentId);
 

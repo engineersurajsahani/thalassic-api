@@ -11,8 +11,12 @@ export class SupabaseService implements OnModuleInit {
   private client: SupabaseClient;
 
   constructor(private configService: ConfigService) {
-    const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || 'https://placeholder.supabase.co';
-    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') || 'placeholder-key';
+    const supabaseUrl =
+      this.configService.get<string>('SUPABASE_URL') ||
+      'https://placeholder.supabase.co';
+    const supabaseKey =
+      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') ||
+      'placeholder-key';
     this.client = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
@@ -27,7 +31,9 @@ export class SupabaseService implements OnModuleInit {
   async onModuleInit() {
     // ISSUE-019: Only seed in development environment — never in production
     if (process.env.NODE_ENV !== 'development') {
-      console.log('Skipping agent user seeding in non-development environment.');
+      console.log(
+        'Skipping agent user seeding in non-development environment.',
+      );
       return;
     }
 
@@ -40,18 +46,28 @@ export class SupabaseService implements OnModuleInit {
           query: `ALTER TABLE public."Document" ADD COLUMN IF NOT EXISTS remarks TEXT;`,
         });
         if (migrationError) {
-          console.warn('Could not run remarks migration via rpc:', migrationError.message);
+          console.warn(
+            'Could not run remarks migration via rpc:',
+            migrationError.message,
+          );
         }
       } catch (migErr) {
-        console.warn('Remarks column migration skipped:', (migErr as any)?.message);
+        console.warn(
+          'Remarks column migration skipped:',
+          (migErr as any)?.message,
+        );
       }
 
       // Ensure 'seafarer-documents' bucket exists in Supabase Storage
       try {
         const { data: buckets } = await supabase.storage.listBuckets();
-        const hasBucket = buckets?.some((b: any) => b.name === 'seafarer-documents');
+        const hasBucket = buckets?.some(
+          (b: any) => b.name === 'seafarer-documents',
+        );
         if (!hasBucket) {
-          await supabase.storage.createBucket('seafarer-documents', { public: true });
+          await supabase.storage.createBucket('seafarer-documents', {
+            public: true,
+          });
           console.log("Bucket 'seafarer-documents' ensured.");
         }
       } catch (bucketErr) {
@@ -66,7 +82,7 @@ export class SupabaseService implements OnModuleInit {
 
       // Seed/Activate Agent: agent@thalassic.in (DEV ONLY)
       const { data: existingAgent, error: agentCheckError } = await supabase
-        .from('User')
+        .from('users')
         .select('id')
         .eq('email', 'agent@thalassic.in')
         .maybeSingle();
@@ -74,70 +90,73 @@ export class SupabaseService implements OnModuleInit {
       let agentId = existingAgent?.id;
 
       if (!existingAgent && !agentCheckError) {
-        console.log('[DEV] Seeding Agent User...');
+        console.log('[DEV] Seeding Partner User...');
         agentId = crypto.randomUUID();
-        const { error } = await supabase
-          .from('User')
-          .insert([{
+        const { error } = await supabase.from('users').insert([
+          {
             id: agentId,
             email: 'agent@thalassic.in',
             password: hashedPassword,
-            name: 'Agent User',
+            name: 'Partner User',
             phone: '+91 99999 88888',
-            role: ROLES.AGENT,
-            updatedAt: now
-          }]);
+            role: ROLES.PARTNER,
+          },
+        ]);
         if (error) {
-          console.error('[DEV] Error seeding agent user:', error);
+          console.error('[DEV] Error seeding partner user:', error);
           agentId = null;
         } else {
           // ISSUE-032: Do NOT log the password in plain text
-          console.log('[DEV] Agent user seeded: agent@thalassic.in (password stored in secure location)');
+          console.log(
+            '[DEV] Partner user seeded: agent@thalassic.in (password stored in secure location)',
+          );
         }
       }
 
       if (agentId) {
-        const { error: metaErr } = await supabase
-          .from('agent_metadata')
-          .upsert({
+        const { error: metaErr } = await supabase.from('agent_metadata').upsert(
+          {
             user_id: agentId,
             referral_code: 'REFAGENT123',
             onboarding_status: 'Active',
             general_commission: 5.0,
-            updated_at: now
-          }, { onConflict: 'user_id' });
+            updated_at: now,
+          },
+          { onConflict: 'user_id' },
+        );
 
         if (metaErr) {
-          console.error('[DEV] Error upserting agent metadata:', metaErr);
+          console.error('[DEV] Error upserting partner metadata:', metaErr);
         }
       }
 
-      // Seed Agent Admin: admin@thalassic.in (DEV ONLY)
+      // Seed Partner Admin: admin@thalassic.in (DEV ONLY)
       const { data: existingAdmin, error: adminCheckError } = await supabase
-        .from('User')
+        .from('users')
         .select('id')
         .eq('email', 'admin@thalassic.in')
         .maybeSingle();
 
       if (!existingAdmin && !adminCheckError) {
-        console.log('[DEV] Seeding Agent Admin User...');
+        console.log('[DEV] Seeding Partner Admin User...');
         const adminId = crypto.randomUUID();
-        const { error } = await supabase
-          .from('User')
-          .insert([{
+        const { error } = await supabase.from('users').insert([
+          {
             id: adminId,
             email: 'admin@thalassic.in',
             password: hashedPassword,
-            name: 'Agent Admin',
+            name: 'Partner Admin',
             phone: '+91 88888 77777',
-            role: ROLES.AGENT_ADMIN,
-            updatedAt: now
-          }]);
+            role: ROLES.PARTNER_ADMIN,
+          },
+        ]);
         if (error) {
-          console.error('[DEV] Error seeding agent admin user:', error);
+          console.error('[DEV] Error seeding partner admin user:', error);
         } else {
           // ISSUE-032: Do NOT log the password in plain text
-          console.log('[DEV] Agent admin user seeded: admin@thalassic.in (password stored in secure location)');
+          console.log(
+            '[DEV] Partner admin user seeded: admin@thalassic.in (password stored in secure location)',
+          );
         }
       }
     } catch (e) {

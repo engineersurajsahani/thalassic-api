@@ -43,7 +43,7 @@ export class MasterService {
         { data: institutesList },
       ] = await Promise.all([
         supabase
-          .from('User')
+          .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('role', 'SEAFARER'),
         supabase.from('courses').select('*', { count: 'exact', head: true }),
@@ -56,7 +56,7 @@ export class MasterService {
           .from('partner_referrals')
           .select('*', { count: 'exact', head: true })
           .neq('status', 'Converted'),
-        supabase.from('User').select('id, name, email, role'),
+        supabase.from('users').select('id, name, email, role'),
         supabase
           .from('course_institutes')
           .select('id, course_id, institute_id'),
@@ -177,20 +177,22 @@ export class MasterService {
 
     // Fetch courses
     const { data: courses, error: err1 } = await supabase
-      .from('Course')
-      .select('id, name, fees, rating');
+      .from('courses')
+      .select('id, name, standard_fee, code');
 
-    // Fetch enrollments
+    // Fetch enrollments with course_institutes join to get course info
     let enrollmentsQuery = supabase
-      .from('Enrollment')
-      .select('courseId, status, progress, createdAt');
+      .from('enrollments')
+      .select(
+        'course_institute_id, status, progress_percent, created_at, course_institutes(course_id)',
+      );
 
     if (days) {
       const daysNum = parseInt(days) || 30;
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysNum);
       enrollmentsQuery = enrollmentsQuery.gte(
-        'createdAt',
+        'created_at',
         cutoffDate.toISOString(),
       );
     }
@@ -206,12 +208,13 @@ export class MasterService {
 
     const reports = courseList.map((c: any, index: number) => {
       const courseBookingsList = enrollmentList.filter(
-        (e: any) => e.courseId === c.id,
+        (e: any) => (e.course_institutes as any)?.course_id === c.id,
       );
       const bookingsCount = courseBookingsList.length;
 
-      // Parse fee amount (e.g. "₹12,000" -> 12000)
-      const cleanFee = parseFloat((c.fees || '').replace(/[^\d]/g, '')) || 0;
+      // standard_fee is a numeric column
+      const cleanFee =
+        parseFloat(String(c.standard_fee || 0).replace(/[^\d.]/g, '')) || 0;
       const revenueAmount = bookingsCount * cleanFee;
 
       // Format revenue (e.g. 3625000 -> "₹36.25L" or standard format)
@@ -236,7 +239,7 @@ export class MasterService {
     const totalEnrollments = enrollmentList.length;
 
     enrollmentList.forEach((e: any) => {
-      totalProgress += parseFloat(e.progress || 0);
+      totalProgress += parseFloat(e.progress_percent || 0);
       const statusUpper = (e.status || '').toUpperCase();
       if (
         statusUpper === 'REFUNDED' ||
@@ -262,14 +265,15 @@ export class MasterService {
   // --- 2. Course Management ---
   async getCourses() {
     const { data, error } = await this.getSupabase()
-      .from('Course')
+      .from('courses')
       .select('*')
       .order('name');
 
     if (error) throw new InternalServerErrorException('Error loading courses');
     return (data || []).map((c) => ({
       ...c,
-      status: 'Active',
+      fees: c.standard_fee,
+      status: c.status || 'Active',
     }));
   }
 
@@ -280,18 +284,13 @@ export class MasterService {
       name: dto.name,
       category: dto.category,
       duration: dto.duration,
-      fees: dto.fees,
+      standard_fee: dto.fees || dto.standard_fee || 0,
       description: dto.description || '',
-      level: 'Entry Level',
-      icon: dto.category === 'basic' ? '🎯' : '⚓',
-      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e',
-      documentsRequired: 'Passport, CDC, INDOS Copy',
-      rating: '4.8',
-      ratingCount: 120,
+      status: 'active',
     };
 
     const { data, error } = await this.getSupabase()
-      .from('Course')
+      .from('courses')
       .insert([payload])
       .select()
       .single();
@@ -304,9 +303,15 @@ export class MasterService {
   }
 
   async updateCourse(id: string, dto: any) {
+    // Map legacy fee field to correct column name
+    const updatePayload: any = { ...dto };
+    if (dto.fees !== undefined) {
+      updatePayload.standard_fee = dto.fees;
+      delete updatePayload.fees;
+    }
     const { data, error } = await this.getSupabase()
-      .from('Course')
-      .update(dto)
+      .from('courses')
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
@@ -318,7 +323,7 @@ export class MasterService {
 
   async deleteCourse(id: string) {
     const { error } = await this.getSupabase()
-      .from('Course')
+      .from('courses')
       .delete()
       .eq('id', id);
 
@@ -330,37 +335,82 @@ export class MasterService {
   // --- 3. User Management & Auditing ---
   async getUsers(role?: string) {
     let query = this.getSupabase()
-      .from('User')
-      .select('id, name, email, phone, role, createdAt, updatedAt')
-      .order('createdAt', { ascending: false });
+      .from('users')
+      .select('id, name, email, phone, role, status, created_at')
+      .order('created_at', { ascending: false });
 
     if (role) {
+      const cleanRole = role.toLowerCase().replace(/[-_]/g, '');
       const roleMap: Record<string, string> = {
         seafarer: 'SEAFARER',
         master: 'MASTER',
-        'company-admin': 'COMPANY_ADMIN',
-        company_admin: 'COMPANY_ADMIN',
-        'agent-admin': 'AGENT_ADMIN',
-        agent_admin: 'AGENT_ADMIN',
-        agent: 'AGENT',
+        companyadmin: 'COMPANY_ADMIN',
+        agentadmin: 'PARTNER_ADMIN',
+        partneradmin: 'PARTNER_ADMIN',
+        agent: 'PARTNER',
+        partner: 'PARTNER',
       };
 
-      const dbRole = roleMap[role.toLowerCase()];
-
-      if (!dbRole) {
-        throw new BadRequestException('Invalid user role');
-      }
-
+      let dbRole = roleMap[cleanRole] || role.toUpperCase();
+      if (dbRole === 'AGENT_ADMIN') dbRole = 'PARTNER_ADMIN';
+      if (dbRole === 'AGENT') dbRole = 'PARTNER';
       query = query.eq('role', dbRole);
     }
 
     const { data, error } = await query;
 
     if (error) {
-      throw new InternalServerErrorException('Error loading users list');
+      console.error('getUsers error:', error);
+      throw new InternalServerErrorException(
+        'Error loading users list: ' + error.message,
+      );
     }
 
     return data || [];
+  }
+
+  // --- Notifications for Master Admin ---
+  async getNotifications() {
+    try {
+      const { data, error } = await this.getSupabase()
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async markNotificationAsRead(id: string) {
+    try {
+      const { data } = await this.getSupabase()
+        .from('notifications')
+        .update({ status: 'read' })
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      return data || { id, status: 'read' };
+    } catch {
+      return { id, status: 'read' };
+    }
+  }
+
+  async markAllNotificationsAsRead() {
+    try {
+      await this.getSupabase()
+        .from('notifications')
+        .update({ status: 'read' })
+        .eq('status', 'unread');
+
+      return { success: true };
+    } catch {
+      return { success: true };
+    }
   }
 
   async createUser(dto: any) {
@@ -374,23 +424,29 @@ export class MasterService {
     const dbRole =
       roleSlug === 'master'
         ? 'MASTER'
-        : roleSlug === 'company-admin'
+        : roleSlug === 'company-admin' || roleSlug === 'company_admin'
           ? 'COMPANY_ADMIN'
-          : 'SEAFARER';
+          : roleSlug === 'agent-admin' ||
+              roleSlug === 'agent_admin' ||
+              roleSlug === 'partner-admin' ||
+              roleSlug === 'partner_admin'
+            ? 'PARTNER_ADMIN'
+            : roleSlug === 'agent' || roleSlug === 'partner'
+              ? 'PARTNER'
+              : 'SEAFARER';
 
     const payload = {
       id: crypto.randomUUID(),
       name: dto.name,
       email: dto.email,
-      password: hashedPassword,
       phone: dto.phone || '+91 00000 00000',
       role: dbRole,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      status: 'Active',
+      created_at: new Date().toISOString(),
     };
 
     const { data, error } = await this.getSupabase()
-      .from('User')
+      .from('users')
       .insert([payload])
       .select()
       .single();
@@ -403,14 +459,18 @@ export class MasterService {
     // If role is SEAFARER, seed profile record so profiles detail query succeeds
     if (data && data.role === 'SEAFARER') {
       await this.getSupabase()
-        .from('SeafarerProfile')
+        .from('seafarer_profiles')
         .insert([
           {
-            userId: data.id,
-            status: 'Pending Audit',
-            nationality: 'Indian',
+            id: crypto.randomUUID(),
+            user_id: data.id,
+            created_at: new Date().toISOString(),
           },
-        ]);
+        ])
+        .then(({ error: profileErr }) => {
+          if (profileErr)
+            console.warn('Profile seed warning:', profileErr.message);
+        });
     }
 
     return data;
@@ -421,7 +481,7 @@ export class MasterService {
 
     // Fetch user basic data
     const { data: user, error: err1 } = await supabase
-      .from('User')
+      .from('users')
       .select('*')
       .eq('id', userId)
       .single();
@@ -430,22 +490,19 @@ export class MasterService {
 
     // Fetch detailed profile docs
     const { data: profile } = await supabase
-      .from('SeafarerProfile')
+      .from('seafarer_profiles')
       .select('*')
-      .eq('userId', userId)
-      .single();
+      .eq('user_id', userId)
+      .maybeSingle();
 
     // Fetch documents (Passport, CDC, INDOS details)
     const { data: documents } = await supabase
-      .from('Document')
+      .from('documents')
       .select('*')
-      .eq('userId', userId);
+      .eq('user_id', userId);
 
-    // Fetch sea service history
-    const { data: seaService } = await supabase
-      .from('SeaServiceRecord')
-      .select('*')
-      .eq('profileId', profile?.id || userId);
+    // SeaServiceRecord table does not exist - skip gracefully
+    const seaService: any[] = [];
 
     // Map Document records to seafarer profiles properties expected by the UI
     const docsList = documents || [];
@@ -462,36 +519,40 @@ export class MasterService {
       givenName: user.name?.split(' ')[0] || 'N/A',
       surname: user.name?.split(' ').slice(1).join(' ') || 'N/A',
       dob: profile?.dob || 'N/A',
-      birthPlace: profile?.address || 'N/A',
-      fatherName: 'N/A',
+      birthPlace: profile?.birth_place || 'N/A',
+      fatherName: profile?.father_name || 'N/A',
       passport: {
-        num: passportDoc?.name || 'N/A',
-        issue: passportDoc?.uploadDate
-          ? new Date(passportDoc.uploadDate).toISOString().split('T')[0]
-          : 'N/A',
-        expiry: passportDoc?.expiryDate || 'N/A',
-        place: 'N/A',
+        num: profile?.passport_num || passportDoc?.document_number || 'N/A',
+        issue:
+          profile?.passport_issue ||
+          (passportDoc?.created_at
+            ? new Date(passportDoc.created_at).toISOString().split('T')[0]
+            : 'N/A'),
+        expiry: profile?.passport_expiry || passportDoc?.expiry_date || 'N/A',
+        place: profile?.passport_place || 'N/A',
       },
       indos: {
-        num: profile?.indosNumber || 'N/A',
-        issue: 'N/A',
-        status: indosDoc?.status || 'Pending',
+        num: profile?.indos_num || 'N/A',
+        issue: profile?.indos_issue || 'N/A',
+        status: profile?.indos_status || indosDoc?.status || 'Pending',
       },
       cdc: {
-        num: cdcDoc?.name || 'N/A',
-        issue: cdcDoc?.uploadDate
-          ? new Date(cdcDoc.uploadDate).toISOString().split('T')[0]
-          : 'N/A',
-        expiry: cdcDoc?.expiryDate || 'N/A',
-        place: 'N/A',
+        num: profile?.cdc_num || cdcDoc?.document_number || 'N/A',
+        issue:
+          profile?.cdc_issue ||
+          (cdcDoc?.created_at
+            ? new Date(cdcDoc.created_at).toISOString().split('T')[0]
+            : 'N/A'),
+        expiry: profile?.cdc_expiry || cdcDoc?.expiry_date || 'N/A',
+        place: profile?.cdc_place || 'N/A',
       },
-      education: 'N/A',
+      education: profile?.education || 'N/A',
     };
 
     return {
       ...user,
       profile: mappedProfile,
-      seaService: (seaService || []).map((s: any) => ({
+      seaService: seaService.map((s: any) => ({
         rpsl: s.company || 'N/A',
         vessel: s.vesselName || 'N/A',
         vessel_type: 'N/A',
@@ -506,14 +567,20 @@ export class MasterService {
   async updateUserStatus(id: string, status: string) {
     const supabase = this.getSupabase();
 
-    // The User table has no status column, so we update the SeafarerProfile or Document verification status
+    // Update user status in users table
+    await supabase
+      .from('users')
+      .update({ status: status || 'Active' })
+      .eq('id', id);
+
+    // Also update documents status to Verified if status is Active/Verified
     const { data: documents } = await supabase
-      .from('Document')
+      .from('documents')
       .update({ status: 'Verified' })
-      .eq('userId', id)
+      .eq('user_id', id)
       .select();
 
-    return { id, status: 'Verified', documents };
+    return { id, status: status || 'Verified', documents };
   }
 
   // --- 4. Settings Configuration ---
@@ -561,7 +628,7 @@ export class MasterService {
     if (Object.keys(updateData).length === 0) return { success: true };
 
     const { data, error } = await supabase
-      .from('User')
+      .from('users')
       .update(updateData)
       .eq('id', adminId)
       .select('id, name, email, role')

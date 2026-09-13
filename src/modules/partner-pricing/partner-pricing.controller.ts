@@ -6,7 +6,7 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller('partner/pricing')
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(ROLES.MASTER, ROLES.AGENT_ADMIN, ROLES.AGENT)
+@Roles(ROLES.MASTER, ROLES.PARTNER_ADMIN, ROLES.PARTNER)
 export class PartnerPricingController {
   constructor(private readonly partnerPricingService: PartnerPricingService) {}
 

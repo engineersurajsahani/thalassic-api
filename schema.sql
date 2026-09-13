@@ -1,7 +1,7 @@
--- ==============================================================================
+-- 
 -- HARI OM THALASSIC - COMPLETE SUPABASE CLOUD DATABASE SCHEMA
 -- Execute this script in your Supabase Dashboard: SQL Editor -> New Query -> Run
--- ==============================================================================
+-- 
 
 -- 1. Create CUSTOM ENUM Types
 DO $$ BEGIN

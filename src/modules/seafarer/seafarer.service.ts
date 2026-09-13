@@ -251,7 +251,7 @@ export class SeafarerService {
   // ─────────────────────────────────────────────
   async getDashboard(userId: string) {
     const { data: userRecord } = await this.db
-      .from('User')
+      .from('users')
       .select('id, name, email, status')
       .eq('id', userId)
       .maybeSingle();
@@ -261,12 +261,12 @@ export class SeafarerService {
       (userRecord?.status || '').toLowerCase() === 'on_hold';
 
     const { data: enrollments } = await this.db
-      .from('Enrollment')
+      .from('enrollments')
       .select(
-        'id, status, progress, startDate, createdAt, courseId, remarks, Course(id, name, code, duration)',
+        'id, status, progress, created_at, course_id, courses:course_id(id, name, code, duration)',
       )
-      .eq('userId', userId)
-      .order('createdAt', { ascending: false });
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     // Accurately separate statuses: Ongoing / Active, On Hold, Completed
     const parseMeta = (e: any) => {
@@ -319,21 +319,22 @@ export class SeafarerService {
         : 0);
 
     const { data: profile } = await this.db
-      .from('SeafarerProfile')
+      .from('seafarer_profiles')
       .select('*')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     const { data: docs } = await this.db
-      .from('Document')
-      .select('type, expiryDate, status')
-      .eq('userId', userId);
+      .from('documents')
+      .select('type, expiry_date, status')
+      .eq('user_id', userId);
 
     const now = new Date();
     const docStatus = (type: string) => {
       const doc = docs?.find((d: any) => d.type?.toLowerCase() === type);
       if (!doc) return 'missing';
-      if (doc.expiryDate && new Date(doc.expiryDate) < now) return 'pending';
+      const exp = (doc as any).expiry_date || (doc as any).expiryDate;
+      if (exp && new Date(exp) < now) return 'pending';
       return doc.status?.toLowerCase() === 'verified' ? 'verified' : 'pending';
     };
 
@@ -345,7 +346,7 @@ export class SeafarerService {
     };
 
     const fields = [
-      profile?.indosNumber,
+      (profile as any)?.indos_num || (profile as any)?.indosNumber,
       completedCount > 0,
       (docs?.length ?? 0) > 0,
       profile?.dob,
@@ -422,25 +423,27 @@ export class SeafarerService {
 
       // 1. Fetch recent user registrations
       const { data: users } = await supabase
-        .from('User')
-        .select('id, name, email, createdAt')
+        .from('users')
+        .select('id, name, email, created_at')
         .eq('role', 'SEAFARER')
-        .order('createdAt', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(3);
 
       // 2. Fetch recent course enrollments
       const { data: enrollments } = await supabase
-        .from('Enrollment')
-        .select('id, status, createdAt, User(name), Course(name)')
-        .order('createdAt', { ascending: false })
+        .from('enrollments')
+        .select(
+          'id, status, created_at, users:user_id(name), courses:course_id(name)',
+        )
+        .order('created_at', { ascending: false })
         .limit(3);
 
       // 3. Fetch recent documents uploaded
       const { data: documents } = await supabase
-        .from('Document')
-        .select('id, name, type, status, uploadDate, User(name)')
+        .from('documents')
+        .select('id, name, type, status, upload_date, users:user_id(name)')
         .eq('status', 'Pending')
-        .order('uploadDate', { ascending: false })
+        .order('upload_date', { ascending: false })
         .limit(3);
 
       const notificationsList: any[] = [];
@@ -453,7 +456,7 @@ export class SeafarerService {
           message: `${u.name || u.email || 'A user'} joined the platform.`,
           isRead: false,
           read: false,
-          createdAt: u.createdAt,
+          createdAt: u.created_at,
         });
       });
 
@@ -462,10 +465,10 @@ export class SeafarerService {
         notificationsList.push({
           id: `enroll-${e.id}`,
           title: `⚓ New Course Booking`,
-          message: `${e.User?.name || 'A user'} booked ${e.Course?.name || 'a course'}.`,
+          message: `${e.users?.name || 'A user'} booked ${e.courses?.name || 'a course'}.`,
           isRead: false,
           read: false,
-          createdAt: e.createdAt,
+          createdAt: e.created_at,
         });
       });
 
@@ -474,10 +477,10 @@ export class SeafarerService {
         notificationsList.push({
           id: `doc-${d.id}`,
           title: `📄 Verification Required`,
-          message: `Pending review for ${d.type || 'document'} uploaded by ${d.User?.name || 'seafarer'}.`,
+          message: `Pending review for ${d.type || 'document'} uploaded by ${d.users?.name || 'seafarer'}.`,
           isRead: false,
           read: false,
-          createdAt: d.uploadDate,
+          createdAt: d.upload_date,
         });
       });
 
@@ -491,29 +494,29 @@ export class SeafarerService {
     }
 
     const { data: enrollments } = await this.db
-      .from('Enrollment')
-      .select('id, status, createdAt, Course(name)')
-      .eq('userId', userId)
-      .order('createdAt', { ascending: false })
+      .from('enrollments')
+      .select('id, status, created_at, courses:course_id(name)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
       .limit(5);
 
     return (enrollments ?? []).map((e: any) => ({
       id: e.id,
       title:
         e.status === 'Completed'
-          ? `✅ Course Completed: ${e.Course?.name}`
+          ? `✅ Course Completed: ${e.courses?.name}`
           : e.status === 'On Hold' || e.status === 'on_hold'
-            ? `⚠️ Course On Hold: ${e.Course?.name}`
-            : `📋 Enrollment Processing: ${e.Course?.name}`,
+            ? `⚠️ Course On Hold: ${e.courses?.name}`
+            : `📋 Enrollment Processing: ${e.courses?.name}`,
       message:
         e.status === 'Completed'
-          ? `Your certificate for ${e.Course?.name} has been issued.`
+          ? `Your certificate for ${e.courses?.name} has been issued.`
           : e.status === 'On Hold' || e.status === 'on_hold'
-            ? `Your training for ${e.Course?.name} is on hold pending verification.`
-            : `Your physical training booking for ${e.Course?.name} is confirmed.`,
+            ? `Your training for ${e.courses?.name} is on hold pending verification.`
+            : `Your physical training booking for ${e.courses?.name} is confirmed.`,
       isRead: false,
       read: false,
-      createdAt: e.createdAt,
+      createdAt: e.created_at,
     }));
   }
 
@@ -530,7 +533,7 @@ export class SeafarerService {
   // ─────────────────────────────────────────────
   async getAllCourses() {
     const { data, error } = await this.db
-      .from('Course')
+      .from('courses')
       .select('*')
       .order('name');
 
@@ -554,7 +557,7 @@ export class SeafarerService {
 
   async getMyEnrollments(userId: string) {
     const { data: userRecord } = await this.db
-      .from('User')
+      .from('users')
       .select('id, status')
       .eq('id', userId)
       .maybeSingle();
@@ -564,12 +567,12 @@ export class SeafarerService {
       (userRecord?.status || '').toLowerCase() === 'on_hold';
 
     const { data, error } = await this.db
-      .from('Enrollment')
+      .from('enrollments')
       .select(
-        'id, status, progress, startDate, createdAt, remarks, Course(id, name, code, category, duration, fees, description)',
+        'id, status, progress, created_at, remarks, courses:course_id(id, name, code, category, duration, fees, description)',
       )
-      .eq('userId', userId)
-      .order('createdAt', { ascending: false });
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('getMyEnrollments error:', error.message);
@@ -657,7 +660,7 @@ export class SeafarerService {
     batchSchedule?: string,
   ) {
     const { data: course } = await this.db
-      .from('Course')
+      .from('courses')
       .select('id, fees, name, code')
       .eq('id', courseId)
       .single();
@@ -665,10 +668,10 @@ export class SeafarerService {
     if (!course) throw new BadRequestException('Course not found');
 
     const { data: existing } = await this.db
-      .from('Enrollment')
+      .from('enrollments')
       .select('id')
-      .eq('userId', userId)
-      .eq('courseId', courseId)
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
       .single();
 
     if (existing)
@@ -697,18 +700,16 @@ export class SeafarerService {
 
     const insertPayload: any = {
       id: randomUUID(),
-      userId,
-      courseId,
+      user_id: userId,
+      course_id: courseId,
       status: 'Processing',
       progress: 0,
-      startDate: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       remarks: JSON.stringify(metadataObj),
     };
 
     let { data, error } = await this.db
-      .from('Enrollment')
+      .from('enrollments')
       .insert(insertPayload)
       .select()
       .single();
@@ -716,7 +717,7 @@ export class SeafarerService {
     if (error && error.message?.includes('remarks')) {
       delete insertPayload.remarks;
       const retry = await this.db
-        .from('Enrollment')
+        .from('enrollments')
         .insert(insertPayload)
         .select()
         .single();
@@ -741,111 +742,153 @@ export class SeafarerService {
 
       // Fetch seafarer user for display & matching
       const { data: seafarerUser } = await this.db
-        .from('User')
+        .from('users')
         .select('name, email, phone')
         .eq('id', userId)
         .single();
 
       // Case A: Referral Code is entered manually
       if (referralCode && referralCode.trim().length > 0) {
-        const code = referralCode.trim().toUpperCase();
-        const { data: agentMeta } = await this.db
+        const cleanRefCode = referralCode.trim().toUpperCase();
+        const { data: matchedAgentMeta } = await this.db
           .from('agent_metadata')
-          .select(
-            'user_id, general_commission, course_commissions, referral_code',
-          )
-          .eq('referral_code', code)
-          .maybeSingle();
+          .select('user_id, general_commission, course_commissions')
+          .eq('referral_code', cleanRefCode)
+          .single();
 
-        if (!agentMeta) {
-          throw new BadRequestException('Invalid Referral Code Error');
-        }
-        targetAgentId = agentMeta.user_id;
-        targetAgentReferralCode = agentMeta.referral_code || code;
-
-        // PRD 9.2 Priority 1: Course-specific Commission Override
-        const courseOverrides = agentMeta.course_commissions || {};
-        if (
-          courseOverrides[courseId] !== undefined &&
-          courseOverrides[courseId] !== null
-        ) {
-          targetCommissionRate = Number(courseOverrides[courseId]);
-          commissionSource = 'Course Override';
-        } else {
-          targetCommissionRate = Number(agentMeta.general_commission) || 5.0;
-          commissionSource = 'General Commission';
+        if (matchedAgentMeta) {
+          targetAgentId = matchedAgentMeta.user_id;
+          targetAgentReferralCode = cleanRefCode;
+          if (
+            matchedAgentMeta.course_commissions &&
+            matchedAgentMeta.course_commissions[course.code] !== undefined
+          ) {
+            targetCommissionRate = parseFloat(
+              matchedAgentMeta.course_commissions[course.code],
+            );
+            commissionSource = `Course Specific Override (${course.code})`;
+          } else if (matchedAgentMeta.general_commission !== undefined) {
+            targetCommissionRate = parseFloat(
+              matchedAgentMeta.general_commission,
+            );
+            commissionSource = 'General Commission';
+          }
         }
       }
-      // Case B: Referral Code left blank -> Auto-match with Referral Leads
-      else if (seafarerUser) {
-        const nowIso = new Date().toISOString();
-        const { data: activeLeads } = await this.db
-          .from('referral_leads')
-          .select('id, agent_id, status, created_at')
-          .in('status', [
-            'New',
-            'Contacted',
-            'Registered',
-            'Pending',
-            'Under Review',
-          ])
-          .gt('expiry_at', nowIso)
-          .or(
-            `email.eq.${seafarerUser.email},phone.eq.${seafarerUser.phone || ''}`,
-          );
 
-        if (activeLeads && activeLeads.length > 0) {
-          const uniqueAgentsMap = new Map();
-          for (const lead of activeLeads) {
-            uniqueAgentsMap.set(lead.agent_id, lead);
+      // Case B: No manual code - Check Auto-Attribution via Active Referral Leads
+      if (!targetAgentId && seafarerUser) {
+        const seafarerEmail = seafarerUser.email.trim().toLowerCase();
+        const seafarerPhone = seafarerUser.phone?.trim();
+
+        let leadQuery = this.db
+          .from('referral_leads')
+          .select('id, agent_id, status, created_at, expiry_at')
+          .eq('status', 'New')
+          .gt('expiry_at', new Date().toISOString());
+
+        if (seafarerPhone) {
+          leadQuery = leadQuery.or(
+            `email.ilike.${seafarerEmail},phone.eq.${seafarerPhone}`,
+          );
+        } else {
+          leadQuery = leadQuery.ilike('email', seafarerEmail);
+        }
+
+        const { data: matchingLeads } = await leadQuery;
+
+        if (matchingLeads && matchingLeads.length > 0) {
+          // Check for multi-agent collision
+          const uniqueAgentsMap = new Map<string, any>();
+          for (const ml of matchingLeads) {
+            if (!uniqueAgentsMap.has(ml.agent_id)) {
+              const { data: agMeta } = await this.db
+                .from('agent_metadata')
+                .select('general_commission, course_commissions')
+                .eq('user_id', ml.agent_id)
+                .single();
+
+              let rate = agMeta?.general_commission || 5.0;
+              let source = 'General Commission';
+              if (agMeta?.course_commissions?.[course.code] !== undefined) {
+                rate = parseFloat(agMeta.course_commissions[course.code]);
+                source = `Course Specific Override (${course.code})`;
+              }
+
+              uniqueAgentsMap.set(ml.agent_id, {
+                agentId: ml.agent_id,
+                leadId: ml.id,
+                commissionRate: rate,
+                commissionSource: source,
+                submittedAt: ml.created_at,
+              });
+            }
           }
 
           if (uniqueAgentsMap.size === 1) {
-            const matchedLead = activeLeads[0];
-            targetAgentId = matchedLead.agent_id;
-            matchingLeadId = matchedLead.id;
-
-            const { data: agentMeta } = await this.db
-              .from('agent_metadata')
-              .select('general_commission, course_commissions, referral_code')
-              .eq('user_id', targetAgentId)
-              .maybeSingle();
-
-            targetAgentReferralCode =
-              agentMeta?.referral_code || 'MATCHED_LEAD';
-
-            const courseOverrides = agentMeta?.course_commissions || {};
-            if (
-              courseOverrides[courseId] !== undefined &&
-              courseOverrides[courseId] !== null
-            ) {
-              targetCommissionRate = Number(courseOverrides[courseId]);
-              commissionSource = 'Course Override';
-            } else {
-              targetCommissionRate =
-                Number(agentMeta?.general_commission) || 5.0;
-              commissionSource = 'General Commission';
-            }
+            const singleAgent = Array.from(uniqueAgentsMap.values())[0];
+            targetAgentId = singleAgent.agentId;
+            matchingLeadId = singleAgent.leadId;
+            targetCommissionRate = singleAgent.commissionRate;
+            commissionSource = `Lead Auto-Attribution (${singleAgent.commissionSource})`;
           } else if (uniqueAgentsMap.size > 1) {
+            // Conflict State: More than one agent submitted this lead
             isConflict = true;
             conflictingAgents = Array.from(uniqueAgentsMap.values());
+            console.warn(
+              `[Referral Collision] Multiple agents (${conflictingAgents.map((a) => a.agentId).join(', ')}) claim lead for user ${userId}`,
+            );
           }
         }
       }
 
-      // Parse string like "₹25,000" or "25000" into numeric value
+      // ── Commission Calculation & Snapshot Creation (PRD 8.3) ──────────────
+      const rawCourseFee = course.fees || '15000';
       const parseFee = (feeStr: any): number => {
         if (typeof feeStr === 'number') return feeStr;
         if (!feeStr) return 0;
         const cleaned = String(feeStr).replace(/[^0-9.]/g, '');
         return parseFloat(cleaned) || 0;
       };
-      const courseFee = parseFee(course.fees);
+      const courseFee = parseFee(rawCourseFee);
       let createdCommissionId: string | undefined;
 
-      // Create commission snapshot record based on matches
-      if (targetAgentId) {
-        const commissionAmount = (courseFee * targetCommissionRate) / 100;
+      if (isConflict && conflictingAgents.length > 0) {
+        // Create flagged commission records for admin review
+        for (const conf of conflictingAgents) {
+          const commAmt = (conf.commissionRate / 100) * courseFee;
+          const commId = randomUUID();
+          await this.db.from('commissions').insert({
+            id: commId,
+            agent_id: conf.agentId,
+            purchase_id: data.id,
+            seafarer_name: seafarerUser?.name || 'Seafarer',
+            course_name: course.name || 'Maritime Course',
+            course_fee: courseFee,
+            commission_rate: conf.commissionRate,
+            commission_amount: commAmt,
+            commission_source: 'Lead Conflict (Pending Resolution)',
+            commission_version: 'v1.0',
+            status: 'Conflict',
+            remarks: `Conflict with ${conflictingAgents.length} claiming agents. Awaiting admin resolution.`,
+            created_at: new Date().toISOString(),
+          });
+
+          await this.db.from('commission_status_history').insert({
+            id: randomUUID(),
+            commission_id: commId,
+            old_status: 'New',
+            new_status: 'Conflict',
+            reason:
+              'Multiple referral leads registered for the same customer prior to checkout.',
+            changed_by_user_id: userId,
+            changed_by_user_name: seafarerUser?.name || 'Customer Checkout',
+            created_at: new Date().toISOString(),
+          });
+        }
+      } else if (targetAgentId) {
+        // Unique / resolved attribution -> Create Active Pending Commission
+        const commissionAmount = (targetCommissionRate / 100) * courseFee;
         createdCommissionId = randomUUID();
 
         const commObj = {
@@ -1006,7 +1049,7 @@ export class SeafarerService {
 
       if (targetAgentId) {
         const { data: agUser } = await this.db
-          .from('User')
+          .from('users')
           .select('name')
           .eq('id', targetAgentId)
           .maybeSingle();
@@ -1054,17 +1097,14 @@ export class SeafarerService {
     const updateData: any = {
       progress,
       status: dbStatus,
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-    if (progress >= 100) {
-      updateData.completionDate = new Date().toISOString();
-    }
 
     const { data, error } = await this.db
-      .from('Enrollment')
+      .from('enrollments')
       .update(updateData)
-      .eq('userId', userId)
-      .eq('courseId', courseId)
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
       .select();
 
     if (error) {
@@ -1078,9 +1118,9 @@ export class SeafarerService {
   // ─────────────────────────────────────────────
   async getDocuments(userId: string) {
     const { data, error } = await this.db
-      .from('Document')
+      .from('documents')
       .select('*')
-      .eq('userId', userId);
+      .eq('user_id', userId);
 
     if (error) {
       console.warn('[getDocuments] Query warning:', error.message);
@@ -1090,9 +1130,9 @@ export class SeafarerService {
     let profileData: any = null;
     try {
       const { data: prof } = await this.db
-        .from('SeafarerProfile')
+        .from('seafarer_profiles')
         .select('*')
-        .eq('userId', userId)
+        .eq('user_id', userId)
         .maybeSingle();
       profileData = prof;
     } catch (_) {}
@@ -1122,59 +1162,61 @@ export class SeafarerService {
         label: d.name ?? d.type,
         status: d.status ?? 'pending',
         expiryDate:
+          d.expiry_date ??
           d.expiryDate ??
           meta.expiryDate ??
           (isPass
-            ? profileData?.passportExpiry || profileData?.passport_expiry
+            ? profileData?.passport_expiry || profileData?.passportExpiry
             : isCdc
-              ? profileData?.cdcExpiry || profileData?.cdc_expiry
+              ? profileData?.cdc_expiry || profileData?.cdcExpiry
               : null),
-        uploadedAt: d.uploadDate ?? d.createdAt ?? null,
+        uploadedAt:
+          d.upload_date ?? d.uploadDate ?? d.created_at ?? d.createdAt ?? null,
         url: d.url,
         passportNumber:
           meta.passportNumber ??
           d.passportNumber ??
           (isPass
-            ? profileData?.passportNum || profileData?.passport_num
+            ? profileData?.passport_num || profileData?.passportNum
             : null),
         cdcNumber:
           meta.cdcNumber ??
           d.cdcNumber ??
-          (isCdc ? profileData?.cdcNum || profileData?.cdc_num : null),
+          (isCdc ? profileData?.cdc_num || profileData?.cdcNum : null),
         placeOfIssue:
           meta.placeOfIssue ??
           d.placeOfIssue ??
           (isPass
-            ? profileData?.passportPlace || profileData?.passport_place
+            ? profileData?.passport_place || profileData?.passportPlace
             : isCdc
-              ? profileData?.cdcPlace || profileData?.cdc_place
+              ? profileData?.cdc_place || profileData?.cdcPlace
               : null),
         issueDate:
           meta.issueDate ??
           d.issueDate ??
           (isPass
-            ? profileData?.passportIssue || profileData?.passport_issue
+            ? profileData?.passport_issue || profileData?.passportIssue
             : isCdc
-              ? profileData?.cdcIssue || profileData?.cdc_issue
+              ? profileData?.cdc_issue || profileData?.cdcIssue
               : null),
-        courseName: meta.courseName ?? d.courseName ?? null,
-        courseType: meta.courseType ?? d.courseType ?? null,
-        durationFrom: meta.durationFrom ?? d.durationFrom ?? null,
-        durationTo: meta.durationTo ?? d.durationTo ?? null,
         metadata: meta,
+        courseName: meta.courseName || null,
+        courseType: meta.courseType || null,
+        durationFrom: meta.durationFrom || null,
+        durationTo: meta.durationTo || null,
       };
     });
   }
 
   async uploadDocument(
     userId: string,
+    file: any,
     type: string,
     expiryDate?: string,
-    file?: any,
     bodyMetadata?: any,
   ) {
-    if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException('No file provided or file is empty.');
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No file provided for document upload.');
     }
 
     const docType =
@@ -1189,9 +1231,9 @@ export class SeafarerService {
     // Business Rule for Passport & CDC: Only ONE active document allowed. Delete pre-existing ones.
     if (docType === 'passport' || docType === 'cdc') {
       const { data: existingDocs } = await this.db
-        .from('Document')
+        .from('documents')
         .select('id, url')
-        .eq('userId', userId)
+        .eq('user_id', userId)
         .ilike('type', docType);
 
       if (existingDocs && existingDocs.length > 0) {
@@ -1201,7 +1243,7 @@ export class SeafarerService {
               await this.db.storage.from(BUCKET).remove([exDoc.url]);
             } catch (_) {}
           }
-          await this.db.from('Document').delete().eq('id', exDoc.id);
+          await this.db.from('documents').delete().eq('id', exDoc.id);
         }
       }
     }
@@ -1275,19 +1317,20 @@ export class SeafarerService {
 
     const insertPayload: any = {
       id: docId,
-      userId,
+      user_id: userId,
       type: docType,
       name: displayName,
       url: storagePath,
       status: 'Pending',
-      expiryDate: expiryDate || bodyMetadata?.expiryDate || null,
-      uploadDate: new Date().toISOString(),
+      expiry_date: expiryDate || bodyMetadata?.expiryDate || null,
+      upload_date: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     };
 
     // Try including remarks column; if it fails, retry without it
     insertPayload.remarks = JSON.stringify(metadataObj);
     let { data, error } = await this.db
-      .from('Document')
+      .from('documents')
       .insert(insertPayload)
       .select()
       .single();
@@ -1295,7 +1338,7 @@ export class SeafarerService {
     if (error && error.message?.includes('remarks')) {
       delete insertPayload.remarks;
       const retry = await this.db
-        .from('Document')
+        .from('documents')
         .insert(insertPayload)
         .select()
         .single();
@@ -1314,36 +1357,26 @@ export class SeafarerService {
     // Sync profile table for passport or cdc if available
     try {
       if (docType === 'passport' && bodyMetadata?.passportNumber) {
-        await this.db.from('SeafarerProfile').upsert(
+        await this.db.from('seafarer_profiles').upsert(
           {
-            userId,
-            passportNum: bodyMetadata.passportNumber,
+            user_id: userId,
             passport_num: bodyMetadata.passportNumber,
-            passportPlace: bodyMetadata.placeOfIssue,
             passport_place: bodyMetadata.placeOfIssue,
-            passportIssue: bodyMetadata.issueDate,
             passport_issue: bodyMetadata.issueDate,
-            passportExpiry: expiryDate || bodyMetadata.expiryDate,
             passport_expiry: expiryDate || bodyMetadata.expiryDate,
-            updatedAt: new Date().toISOString(),
           },
-          { onConflict: 'userId' },
+          { onConflict: 'user_id' },
         );
       } else if (docType === 'cdc' && bodyMetadata?.cdcNumber) {
-        await this.db.from('SeafarerProfile').upsert(
+        await this.db.from('seafarer_profiles').upsert(
           {
-            userId,
-            cdcNum: bodyMetadata.cdcNumber,
+            user_id: userId,
             cdc_num: bodyMetadata.cdcNumber,
-            cdcPlace: bodyMetadata.placeOfIssue,
             cdc_place: bodyMetadata.placeOfIssue,
-            cdcIssue: bodyMetadata.issueDate,
             cdc_issue: bodyMetadata.issueDate,
-            cdcExpiry: expiryDate || bodyMetadata.expiryDate,
             cdc_expiry: expiryDate || bodyMetadata.expiryDate,
-            updatedAt: new Date().toISOString(),
           },
-          { onConflict: 'userId' },
+          { onConflict: 'user_id' },
         );
       }
     } catch (_) {}
@@ -1367,7 +1400,7 @@ export class SeafarerService {
     file?: any,
   ) {
     const { data: existingDoc, error: fetchErr } = await this.db
-      .from('Document')
+      .from('documents')
       .select('*')
       .eq('id', docId)
       .single();
@@ -1376,7 +1409,7 @@ export class SeafarerService {
       throw new BadRequestException('Document not found.');
     }
 
-    if (existingDoc.userId !== userId) {
+    if (existingDoc.user_id !== userId && existingDoc.userId !== userId) {
       throw new BadRequestException('Access denied.');
     }
 
@@ -1473,12 +1506,15 @@ export class SeafarerService {
     const updatePayload: any = {
       name: fileName,
       url: storagePath,
-      expiryDate: bodyMetadata?.expiryDate || existingDoc.expiryDate,
+      expiry_date:
+        bodyMetadata?.expiryDate ||
+        existingDoc.expiry_date ||
+        existingDoc.expiryDate,
       remarks: JSON.stringify(updatedMeta),
     };
 
     let { data, error } = await this.db
-      .from('Document')
+      .from('documents')
       .update(updatePayload)
       .eq('id', docId)
       .select()
@@ -1487,7 +1523,7 @@ export class SeafarerService {
     if (error && error.message?.includes('remarks')) {
       delete updatePayload.remarks;
       const retry = await this.db
-        .from('Document')
+        .from('documents')
         .update(updatePayload)
         .eq('id', docId)
         .select()
@@ -1507,8 +1543,8 @@ export class SeafarerService {
   async downloadDocument(userId: string, docId: string, role?: string) {
     // Fetch document record
     const { data: doc, error } = await this.db
-      .from('Document')
-      .select('id, url, name, userId, type')
+      .from('documents')
+      .select('id, url, name, user_id, type')
       .eq('id', docId)
       .single();
 
@@ -1516,12 +1552,14 @@ export class SeafarerService {
       throw new BadRequestException('Document record not found.');
     }
 
-    // Ownership & authorization check: seafarer can download own doc, MASTER/COMPANY_ADMIN can download any
+    // Ownership & authorization check: seafarer can download own doc, MASTER/COMPANY_ADMIN/PARTNER_ADMIN can download any
     if (
-      doc.userId !== userId &&
+      doc.user_id !== userId &&
       role !== 'MASTER' &&
       role !== 'COMPANY_ADMIN' &&
-      role !== 'agent-admin'
+      role !== 'PARTNER_ADMIN' &&
+      role !== 'agent-admin' &&
+      role !== 'AGENT_ADMIN'
     ) {
       throw new BadRequestException(
         'Access denied. You do not have permission to download this document.',
@@ -1550,7 +1588,7 @@ export class SeafarerService {
     }
 
     // Check if storagePath is a fake /uploads/ path or empty
-    let validPathFound = false;
+    const validPathFound = false;
     if (storagePath && !storagePath.startsWith('/uploads/')) {
       // Test if path exists in storage
       const { data: signedData } = await this.db.storage
@@ -1569,11 +1607,11 @@ export class SeafarerService {
       .from(BUCKET)
       .list('', { limit: 100 });
     if (bucketFiles && bucketFiles.length > 0) {
-      // Find file matching doc.userId, doc.id, or doc.type
+      // Find file matching doc.user_id, doc.id, or doc.type
       const matchingFile =
         bucketFiles.find(
           (f) =>
-            (doc.userId && f.name.includes(doc.userId)) ||
+            (doc.user_id && f.name.includes(doc.user_id)) ||
             (doc.id && f.name.includes(doc.id)) ||
             (doc.type && f.name.toLowerCase().includes(doc.type.toLowerCase())),
         ) ||
@@ -1588,7 +1626,7 @@ export class SeafarerService {
         storagePath = matchingFile.name;
         // Auto-fix DB record so future downloads are fast
         await this.db
-          .from('Document')
+          .from('documents')
           .update({ url: storagePath })
           .eq('id', doc.id);
 
@@ -1609,10 +1647,10 @@ export class SeafarerService {
 
   async deleteDocument(userId: string, docId: string) {
     const { data: doc } = await this.db
-      .from('Document')
-      .select('id, url, userId')
+      .from('documents')
+      .select('id, url, user_id')
       .eq('id', docId)
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (doc?.url && !doc.url.startsWith('/uploads/')) {
@@ -1622,10 +1660,10 @@ export class SeafarerService {
     }
 
     const { error } = await this.db
-      .from('Document')
+      .from('documents')
       .delete()
       .eq('id', docId)
-      .eq('userId', userId);
+      .eq('user_id', userId);
 
     if (error) throw new BadRequestException(error.message);
     return { id: docId, deleted: true };
@@ -1677,22 +1715,22 @@ export class SeafarerService {
       data: { publicUrl },
     } = this.db.storage.from('seafarer-documents').getPublicUrl(storagePath);
 
-    // Persist immediately to SeafarerProfile record
+    // Persist immediately to seafarer_profiles record
     const { data: existingProfile } = await this.db
-      .from('SeafarerProfile')
+      .from('seafarer_profiles')
       .select('id')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     const profileId = existingProfile?.id || randomUUID();
-    const { error: upsertErr } = await this.db.from('SeafarerProfile').upsert(
+    const { error: upsertErr } = await this.db.from('seafarer_profiles').upsert(
       {
         id: profileId,
-        userId,
-        profilePicture: publicUrl,
-        updatedAt: new Date().toISOString(),
+        user_id: userId,
+        profile_picture: publicUrl,
+        updated_at: new Date().toISOString(),
       },
-      { onConflict: 'userId' },
+      { onConflict: 'user_id' },
     );
 
     if (upsertErr) {
@@ -1710,33 +1748,47 @@ export class SeafarerService {
 
   async getUserProfile(userId: string) {
     const { data: user } = await this.db
-      .from('User')
+      .from('users')
       .select('id, name, email, phone, role')
       .eq('id', userId)
       .maybeSingle();
 
     const { data: profile } = await this.db
-      .from('SeafarerProfile')
+      .from('seafarer_profiles')
       .select('*')
-      .eq('userId', userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     const { data: seaServiceRecords } = await this.db
-      .from('SeaServiceRecord')
+      .from('sea_service_records')
       .select('*')
-      .eq('profileId', profile?.id ?? userId);
+      .eq('user_id', userId);
 
     const nameParts = (user?.name || '').trim().split(' ');
-    const firstName = profile?.firstName || nameParts[0] || '';
-    const lastName = profile?.lastName || nameParts.slice(1).join(' ') || '';
+    const firstName =
+      profile?.first_name || profile?.firstName || nameParts[0] || '';
+    const lastName =
+      profile?.last_name ||
+      profile?.lastName ||
+      nameParts.slice(1).join(' ') ||
+      '';
 
     let parsedAddress = profile?.address ?? '';
     let parsedCity = profile?.city ?? '';
     let parsedState = profile?.state ?? '';
     let parsedCountry = profile?.country ?? profile?.nationality ?? 'India';
-    let parsedPlaceOfBirth = profile?.placeOfBirth ?? profile?.birthPlace ?? '';
+    let parsedPlaceOfBirth =
+      profile?.place_of_birth ??
+      profile?.birth_place ??
+      profile?.placeOfBirth ??
+      profile?.birthPlace ??
+      '';
     let parsedAlternatePhone =
-      profile?.alternatePhone ?? profile?.altPhone ?? '';
+      profile?.alternate_phone ??
+      profile?.alternatePhone ??
+      profile?.alt_phone ??
+      profile?.altPhone ??
+      '';
 
     if (
       profile?.address &&
@@ -1755,7 +1807,8 @@ export class SeafarerService {
     }
 
     let onboardingStatus = null;
-    if (user?.role?.toUpperCase() === 'AGENT') {
+    const roleUpper = user?.role?.toUpperCase();
+    if (roleUpper === 'PARTNER' || roleUpper === 'AGENT') {
       const { data: meta } = await this.db
         .from('agent_metadata')
         .select('onboarding_status')
@@ -1766,7 +1819,9 @@ export class SeafarerService {
       }
     }
 
-    const photoUrl = profile?.profilePicture ?? null;
+    const photoUrl =
+      profile?.profile_picture ?? profile?.profilePicture ?? null;
+    const indosNum = profile?.indos_num ?? profile?.indosNumber ?? '';
 
     return {
       ...(user ?? {}),
@@ -1785,7 +1840,7 @@ export class SeafarerService {
         dob: profile?.dob ?? '',
         placeOfBirth: parsedPlaceOfBirth,
         nationality: parsedCountry,
-        indosNumber: profile?.indosNumber ?? '',
+        indosNumber: indosNum,
         address: parsedAddress,
         city: parsedCity,
         state: parsedState,
@@ -1793,13 +1848,13 @@ export class SeafarerService {
         profilePicture: photoUrl,
         seaService: (seaServiceRecords ?? []).map((r: any) => ({
           id: r.id,
-          rpsl: r.company,
-          vessel: r.vesselName,
-          vesselType: r.vesselType,
-          imo: r.imoNumber,
-          rank: r.rank,
-          signOn: r.signOn,
-          signOff: r.signOff,
+          rpsl: r.rpsl || r.company || '',
+          vessel: r.vessel || r.vessel_name || r.vesselName || '',
+          vesselType: r.vessel_type || r.vesselType || '',
+          imo: r.imo || r.imo_number || r.imoNumber || '',
+          rank: r.rank || '',
+          signOn: r.sign_on || r.signOn || '',
+          signOff: r.sign_off || r.signOff || '',
         })),
       },
     };
@@ -1868,7 +1923,7 @@ export class SeafarerService {
 
     // 3. Email Uniqueness Check
     const { data: existingUserWithEmail } = await this.db
-      .from('User')
+      .from('users')
       .select('id')
       .eq('email', email.trim().toLowerCase())
       .neq('id', userId)
@@ -1883,10 +1938,10 @@ export class SeafarerService {
     // 4. INDOS Number Uniqueness Check
     if (indosNumber && indosNumber.trim()) {
       const { data: existingProfileWithIndos } = await this.db
-        .from('SeafarerProfile')
-        .select('userId')
-        .eq('indosNumber', indosNumber.trim())
-        .neq('userId', userId)
+        .from('seafarer_profiles')
+        .select('user_id')
+        .eq('indos_num', indosNumber.trim())
+        .neq('user_id', userId)
         .maybeSingle();
 
       if (existingProfileWithIndos) {
@@ -1953,22 +2008,22 @@ export class SeafarerService {
       }
     }
 
-    // 5. Update User Table
+    // 5. Update users Table
     await this.db
-      .from('User')
+      .from('users')
       .update({
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', userId);
 
-    // 6. Update/Upsert SeafarerProfile Table
+    // 6. Update/Upsert seafarer_profiles Table
     const { data: existingProfile } = await this.db
-      .from('SeafarerProfile')
-      .select('id, profilePicture')
-      .eq('userId', userId)
+      .from('seafarer_profiles')
+      .select('id, profile_picture')
+      .eq('user_id', userId)
       .maybeSingle();
 
     const profileId = existingProfile?.id || randomUUID();
@@ -1978,7 +2033,7 @@ export class SeafarerService {
         ? profilePictureUrl === ''
           ? null
           : profilePictureUrl
-        : (existingProfile?.profilePicture ?? null);
+        : (existingProfile?.profile_picture ?? null);
 
     const compositeAddress = JSON.stringify({
       address: address?.trim() || '',
@@ -1990,24 +2045,24 @@ export class SeafarerService {
     });
 
     const { error: profileUpsertErr } = await this.db
-      .from('SeafarerProfile')
+      .from('seafarer_profiles')
       .upsert(
         {
           id: profileId,
-          userId,
+          user_id: userId,
           dob: dob || null,
-          nationality: country?.trim() || 'Indian',
-          indosNumber: indosNumber?.trim() || null,
+          birth_place: placeOfBirth?.trim() || null,
+          indos_num: indosNumber?.trim() || null,
           address: compositeAddress,
-          profilePicture: finalPhotoUrl,
-          updatedAt: new Date().toISOString(),
+          profile_picture: finalPhotoUrl,
+          updated_at: new Date().toISOString(),
         },
-        { onConflict: 'userId' },
+        { onConflict: 'user_id' },
       );
 
     if (profileUpsertErr) {
       console.error(
-        '[updateUserProfile] SeafarerProfile upsert error:',
+        '[updateUserProfile] seafarer_profiles upsert error:',
         profileUpsertErr,
       );
       throw new BadRequestException(
@@ -2036,45 +2091,19 @@ export class SeafarerService {
   }
 
   async addSeaService(userId: string, record: any) {
-    // Find or create the SeafarerProfile first
-    const { data: profile } = await this.db
-      .from('SeafarerProfile')
-      .select('id')
-      .eq('userId', userId)
-      .single();
-
-    let profileId = profile?.id;
-    if (!profileId) {
-      profileId = randomUUID();
-      const { data: newProfile, error: profileErr } = await this.db
-        .from('SeafarerProfile')
-        .insert({
-          id: profileId,
-          userId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
-
-      if (profileErr)
-        throw new BadRequestException(
-          'Failed to initialize profile: ' + profileErr.message,
-        );
-    }
-
     const { data, error } = await this.db
-      .from('SeaServiceRecord')
+      .from('sea_service_records')
       .insert({
         id: randomUUID(),
-        profileId,
-        company: record.rpsl,
-        vesselName: record.vessel,
-        imoNumber: record.imo,
-        rank: record.rank,
-        signOn: record.signOn,
-        signOff: record.signOff,
-        createdAt: new Date().toISOString(),
+        user_id: userId,
+        rpsl: record.rpsl || record.company || '',
+        vessel: record.vessel || record.vesselName || '',
+        vessel_type: record.vesselType || record.vessel_type || null,
+        imo: record.imo || record.imoNumber || null,
+        rank: record.rank || '',
+        sign_on: record.signOn || record.sign_on,
+        sign_off: record.signOff || record.sign_off || null,
+        created_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -2085,7 +2114,7 @@ export class SeafarerService {
 
   async deleteSeaService(recordId: string) {
     const { error } = await this.db
-      .from('SeaServiceRecord')
+      .from('sea_service_records')
       .delete()
       .eq('id', recordId);
 
@@ -2181,12 +2210,12 @@ export class SeafarerService {
     let indosCode = 'IND99887766';
     try {
       const { data: profile } = await this.db
-        .from('SeafarerProfile')
-        .select('indosNumber')
-        .eq('userId', userId)
+        .from('seafarer_profiles')
+        .select('indos_num')
+        .eq('user_id', userId)
         .maybeSingle();
-      if (profile?.indosNumber) {
-        indosCode = profile.indosNumber;
+      if (profile?.indos_num) {
+        indosCode = profile.indos_num;
       }
     } catch (e) {
       console.warn('Referral INDoS lookup fallback');
