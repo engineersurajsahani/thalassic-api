@@ -69,6 +69,27 @@ export class MasterController {
     return this.masterService.deleteCourse(id);
   }
 
+  // --- 2.1 Institute Management APIs ---
+  @Get('institutes')
+  getInstitutes() {
+    return this.masterService.getInstitutes();
+  }
+
+  @Post('institutes')
+  createInstitute(@Body() dto: any) {
+    return this.masterService.createInstitute(dto);
+  }
+
+  @Patch('institutes/:id')
+  updateInstitute(@Param('id') id: string, @Body() dto: any) {
+    return this.masterService.updateInstitute(id, dto);
+  }
+
+  @Delete('institutes/:id')
+  deleteInstitute(@Param('id') id: string) {
+    return this.masterService.deleteInstitute(id);
+  }
+
   // --- 3. User Management APIs ---
   @Get('users')
   getUsers(@Query('role') role?: string) {
@@ -108,6 +129,11 @@ export class MasterController {
   }
 
   // --- 5. Finance Module APIs (Master Only) ---
+  @Get('finance/overview')
+  getFinanceOverview() {
+    return this.masterService.getFinanceOverview();
+  }
+
   @Get('finance/payments')
   getPayments(@Req() req: any, @Query() query: any) {
     return this.masterService.getPayments(query);

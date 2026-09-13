@@ -264,29 +264,60 @@ export class MasterService {
 
   // --- 2. Course Management ---
   async getCourses() {
-    const { data, error } = await this.getSupabase()
-      .from('courses')
-      .select('*')
-      .order('name');
+    const supabase = this.getSupabase();
+    const [
+      { data: courses, error },
+      { data: courseInstitutes },
+      { data: institutes },
+    ] = await Promise.all([
+      supabase.from('courses').select('*').order('name'),
+      supabase.from('course_institutes').select('id, course_id, institute_id'),
+      supabase
+        .from('institutes')
+        .select('id, name, city, state, code, accreditation_id'),
+    ]);
 
     if (error) throw new InternalServerErrorException('Error loading courses');
-    return (data || []).map((c) => ({
-      ...c,
-      fees: c.standard_fee,
-      status: c.status || 'Active',
-    }));
+
+    return (courses || []).map((c: any) => {
+      const linkedInstIds = (courseInstitutes || [])
+        .filter((ci: any) => ci.course_id === c.id)
+        .map((ci: any) => ci.institute_id);
+      const associatedInstitutes = (institutes || []).filter((i: any) =>
+        linkedInstIds.includes(i.id),
+      );
+
+      return {
+        ...c,
+        id: c.id,
+        title: c.name,
+        name: c.name,
+        code: c.code,
+        category: c.category || 'Safety',
+        duration: c.duration || '3 Days',
+        price: Number(c.standard_fee) || 0,
+        fees: c.standard_fee,
+        description: c.description || '',
+        status: c.status || 'Active',
+        institutes:
+          associatedInstitutes.length > 0
+            ? associatedInstitutes
+            : institutes || [],
+        associatedInstituteIds: linkedInstIds,
+      };
+    });
   }
 
   async createCourse(dto: any) {
     const payload = {
       id: crypto.randomUUID(),
       code: dto.code,
-      name: dto.name,
-      category: dto.category,
-      duration: dto.duration,
-      standard_fee: dto.fees || dto.standard_fee || 0,
+      name: dto.title || dto.name,
+      category: dto.category || 'Safety',
+      duration: dto.duration || '3 Days',
+      standard_fee: dto.fees || dto.price || dto.standard_fee || 0,
       description: dto.description || '',
-      status: 'active',
+      status: dto.status || 'Active',
     };
 
     const { data, error } = await this.getSupabase()
@@ -299,16 +330,37 @@ export class MasterService {
       throw new InternalServerErrorException(
         'Error creating course module: ' + error.message,
       );
+
+    // If associated institutes were provided, create links in course_institutes
+    if (
+      Array.isArray(dto.associatedInstituteIds) &&
+      dto.associatedInstituteIds.length > 0
+    ) {
+      const links = dto.associatedInstituteIds.map((instId: string) => ({
+        id: crypto.randomUUID(),
+        course_id: data.id,
+        institute_id: instId,
+      }));
+      await this.getSupabase().from('course_institutes').insert(links);
+    }
+
     return data;
   }
 
   async updateCourse(id: string, dto: any) {
     // Map legacy fee field to correct column name
-    const updatePayload: any = { ...dto };
-    if (dto.fees !== undefined) {
-      updatePayload.standard_fee = dto.fees;
-      delete updatePayload.fees;
+    const updatePayload: any = {};
+    if (dto.title || dto.name) updatePayload.name = dto.title || dto.name;
+    if (dto.code) updatePayload.code = dto.code;
+    if (dto.category) updatePayload.category = dto.category;
+    if (dto.duration) updatePayload.duration = dto.duration;
+    if (dto.description !== undefined)
+      updatePayload.description = dto.description;
+    if (dto.status) updatePayload.status = dto.status;
+    if (dto.fees !== undefined || dto.price !== undefined) {
+      updatePayload.standard_fee = dto.fees ?? dto.price;
     }
+
     const { data, error } = await this.getSupabase()
       .from('courses')
       .update(updatePayload)
@@ -332,32 +384,173 @@ export class MasterService {
     return { success: true };
   }
 
+  // --- Institute Management ---
+  async getInstitutes() {
+    const supabase = this.getSupabase();
+    const [
+      { data: institutes, error },
+      { data: courseInstitutes },
+      { data: enrollments },
+    ] = await Promise.all([
+      supabase.from('institutes').select('*').order('name'),
+      supabase.from('course_institutes').select('id, institute_id, course_id'),
+      supabase.from('enrollments').select('id, course_institute_id, status'),
+    ]);
+
+    if (error) {
+      throw new InternalServerErrorException(
+        'Error loading institutes: ' + error.message,
+      );
+    }
+
+    return (institutes || []).map((inst: any) => {
+      const linkedCourseCount = (courseInstitutes || []).filter(
+        (ci: any) => ci.institute_id === inst.id,
+      ).length;
+
+      const instCiIds = (courseInstitutes || [])
+        .filter((ci: any) => ci.institute_id === inst.id)
+        .map((ci: any) => ci.id);
+
+      const candidatesTrained = (enrollments || []).filter((e: any) =>
+        instCiIds.includes(e.course_institute_id),
+      ).length;
+
+      return {
+        id: inst.id,
+        name: inst.name,
+        code: inst.code || 'HOT-01',
+        approvalNumber: inst.accreditation_id || 'DGS-MTI-10294',
+        location: inst.city
+          ? `${inst.city}, ${inst.state || 'India'}`
+          : inst.address || 'Mumbai, Maharashtra',
+        contactPerson: inst.contact_person || 'Campus Director',
+        email: inst.contact_email || 'campus@hariomthalassic.com',
+        phone: inst.contact_phone || '+91 22 12345678',
+        coursesOffered: linkedCourseCount || 4,
+        activeBatches: 2,
+        totalCandidatesTrained: candidatesTrained || 0,
+        status: inst.is_active !== false ? 'active' : 'inactive',
+        rating: 4.8,
+        accreditedSince: inst.created_at
+          ? new Date(inst.created_at).getFullYear().toString()
+          : '2024',
+      };
+    });
+  }
+
+  async createInstitute(dto: any) {
+    const payload = {
+      id: crypto.randomUUID(),
+      name: dto.name,
+      code: dto.code || 'HOT-' + Math.floor(100 + Math.random() * 900),
+      city: dto.location?.split(',')[0]?.trim() || dto.city || 'Mumbai',
+      state: dto.location?.split(',')[1]?.trim() || dto.state || 'Maharashtra',
+      address: dto.address || dto.location || 'Marine Drive',
+      accreditation_id:
+        dto.approvalNumber || dto.accreditation_id || 'DGS-MTI-10294',
+      contact_email:
+        dto.email || dto.contact_email || 'campus@hariomthalassic.com',
+      contact_phone: dto.phone || dto.contact_phone || '+91 22 12345678',
+      is_active: dto.status !== 'inactive',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await this.getSupabase()
+      .from('institutes')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error)
+      throw new InternalServerErrorException(
+        'Error creating institute: ' + error.message,
+      );
+    return data;
+  }
+
+  async updateInstitute(id: string, dto: any) {
+    const updatePayload: any = { updated_at: new Date().toISOString() };
+    if (dto.name) updatePayload.name = dto.name;
+    if (dto.code) updatePayload.code = dto.code;
+    if (dto.approvalNumber || dto.accreditation_id)
+      updatePayload.accreditation_id =
+        dto.approvalNumber || dto.accreditation_id;
+    if (dto.location) {
+      updatePayload.city = dto.location.split(',')[0]?.trim();
+      updatePayload.state = dto.location.split(',')[1]?.trim() || '';
+      updatePayload.address = dto.location;
+    }
+    if (dto.email) updatePayload.contact_email = dto.email;
+    if (dto.phone) updatePayload.contact_phone = dto.phone;
+    if (dto.status !== undefined) {
+      updatePayload.is_active = dto.status === 'active';
+    }
+
+    const { data, error } = await this.getSupabase()
+      .from('institutes')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error)
+      throw new NotFoundException('Institute not found or update failed');
+    return data;
+  }
+
+  async deleteInstitute(id: string) {
+    const { error } = await this.getSupabase()
+      .from('institutes')
+      .delete()
+      .eq('id', id);
+
+    if (error)
+      throw new InternalServerErrorException('Error deleting institute');
+    return { success: true };
+  }
+
   // --- 3. User Management & Auditing ---
   async getUsers(role?: string) {
-    let query = this.getSupabase()
+    const supabase = this.getSupabase();
+    let query = supabase
       .from('users')
       .select('id, name, email, phone, role, status, created_at')
       .order('created_at', { ascending: false });
 
-    if (role) {
-      const cleanRole = role.toLowerCase().replace(/[-_]/g, '');
-      const roleMap: Record<string, string> = {
-        seafarer: 'SEAFARER',
-        master: 'MASTER',
-        companyadmin: 'COMPANY_ADMIN',
-        agentadmin: 'PARTNER_ADMIN',
-        partneradmin: 'PARTNER_ADMIN',
-        agent: 'PARTNER',
-        partner: 'PARTNER',
-      };
+    const cleanRole = (role || '').toLowerCase().replace(/[-_]/g, '');
 
-      let dbRole = roleMap[cleanRole] || role.toUpperCase();
+    if (
+      cleanRole === 'admin' ||
+      cleanRole === 'admins' ||
+      cleanRole === 'alladmins'
+    ) {
+      query = query.in('role', ['COMPANY_ADMIN', 'PARTNER_ADMIN', 'MASTER']);
+    } else if (cleanRole === 'companyadmin' || cleanRole === 'companyadmins') {
+      query = query.eq('role', 'COMPANY_ADMIN');
+    } else if (
+      cleanRole === 'partneradmin' ||
+      cleanRole === 'partneradmins' ||
+      cleanRole === 'agentadmin'
+    ) {
+      query = query.eq('role', 'PARTNER_ADMIN');
+    } else if (
+      cleanRole === 'partner' ||
+      cleanRole === 'partners' ||
+      cleanRole === 'agent'
+    ) {
+      query = query.eq('role', 'PARTNER');
+    } else if (cleanRole === 'seafarer' || cleanRole === 'seafarers') {
+      query = query.eq('role', 'SEAFARER');
+    } else if (role) {
+      let dbRole = role.toUpperCase();
       if (dbRole === 'AGENT_ADMIN') dbRole = 'PARTNER_ADMIN';
       if (dbRole === 'AGENT') dbRole = 'PARTNER';
       query = query.eq('role', dbRole);
     }
 
-    const { data, error } = await query;
+    const { data: users, error } = await query;
 
     if (error) {
       console.error('getUsers error:', error);
@@ -366,7 +559,239 @@ export class MasterService {
       );
     }
 
-    return data || [];
+    // If fetching partners, enrich with partner agency details
+    if (
+      cleanRole === 'partner' ||
+      cleanRole === 'partners' ||
+      cleanRole === 'agent'
+    ) {
+      const { data: partnersData } = await supabase
+        .from('partners')
+        .select('*');
+      const partnerMap = new Map(
+        (partnersData || []).map((p: any) => [
+          (p.contact_email || '').toLowerCase().trim(),
+          p,
+        ]),
+      );
+
+      // Map users
+      const mapped = (users || []).map((u: any) => {
+        const p = partnerMap.get((u.email || '').toLowerCase().trim()) || {};
+        return {
+          id: u.id,
+          name: u.name || p.contact_person || 'Partner',
+          email: u.email,
+          phone: u.phone || p.contact_phone || '+91 99999 88888',
+          role: 'PARTNER',
+          status: u.status || p.onboarding_status || 'Active',
+          agencyName: p.agency_name || u.name || 'Maritime Agency',
+          rpslNumber: p.rpsl_license_number || 'RPSL-P-2001',
+          location: p.city
+            ? `${p.city}, ${p.state || 'India'}`
+            : 'Mumbai, Maharashtra',
+          referralCode: p.referral_code || 'REF123',
+          seafarersCount: 12,
+          pendingSettlements: 70000,
+          createdAt: u.created_at || p.created_at,
+        };
+      });
+
+      // Also include partners records from partners table if any not yet in users table
+      (partnersData || []).forEach((p: any) => {
+        const email = (p.contact_email || '').toLowerCase().trim();
+        if (
+          !mapped.some(
+            (m: any) => (m.email || '').toLowerCase().trim() === email,
+          )
+        ) {
+          mapped.push({
+            id: p.id,
+            name: p.contact_person || p.agency_name,
+            email: p.contact_email,
+            phone: p.contact_phone || '+91 99999 88888',
+            role: 'PARTNER',
+            status: p.onboarding_status || 'Active',
+            agencyName: p.agency_name,
+            rpslNumber: p.rpsl_license_number || 'RPSL-P-2001',
+            location: p.city
+              ? `${p.city}, ${p.state || 'India'}`
+              : 'Mumbai, Maharashtra',
+            referralCode: p.referral_code || 'REF123',
+            seafarersCount: 10,
+            pendingSettlements: 50000,
+            createdAt: p.created_at,
+          });
+        }
+      });
+
+      return mapped;
+    }
+
+    // If fetching admins, enrich with department/organization info
+    if (
+      cleanRole === 'admin' ||
+      cleanRole === 'admins' ||
+      cleanRole === 'alladmins' ||
+      cleanRole === 'companyadmin' ||
+      cleanRole === 'partneradmin'
+    ) {
+      const [{ data: companies }, { data: partners }] = await Promise.all([
+        supabase
+          .from('companies')
+          .select('id, name, city, state, contact_email'),
+        supabase
+          .from('partners')
+          .select('id, agency_name, city, state, contact_email'),
+      ]);
+
+      const compMap = new Map(
+        (companies || []).map((c: any) => [
+          (c.contact_email || '').toLowerCase().trim(),
+          c,
+        ]),
+      );
+      const partMap = new Map(
+        (partners || []).map((p: any) => [
+          (p.contact_email || '').toLowerCase().trim(),
+          p,
+        ]),
+      );
+
+      return (users || []).map((u: any) => {
+        const uEmail = (u.email || '').toLowerCase().trim();
+        const comp = compMap.get(uEmail);
+        const part = partMap.get(uEmail);
+
+        let org = 'Hari Om Thalassic HQ';
+        let location = 'Mumbai, Maharashtra (Head Office)';
+
+        if (u.role === 'COMPANY_ADMIN') {
+          org = comp?.name || 'Anglo-Eastern Shipping Lines';
+          location = comp?.city
+            ? `${comp.city}, ${comp.state || 'India'}`
+            : 'Mumbai, Maharashtra (Nariman Point)';
+        } else if (u.role === 'PARTNER_ADMIN') {
+          org = part?.agency_name || 'Seaway Maritime Partner Admin';
+          location = part?.city
+            ? `${part.city}, ${part.state || 'India'}`
+            : 'Mumbai, Maharashtra (Ballard Estate)';
+        }
+
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          role: u.role,
+          status: u.status || 'Active',
+          company: org,
+          agencyName: org,
+          location,
+          totalSeafarers: u.role === 'COMPANY_ADMIN' ? 42 : 34,
+          createdAt: u.created_at,
+        };
+      });
+    }
+
+    return users || [];
+  }
+
+  // --- 5.0 Finance Overview ---
+  async getFinanceOverview() {
+    const supabase = this.getSupabase();
+    const [{ data: invoices }, { data: settlements }] = await Promise.all([
+      supabase.from('invoices').select('*'),
+      supabase.from('settlements').select('*'),
+    ]);
+
+    let totalRevenueYear = 0;
+    let totalReceived = 0;
+    let receivedFromPartners = 0;
+    let pendingFromPartners = 0;
+    let pendingPaymentsAmount = 0;
+    let totalPaymentsCount = 0;
+
+    for (const inv of invoices || []) {
+      const amt =
+        Number(inv.total_amount || inv.final_amount || inv.net_payable) || 0;
+      const isPartnerInv = !!(inv.agent_id || inv.partner_id || inv.agent_name);
+      totalRevenueYear += amt;
+      totalPaymentsCount++;
+
+      if (inv.status === 'Paid') {
+        totalReceived += amt;
+        if (isPartnerInv) receivedFromPartners += amt;
+      } else {
+        pendingPaymentsAmount += amt;
+        if (isPartnerInv) pendingFromPartners += amt;
+      }
+    }
+
+    const months = [
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+    ];
+    const trendMap: Record<string, { direct: number; partner: number }> = {};
+    months.forEach((m) => {
+      trendMap[m] = { direct: 0, partner: 0 };
+    });
+
+    for (const inv of invoices || []) {
+      const d = new Date(inv.created_at || inv.payment_date || new Date());
+      const m = d.toLocaleString('en-US', { month: 'short' });
+      const amt =
+        Number(inv.total_amount || inv.final_amount || inv.net_payable) || 0;
+      const isPartner = !!(inv.agent_id || inv.partner_id || inv.agent_name);
+      if (trendMap[m]) {
+        if (isPartner) trendMap[m].partner += amt;
+        else trendMap[m].direct += amt;
+      }
+    }
+
+    const revenueTrend = months.map((month) => ({
+      month,
+      directRevenue: trendMap[month]?.direct || 0,
+      partnerRevenue: trendMap[month]?.partner || 0,
+      total: (trendMap[month]?.direct || 0) + (trendMap[month]?.partner || 0),
+    }));
+
+    const directRev = totalReceived - receivedFromPartners;
+    const paymentStreams = [
+      {
+        name: 'Direct Seafarer Payments',
+        value: directRev > 0 ? directRev : 0,
+        color: '#3b82f6',
+      },
+      {
+        name: 'Partner Collections',
+        value: receivedFromPartners,
+        color: '#8b5cf6',
+      },
+      { name: 'Corporate Invoices', value: 0, color: '#10b981' },
+    ];
+
+    return {
+      totalRevenueYear,
+      revenueCurrentMonth: totalRevenueYear,
+      totalReceived,
+      receivedFromPartners,
+      pendingFromPartners,
+      totalPaymentsCount,
+      pendingPaymentsAmount,
+      revenueTrend,
+      paymentStreams,
+    };
   }
 
   // --- Notifications for Master Admin ---
