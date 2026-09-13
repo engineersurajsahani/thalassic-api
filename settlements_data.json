@@ -1,0 +1,52 @@
+[
+  {
+    "id": "13b9c0fb-41c8-4b9f-b2fe-c8bd21edbd86",
+    "settlement_number": "SET-2026-1A8607",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "hac_invoice_number": "HAC-2026-SET-376DC3",
+    "total_amount": 2000,
+    "status": "Paid",
+    "created_at": "2026-08-09T05:35:55.179Z",
+    "paid_at": "2026-08-09T05:36:02.656Z"
+  },
+  {
+    "id": "2738fd75-0045-4223-8450-d15f3a4543e8",
+    "settlement_number": "SET-2026-C1EEC7",
+    "agent_id": "7af1cb6a-7a93-4ee8-ab95-1dc06ced736c",
+    "hac_invoice_number": "HAC-2026-SET-8E4FAD",
+    "total_amount": 1250,
+    "status": "Paid",
+    "created_at": "2026-08-08T14:47:33.085Z",
+    "paid_at": "2026-08-08T14:48:01.671Z"
+  },
+  {
+    "id": "5138f5e9-603c-4561-9d77-16c2d83a199e",
+    "settlement_number": "SET-2026-A3C4BB",
+    "agent_id": "71486c19-c1f0-49b2-994e-f917400625a0",
+    "hac_invoice_number": "HAC-2026-SET-BE810B",
+    "total_amount": 1250,
+    "status": "Paid",
+    "created_at": "2026-08-08T09:49:52.736Z",
+    "paid_at": "2026-08-08T09:50:08.686Z"
+  },
+  {
+    "id": "f5619f36-6a03-4269-9cac-0c0302d41f6a",
+    "settlement_number": "SET-2026-53642E",
+    "agent_id": "71486c19-c1f0-49b2-994e-f917400625a0",
+    "hac_invoice_number": "HAC-2026-SET-A3464C",
+    "total_amount": 225,
+    "status": "Paid",
+    "created_at": "2026-08-08T09:21:56.869Z",
+    "paid_at": "2026-08-08T09:22:04.619Z"
+  },
+  {
+    "id": "7e0150ce-0984-4eae-ae5c-e52586f240ab",
+    "settlement_number": "SET-2026-A9DB00",
+    "agent_id": "b3d123c2-d8b0-45fc-8308-749901bcb20b",
+    "hac_invoice_number": "HAC-2026-SET-6013BF",
+    "total_amount": 750,
+    "status": "Paid",
+    "created_at": "2026-08-08T09:21:27.144Z",
+    "paid_at": "2026-08-08T09:21:37.712Z"
+  }
+]

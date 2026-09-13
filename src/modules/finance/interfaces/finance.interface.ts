@@ -1,4 +1,4 @@
-export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
+export type ReportPeriod = 'daily' | 'monthly' | 'annual' | 'custom';
 
 export type ReportType =
   | 'revenue_daily'
@@ -20,155 +20,234 @@ export type ReportType =
   | 'settlements_pending'
   | 'settlements_paid'
   | 'settlements_history'
-  | 'settlements_consolidated';
+  | 'settlements_consolidated'
+  | 'finance_overview';
+
+export type ExportFormat = 'pdf' | 'xlsx' | 'csv';
+
+export type FinancialActivity =
+  | 'PAYMENT_RECEIVED'
+  | 'INVOICE_GENERATED'
+  | 'COMMISSION_APPROVED'
+  | 'COMMISSION_MODIFIED'
+  | 'SETTLEMENT_APPROVED'
+  | 'SETTLEMENT_COMPLETED'
+  | 'INVOICE_RESENT'
+  | 'REPORT_EXPORTED';
+
+export type FinancialModuleType =
+  | 'Finance'
+  | 'Payments'
+  | 'Invoices'
+  | 'Commissions'
+  | 'Settlements'
+  | 'Reports'
+  | 'General';
+
+export interface AuditLogEntry {
+  id: string;
+  user_id?: string | null;
+  user_name?: string | null;
+  action: string;
+  module: string;
+  entity_id?: string | null;
+  company_id?: string | null;
+  details?: string | null;
+  previous_value?: any;
+  updated_value?: any;
+  ip_address?: string | null;
+  created_at: string;
+}
 
 export interface RevenueMetricItem {
   period: string;
-  hocRevenue: number;
-  hacRevenue: number;
-  companyRevenue: number;
-  totalRevenue: number;
+  dateKey: string;
+  grossRevenue: number;
+  discountAmount: number;
+  netRevenue: number;
   transactionCount: number;
-  partnerPayablesTotal: number;
-  netInstituteRevenue: number;
+  averageTicketSize: number;
+  coursesCount?: number;
+  growthRatePercent?: number | null;
 }
 
 export interface RevenueReportData {
-  title: string;
-  reportType: 'daily' | 'monthly' | 'annual' | 'consolidated';
+  reportTitle: string;
   generatedAt: string;
+  currency: string;
   summary: {
-    totalRevenue: number;
-    hocRevenue: number;
-    hacRevenue: number;
-    companyRevenue: number;
-    totalPartnerPayables: number;
-    netInstituteRevenue: number;
+    totalGrossRevenue: number;
+    totalDiscount: number;
+    totalNetRevenue: number;
     totalTransactions: number;
+    averageOrderValue: number;
+    formattedTotalGross: string;
+    formattedTotalNet: string;
   };
-  metrics: RevenueMetricItem[];
+  breakdown: RevenueMetricItem[];
 }
 
 export interface PaymentItem {
   id: string;
-  paymentNumber: string;
-  invoiceNumber: string;
-  invoiceType: string;
+  transactionId: string;
+  invoiceNumber?: string;
   customerName: string;
   customerEmail: string;
-  partnerName: string | null;
+  customerPhone?: string;
+  courseName: string;
   amount: number;
+  formattedAmount: string;
+  paymentGateway: string;
   paymentMethod: string;
-  transactionId: string;
-  status: string;
-  paidAt: string;
+  status: 'Successful' | 'Failed' | 'Pending';
+  failureReason?: string;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface PaymentReportData {
-  title: string;
-  filter: string;
+  reportTitle: string;
   generatedAt: string;
   summary: {
-    totalAmount: number;
-    totalCount: number;
-    successCount: number;
+    totalTransactions: number;
+    successfulCount: number;
     failedCount: number;
     pendingCount: number;
+    successRatePercent: number;
+    totalSuccessfulVolume: number;
+    totalPendingVolume: number;
+    formattedSuccessfulVolume: string;
   };
   payments: PaymentItem[];
 }
 
-export interface PartnerPayableItem {
+export interface CommissionItem {
   id: string;
-  partnerId: string;
-  partnerName: string;
+  agentId: string;
+  agentName: string;
+  agentEmail?: string;
+  referralCode?: string;
+  purchaseId: string;
   seafarerName: string;
   courseName: string;
-  approvedPayableAmount: number;
-  invoiceNumber: string;
-  status: string;
+  courseFee: number;
+  commissionRate: number;
+  commissionAmount: number;
+  formattedCourseFee: string;
+  formattedCommissionAmount: string;
+  commissionSource: string;
+  status: 'Pending' | 'Approved' | 'Settled' | 'Paid' | 'Under Review' | 'Cancelled';
+  settlementId?: string;
   createdAt: string;
-  settledAt: string | null;
+  settledAt?: string;
 }
 
-export interface PartnerPayableReportData {
-  title: string;
-  filter: string;
+export interface CommissionReportData {
+  reportTitle: string;
   generatedAt: string;
   summary: {
-    totalPayablesAmount: number;
-    totalCount: number;
+    totalCommissionsCount: number;
     pendingCount: number;
-    settledCount: number;
+    paidCount: number;
+    outstandingCount: number; // Approved commissions awaiting settlement
+    totalCommissionPayable: number;
+    totalCommissionPaid: number;
+    formattedCommissionPayable: string;
+    formattedCommissionPaid: string;
+    averageCommissionRate: number;
   };
-  payables: PartnerPayableItem[];
+  commissions: CommissionItem[];
 }
 
 export interface InvoiceItem {
   id: string;
   invoiceNumber: string;
-  invoiceType: string;
+  invoiceType: 'HOC' | 'HAC';
   customerName: string;
   customerEmail: string;
-  partnerName: string | null;
-  companyName: string | null;
-  totalAmount: number;
+  customerPhone?: string;
+  agentName?: string;
+  agentReferralCode?: string;
+  courseName: string;
+  courseFee: number;
+  discount: number;
+  finalAmount: number;
   taxAmount: number;
-  discountAmount: number;
-  netPayable: number;
+  formattedFinalAmount: string;
+  paymentGateway: string;
+  paymentMethod: string;
+  transactionId: string;
   status: string;
   createdAt: string;
-  paidDate: string | null;
 }
 
 export interface InvoiceReportData {
-  title: string;
-  invoiceType: string;
+  reportTitle: string;
   generatedAt: string;
   summary: {
     totalInvoices: number;
-    totalNetBilled: number;
-    totalPaid: number;
-    totalOutstanding: number;
+    hocCount: number;
+    hacCount: number;
+    totalInvoicedAmount: number;
+    totalDiscounts: number;
+    totalNetCollections: number;
+    totalTaxEstimated: number;
+    formattedInvoicedAmount: string;
+    formattedNetCollections: string;
   };
   invoices: InvoiceItem[];
 }
 
-export interface SettlementReportItem {
+export interface SettlementItem {
   id: string;
   settlementNumber: string;
-  partnerId: string;
-  partnerName: string;
+  agentId: string;
+  agentName: string;
+  hacInvoiceNumber?: string;
   totalAmount: number;
-  totalItems: number;
-  status: string;
-  paymentReference: string | null;
-  processedAt: string | null;
+  formattedTotalAmount: string;
+  commissionCount?: number;
+  status: 'Pending' | 'Approved' | 'Paid';
   createdAt: string;
+  paidAt?: string | null;
 }
 
 export interface SettlementReportData {
-  title: string;
-  filter: string;
+  reportTitle: string;
   generatedAt: string;
   summary: {
-    totalSettledAmount: number;
-    totalCount: number;
-    pendingCount: number;
-    paidCount: number;
+    totalSettlements: number;
+    pendingSettlementsCount: number;
+    paidSettlementsCount: number;
+    totalPendingAmount: number;
+    totalPaidAmount: number;
+    formattedPendingAmount: string;
+    formattedPaidAmount: string;
   };
-  settlements: SettlementReportItem[];
+  settlements: SettlementItem[];
 }
 
 export interface FinanceOverviewData {
-  totalRevenue: number;
-  hocRevenue: number;
-  hacRevenue: number;
-  companyRevenue: number;
-  totalPartnerPayables: number;
-  totalSettledAmount: number;
-  pendingSettlementsAmount: number;
-  totalInvoicesCount: number;
-  totalPaymentsCount: number;
-  recentTransactions: any[];
+  generatedAt: string;
+  kpis: {
+    grossPlatformRevenue: number;
+    formattedGrossPlatformRevenue: string;
+    netPlatformRevenue: number;
+    formattedNetPlatformRevenue: string;
+    totalCommissionsPaid: number;
+    formattedTotalCommissionsPaid: string;
+    outstandingCommissionPayables: number;
+    formattedOutstandingCommissionPayables: string;
+    totalSettlementsPaid: number;
+    formattedTotalSettlementsPaid: string;
+    pendingSettlementsAmount: number;
+    formattedPendingSettlementsAmount: string;
+    totalInvoicesGenerated: number;
+    paymentSuccessRate: string;
+  };
+  recentActivities: AuditLogEntry[];
+  revenueTrend: {
+    last7Days: RevenueMetricItem[];
+    last6Months: RevenueMetricItem[];
+  };
 }

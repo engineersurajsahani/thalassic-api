@@ -1,66 +1,50 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-} from 'typeorm';
-import { CourseInstitute } from './course-institute.entity';
-import { PartnerCoursePricing } from './partner-course-pricing.entity';
-import { PartnerPricingProposal } from './partner-pricing-proposal.entity';
-import { PartnerPayable } from './partner-payable.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn } from 'typeorm';
+import { Enrollment } from './enrollment.entity';
 
-export enum CourseStatus {
-  ACTIVE = 'Active',
-  DRAFT = 'Draft',
-  ARCHIVED = 'Archived',
-}
-
-@Entity('courses')
+@Entity('Course')
 export class Course {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', unique: true, length: 50 })
+  @Column({ unique: true })
   code: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column()
   name: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ nullable: true })
   category: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ nullable: true })
   duration: string;
 
-  @Column({ name: 'standard_fee', type: 'numeric', precision: 10, scale: 2 })
-  standardFee: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  fees: number;
 
-  @Column({ type: 'text', nullable: true })
-  description: string | null;
+  @Column({ nullable: true })
+  description: string;
 
-  @Column({
-    enum: CourseStatus,
-    default: CourseStatus.ACTIVE,
-  })
-  status: CourseStatus;
+  @Column({ default: 'Entry Level' })
+  level: string;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @Column({ nullable: true })
+  icon: string;
+
+  @Column({ nullable: true })
+  image: string;
+
+  @Column({ nullable: true })
+  documentsRequired: string;
+
+  @Column({ nullable: true })
+  rating: string;
+
+  @Column({ nullable: true })
+  ratingCount: number;
+
+  @OneToMany(() => Enrollment, enr => enr.course)
+  enrollments: Enrollment[];
+
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-  @OneToMany(() => CourseInstitute, (ci) => ci.course)
-  instituteOfferings: CourseInstitute[];
-
-  @OneToMany(() => PartnerCoursePricing, (pcp) => pcp.course)
-  partnerPricings: PartnerCoursePricing[];
-
-  @OneToMany(() => PartnerPricingProposal, (ppp) => ppp.course)
-  pricingProposals: PartnerPricingProposal[];
-
-  @OneToMany(() => PartnerPayable, (pp) => pp.course)
-  partnerPayables: PartnerPayable[];
 }

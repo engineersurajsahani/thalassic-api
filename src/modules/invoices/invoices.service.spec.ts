@@ -1,47 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvoicesService } from './invoices.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import {
-  Invoice,
-  InvoiceCounter,
-  Payment,
-  AuditLog,
-  PlatformSettings,
-  User,
-  Partner,
-  Enrollment,
-} from '../../entities';
+import { SupabaseService } from '../supabase/supabase.service';
 
 describe('InvoicesService', () => {
   let service: InvoicesService;
 
-  const mockRepo = {
-    find: jest.fn().mockResolvedValue([]),
-    findOne: jest.fn().mockResolvedValue(null),
-    create: jest.fn().mockImplementation((dto) => dto),
-    save: jest
-      .fn()
-      .mockImplementation((dto) => Promise.resolve({ id: 'saved-id', ...dto })),
+  const mockSupabase = {
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    range: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    single: jest.fn().mockResolvedValue({ data: { id: 'inv-1', invoiceNumber: 'HAC-2026-0001' }, error: null }),
   };
 
-  const mockDataSource = {
-    transaction: jest.fn(),
+  const mockSupabaseService = {
+    getClient: jest.fn().mockReturnValue(mockSupabase),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InvoicesService,
-        { provide: getRepositoryToken(Invoice), useValue: mockRepo },
-        { provide: getRepositoryToken(InvoiceCounter), useValue: mockRepo },
-        { provide: getRepositoryToken(Payment), useValue: mockRepo },
-        { provide: getRepositoryToken(AuditLog), useValue: mockRepo },
-        { provide: getRepositoryToken(PlatformSettings), useValue: mockRepo },
-        { provide: getRepositoryToken(User), useValue: mockRepo },
-        { provide: getRepositoryToken(Partner), useValue: mockRepo },
-        { provide: getRepositoryToken(Enrollment), useValue: mockRepo },
-        { provide: DataSource, useValue: mockDataSource },
+        { provide: SupabaseService, useValue: mockSupabaseService },
       ],
     }).compile();
 

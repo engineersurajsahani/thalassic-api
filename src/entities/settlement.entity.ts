@@ -1,83 +1,33 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  OneToMany,
-} from 'typeorm';
-import { Partner } from './partner.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { User } from './user.entity';
-import { SettlementItem } from './settlement-item.entity';
-
-export enum SettlementStatus {
-  PENDING = 'Pending',
-  APPROVED = 'Approved',
-  PAID = 'Paid',
-  CANCELLED = 'Cancelled',
-}
 
 @Entity('settlements')
 export class Settlement {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({
-    type: 'varchar',
-    name: 'settlement_number',
-    unique: true,
-    length: 50,
-  })
+  @Column({ name: 'settlement_number', unique: true })
   settlementNumber: string;
 
-  @Column({ name: 'partner_id', type: 'uuid' })
-  partnerId: string;
+  @Column({ name: 'agent_id', type: 'uuid' })
+  agentId: string;
 
-  @Column({ name: 'total_amount', type: 'numeric', precision: 10, scale: 2 })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'agent_id' })
+  agent: User;
+
+  @Column({ name: 'hac_invoice_number', nullable: true })
+  hacInvoiceNumber: string;
+
+  @Column({ name: 'total_amount', type: 'decimal', precision: 10, scale: 2 })
   totalAmount: number;
 
-  @Column({ name: 'total_items', type: 'integer', default: 1 })
-  totalItems: number;
+  @Column({ default: 'Pending' })
+  status: string;
 
-  @Column({
-    enum: SettlementStatus,
-    default: SettlementStatus.PENDING,
-  })
-  status: SettlementStatus;
-
-  @Column({
-    type: 'varchar',
-    name: 'payment_reference',
-    length: 100,
-    nullable: true,
-  })
-  paymentReference: string | null;
-
-  @Column({ name: 'processed_by_user_id', type: 'uuid', nullable: true })
-  processedByUserId: string | null;
-
-  @Column({ type: 'varchar', name: 'processed_at', nullable: true })
-  processedAt: Date | null;
-
-  @Column({ type: 'text', nullable: true })
-  notes: string | null;
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-  @ManyToOne(() => Partner, (p) => p.settlements, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'partner_id' })
-  partner: Partner;
-
-  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'processed_by_user_id' })
-  processedByUser: User | null;
-
-  @OneToMany(() => SettlementItem, (si) => si.settlement)
-  items: SettlementItem[];
+  @Column({ name: 'paid_at', type: 'timestamp with time zone', nullable: true })
+  paidAt: Date;
 }

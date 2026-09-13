@@ -20,13 +20,12 @@ export class AppController {
   async healthCheck() {
     try {
       const supabase = this.supabaseService.getClient();
-      const { error } = await supabase.from('users').select('id').limit(1);
+      const { error } = await supabase
+        .from('User')
+        .select('id')
+        .limit(1);
 
-      if (
-        error &&
-        error.code !== 'PGRST116' &&
-        !error.message?.includes('0 rows')
-      ) {
+      if (error && error.code !== 'PGRST116' && !error.message?.includes('0 rows')) {
         return {
           status: 'connected',
           database: 'available',
