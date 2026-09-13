@@ -7,8 +7,8 @@ import { AuthController } from './auth.controller';
 import {
   User,
   SeafarerProfile,
-  Partner,
-  PartnerReferral,
+  AgentMetadata,
+  ReferralLead,
   AuditLog,
 } from '../../entities';
 import { SupabaseModule } from '../supabase/supabase.module';
@@ -18,8 +18,8 @@ import { SupabaseModule } from '../supabase/supabase.module';
     TypeOrmModule.forFeature([
       User,
       SeafarerProfile,
-      Partner,
-      PartnerReferral,
+      AgentMetadata,
+      ReferralLead,
       AuditLog,
     ]),
     SupabaseModule,

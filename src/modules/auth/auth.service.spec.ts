@@ -1,15 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthService, ROLES } from './auth.service';
+import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { SupabaseService } from '../supabase/supabase.service';
+import { User, UserRole, UserStatus } from '../../entities/user.entity';
+import { SeafarerProfile } from '../../entities/seafarer-profile.entity';
+import { AgentMetadata } from '../../entities/agent-metadata.entity';
+import { ReferralLead } from '../../entities/referral-lead.entity';
+import { AuditLog } from '../../entities/audit-log.entity';
 
 // Mock Supabase client
 const mockSupabaseAuth = {
@@ -70,17 +76,6 @@ const mockConfigService = {
   }),
 };
 
-import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  User,
-  UserRole,
-  UserStatus,
-  SeafarerProfile,
-  Partner,
-  PartnerReferral,
-  AuditLog,
-} from '../../entities';
-
 // Mock TypeORM Repository
 const mockRepo = {
   findOne: jest.fn(),
@@ -106,8 +101,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: getRepositoryToken(User), useValue: userRepoMock },
         { provide: getRepositoryToken(SeafarerProfile), useValue: mockRepo },
-        { provide: getRepositoryToken(Partner), useValue: mockRepo },
-        { provide: getRepositoryToken(PartnerReferral), useValue: mockRepo },
+        { provide: getRepositoryToken(AgentMetadata), useValue: mockRepo },
+        { provide: getRepositoryToken(ReferralLead), useValue: mockRepo },
         { provide: getRepositoryToken(AuditLog), useValue: mockRepo },
         {
           provide: SupabaseService,

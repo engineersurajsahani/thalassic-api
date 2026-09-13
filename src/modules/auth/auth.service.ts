@@ -1,24 +1,20 @@
 import {
   Injectable,
+  Inject,
   BadRequestException,
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository, getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SupabaseService } from '../supabase/supabase.service';
-import {
-  User,
-  UserRole,
-  UserStatus,
-  SeafarerProfile,
-  Partner,
-  PartnerReferral,
-  ReferralStatus,
-  AuditLog,
-} from '../../entities';
+import { User, UserRole, UserStatus } from '../../entities/user.entity';
+import { SeafarerProfile } from '../../entities/seafarer-profile.entity';
+import { AgentMetadata } from '../../entities/agent-metadata.entity';
+import { ReferralLead } from '../../entities/referral-lead.entity';
+import { AuditLog } from '../../entities/audit-log.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -29,15 +25,15 @@ export class AuthService {
   private readonly jwtSecret: string;
 
   constructor(
-    @InjectRepository(User)
+    @Inject(getRepositoryToken(User))
     private readonly userRepo: Repository<User>,
-    @InjectRepository(SeafarerProfile)
+    @Inject(getRepositoryToken(SeafarerProfile))
     private readonly profileRepo: Repository<SeafarerProfile>,
-    @InjectRepository(Partner)
-    private readonly partnerRepo: Repository<Partner>,
-    @InjectRepository(PartnerReferral)
-    private readonly referralRepo: Repository<PartnerReferral>,
-    @InjectRepository(AuditLog)
+    @Inject(getRepositoryToken(AgentMetadata))
+    private readonly agentMetadataRepo: Repository<AgentMetadata>,
+    @Inject(getRepositoryToken(ReferralLead))
+    private readonly referralLeadRepo: Repository<ReferralLead>,
+    @Inject(getRepositoryToken(AuditLog))
     private readonly auditLogRepo: Repository<AuditLog>,
     private readonly supabaseService: SupabaseService,
     private readonly jwtService: JwtService,
@@ -193,10 +189,10 @@ export class AuthService {
 
     // 2. Create Application Profile in public.users
     const user = this.userRepo.create({
-      authUserId,
+      authUserId: authUserId || undefined,
       email: cleanEmail,
       name: resolvedName,
-      phone: phone || null,
+      phone: phone || '',
       role: UserRole.SEAFARER,
       status: UserStatus.ACTIVE,
     });
@@ -206,39 +202,34 @@ export class AuthService {
     // 3. Create Seafarer Profile Extension
     const profile = this.profileRepo.create({
       userId: savedUser.id,
-      indosNum: indosNumber?.trim() || null,
-      indosStatus: indosNumber ? 'Active' : 'Pending',
+      indosNumber: indosNumber?.trim() || undefined,
+      status: indosNumber ? 'Active' : 'Pending',
     });
     await this.profileRepo.save(profile);
 
     // 4. Partner Referral Conversion
     if (referralCode && referralCode.trim()) {
-      const partner = await this.partnerRepo.findOne({
+      const agentMeta = await this.agentMetadataRepo.findOne({
         where: { referralCode: referralCode.trim().toUpperCase() },
       });
 
-      if (partner) {
-        let referral = await this.referralRepo.findOne({
-          where: { partnerId: partner.id, email: cleanEmail },
+      if (agentMeta) {
+        let lead = await this.referralLeadRepo.findOne({
+          where: { agentId: agentMeta.userId, email: cleanEmail },
         });
 
-        if (referral) {
-          referral.status = ReferralStatus.CONVERTED;
-          referral.referredUserId = savedUser.id;
-          referral.convertedAt = new Date();
-          await this.referralRepo.save(referral);
+        if (lead) {
+          lead.status = 'Converted';
+          await this.referralLeadRepo.save(lead);
         } else {
-          referral = this.referralRepo.create({
-            partnerId: partner.id,
-            fullName: resolvedName,
+          lead = this.referralLeadRepo.create({
+            agentId: agentMeta.userId,
+            name: resolvedName,
             email: cleanEmail,
             phone: phone || '',
-            status: ReferralStatus.CONVERTED,
-            referredUserId: savedUser.id,
-            convertedAt: new Date(),
-            expiresAt: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+            status: 'Converted',
           });
-          await this.referralRepo.save(referral);
+          await this.referralLeadRepo.save(lead);
         }
       }
     }
@@ -255,11 +246,10 @@ export class AuthService {
     });
 
     await this.auditLogRepo.save({
-      actorUserId: savedUser.id,
-      actorName: savedUser.name,
+      userId: savedUser.id,
+      userName: savedUser.name,
       action: 'USER_REGISTER',
       module: 'AUTH',
-      entityTable: 'users',
       entityId: savedUser.id,
       details: `New seafarer registered: ${savedUser.email}`,
     });

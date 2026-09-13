@@ -1,20 +1,34 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 import { Course } from './course.entity';
+
+export enum EnrollmentStatus {
+  ACTIVE = 'ACTIVE',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
 
 @Entity('Enrollment')
 export class Enrollment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, user => user.enrollments)
+  @ManyToOne(() => User, (user) => user.enrollments)
   @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
   user: User;
 
   @Column({ name: 'userId', type: 'uuid' })
   userId: string;
 
-  @ManyToOne(() => Course, course => course.enrollments)
+  @ManyToOne(() => Course, (course) => course.enrollments)
   @JoinColumn({ name: 'courseId', referencedColumnName: 'id' })
   course: Course;
 
