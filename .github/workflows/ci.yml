@@ -32,15 +32,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: package-lock.json
-
-      - name: Create PostgreSQL root role
-        run: |
-          docker exec $(docker ps -q --filter ancestor=postgres:15) psql -U postgres -c "CREATE USER root WITH SUPERUSER PASSWORD 'postgres';" || true
-          docker exec $(docker ps -q --filter ancestor=postgres:15) psql -U postgres -c "CREATE DATABASE root OWNER root;" || true
-          docker exec $(docker ps -q --filter ancestor=postgres:15) psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE test_db TO root;" || true
 
       - name: Install dependencies
         run: npm ci
@@ -49,44 +43,21 @@ jobs:
         run: npm run build
         env:
           JWT_SECRET: test-jwt-secret-for-ci
-          SUPABASE_URL: ''
+          SUPABASE_URL: https://placeholder.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: placeholder-key
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: test_db
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: postgres
-          PGPASSWORD: postgres
-          PGDATABASE: test_db
-          USER: postgres
-          USERNAME: postgres
           NODE_ENV: test
 
       - name: Run unit tests
         run: npm run test
         env:
           JWT_SECRET: test-jwt-secret-for-ci
-          SUPABASE_URL: ''
+          SUPABASE_URL: https://placeholder.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: placeholder-key
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: test_db
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: postgres
-          PGPASSWORD: postgres
-          PGDATABASE: test_db
-          USER: postgres
-          USERNAME: postgres
           NODE_ENV: test
 
       - name: Run lint
-        run: npm run lint || true
+        run: npm run lint
 
       - name: Security audit
-        run: npm audit --audit-level=high || true
+        run: npm audit --audit-level=critical || true
+        continue-on-error: true

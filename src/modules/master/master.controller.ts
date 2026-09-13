@@ -2,19 +2,18 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
   Delete,
   Body,
   Param,
-  Req,
+  Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { MasterService } from './master.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles, ROLES } from '../../common/decorators/roles.decorator';
-import { UserStatus } from '../../entities';
 
 @Controller('master')
 @UseGuards(AuthGuard, RolesGuard)
@@ -22,89 +21,168 @@ import { UserStatus } from '../../entities';
 export class MasterController {
   constructor(private readonly masterService: MasterService) {}
 
-  @Get('dashboard/stats')
-  getDashboardStats() {
-    return this.masterService.getDashboardStats();
+  // --- 1. Dashboard API ---
+  @Get('dashboard')
+  getDashboard() {
+    return this.masterService.getDashboardData();
   }
 
-  // --- Courses ---
+  @Get('reports')
+  getReports(@Query('days') days?: string) {
+    return this.masterService.getReportsData(days);
+  }
+
+  // --- Notifications APIs ---
+  @Get('notifications')
+  getNotifications() {
+    return this.masterService.getNotifications();
+  }
+
+  @Patch('notifications/:id/read')
+  markNotificationAsRead(@Param('id') id: string) {
+    return this.masterService.markNotificationAsRead(id);
+  }
+
+  @Post('notifications/read-all')
+  markAllNotificationsAsRead() {
+    return this.masterService.markAllNotificationsAsRead();
+  }
+
+  // --- 2. Course Management APIs ---
   @Get('courses')
   getCourses() {
     return this.masterService.getCourses();
   }
 
-  @Get('courses/:id')
-  getCourseById(@Param('id') id: string) {
-    return this.masterService.getCourseById(id);
-  }
-
   @Post('courses')
-  createCourse(@Body() data: any, @Req() req: any) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.createCourse(data, userId);
+  createCourse(@Body() dto: any) {
+    return this.masterService.createCourse(dto);
   }
 
-  @Put('courses/:id')
-  updateCourse(@Param('id') id: string, @Body() data: any, @Req() req: any) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.updateCourse(id, data, userId);
+  @Patch('courses/:id')
+  updateCourse(@Param('id') id: string, @Body() dto: any) {
+    return this.masterService.updateCourse(id, dto);
   }
 
   @Delete('courses/:id')
-  deleteCourse(@Param('id') id: string, @Req() req: any) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.deleteCourse(id, userId);
+  deleteCourse(@Param('id') id: string) {
+    return this.masterService.deleteCourse(id);
   }
 
-  // --- Institutes ---
+  // --- 2.1 Institute Management APIs ---
   @Get('institutes')
   getInstitutes() {
     return this.masterService.getInstitutes();
   }
 
   @Post('institutes')
-  createInstitute(@Body() data: any, @Req() req: any) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.createInstitute(data, userId);
+  createInstitute(@Body() dto: any) {
+    return this.masterService.createInstitute(dto);
   }
 
-  // --- Seafarer Audits ---
-  @Get('seafarers')
-  getSeafarers() {
-    return this.masterService.getSeafarers();
+  @Patch('institutes/:id')
+  updateInstitute(@Param('id') id: string, @Body() dto: any) {
+    return this.masterService.updateInstitute(id, dto);
   }
 
-  @Patch('seafarers/:id/audit')
-  auditSeafarer(
-    @Param('id') id: string,
-    @Body('status') status: UserStatus,
-    @Body('notes') notes: string,
-    @Req() req: any,
-  ) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.auditSeafarer(id, status, notes, userId);
+  @Delete('institutes/:id')
+  deleteInstitute(@Param('id') id: string) {
+    return this.masterService.deleteInstitute(id);
   }
 
-  @Patch('documents/:id/verify')
-  verifyDocument(
-    @Param('id') id: string,
-    @Body('status') status: string,
-    @Body('remarks') remarks: string,
-    @Req() req: any,
-  ) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.verifyDocument(id, status, remarks, userId);
+  // --- 3. User Management APIs ---
+  @Get('users')
+  getUsers(@Query('role') role?: string) {
+    return this.masterService.getUsers(role);
   }
 
-  // --- Settings ---
+  @Post('users')
+  createUser(@Body() dto: any) {
+    return this.masterService.createUser(dto);
+  }
+
+  @Get('users/:id/profile')
+  getUserProfile(@Param('id') id: string) {
+    return this.masterService.getUserProfile(id);
+  }
+
+  @Patch('users/:id/status')
+  updateUserStatus(@Param('id') id: string, @Body('status') status: string) {
+    return this.masterService.updateUserStatus(id, status);
+  }
+
+  // --- 4. Settings APIs ---
   @Get('settings')
   getSettings() {
     return this.masterService.getSettings();
   }
 
-  @Put('settings')
-  updateSettings(@Body() data: any, @Req() req: any) {
-    const userId = req.user?.sub || req.user?.id;
-    return this.masterService.updateSettings(data, userId);
+  @Patch('settings')
+  updateSettings(@Body() dto: any) {
+    return this.masterService.updateSettings(dto);
+  }
+
+  @Patch('profile')
+  updateProfile(@Req() req: any, @Body() dto: any) {
+    const adminId = req.user?.id || req.user?.sub;
+    return this.masterService.updateAdminProfile(adminId, dto);
+  }
+
+  @Post('settings/change-password')
+  changePassword(@Req() req: any, @Body() dto: any) {
+    const adminId = req.user?.id || req.user?.sub;
+    return this.masterService.updateAdminProfile(adminId, {
+      password: dto.newPassword || dto.password,
+    });
+  }
+
+  // --- 5. Finance Module APIs (Master Only) ---
+  @Get('finance/overview')
+  getFinanceOverview() {
+    return this.masterService.getFinanceOverview();
+  }
+
+  @Get('finance/payments')
+  getPayments(@Req() req: any, @Query() query: any) {
+    return this.masterService.getPayments(query);
+  }
+
+  @Get('finance/invoices')
+  getInvoices(@Req() req: any, @Query() query: any) {
+    return this.masterService.getInvoices(req.user, query);
+  }
+
+  @Get('finance/invoices/:id/pdf')
+  getInvoicePdf(@Req() req: any, @Param('id') id: string) {
+    return this.masterService.getInvoicePdf(id, req.user);
+  }
+
+  @Post('finance/invoices/:id/resend')
+  resendInvoice(@Req() req: any, @Param('id') id: string) {
+    return this.masterService.resendInvoice(id, req.user);
+  }
+
+  @Get('finance/commissions')
+  getCommissions(@Req() req: any) {
+    return this.masterService.getCommissionsOverview();
+  }
+
+  @Get('finance/settlements')
+  getSettlements(@Req() req: any) {
+    return this.masterService.getSettlements();
+  }
+
+  @Post('finance/settlements/:id/approve')
+  approveSettlement(@Req() req: any, @Param('id') id: string) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Master Admin';
+    return this.masterService.approveSettlement(id, adminId, adminName);
+  }
+
+  @Post('finance/settlements/:id/pay')
+  paySettlement(@Req() req: any, @Param('id') id: string) {
+    const adminId = req.user?.id || 'system';
+    const adminName = req.user?.name || 'Master Admin';
+    return this.masterService.paySettlement(id, adminId, adminName);
   }
 }

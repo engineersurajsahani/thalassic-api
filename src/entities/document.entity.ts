@@ -1,67 +1,45 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 
-@Entity('documents')
+@Entity('Document')
 export class Document {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id', type: 'uuid' })
+  @ManyToOne(() => User, user => user.documents)
+  @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
+  user: User;
+
+  @Column({ name: 'userId', type: 'uuid' })
   userId: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column()
   type: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ nullable: true })
   name: string;
 
-  @Column({ name: 'file_path', type: 'text' })
-  filePath: string;
+  @Column({ nullable: true })
+  url: string;
 
-  @Column({ name: 'file_size', type: 'integer' })
-  fileSize: number;
+  @Column({ nullable: true })
+  expiryDate: string;
 
-  @Column({ type: 'varchar', name: 'mime_type', length: 100 })
-  mimeType: string;
+  @Column({ nullable: true })
+  documentNumber: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'Pending' })
+  @Column({ nullable: true })
+  placeOfIssue: string;
+
+  @Column({ nullable: true })
+  dateOfIssue: string;
+
+  @Column({ default: 'Pending' })
   status: string;
 
-  @Column({
-    type: 'varchar',
-    name: 'document_number',
-    length: 100,
-    nullable: true,
-  })
-  documentNumber: string | null;
+  @Column({ nullable: true })
+  remarks: string;
 
-  @Column({ name: 'expiry_date', type: 'date', nullable: true })
-  expiryDate: string | null;
-
-  @Column({ type: 'text', nullable: true })
-  remarks: string | null;
-
-  @Column({ name: 'verified_by', type: 'uuid', nullable: true })
-  verifiedBy: string | null;
-
-  @Column({ type: 'varchar', name: 'verified_at', nullable: true })
-  verifiedAt: Date | null;
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-  @ManyToOne(() => User, (user) => user.documents, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user: User;
 }

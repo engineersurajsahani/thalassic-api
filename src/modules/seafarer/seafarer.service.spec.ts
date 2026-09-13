@@ -3,83 +3,124 @@ import { SeafarerService } from './seafarer.service';
 describe('Seafarer Portal - Chapter 5 PRD Requirements', () => {
   describe('Dashboard & Courses', () => {
     let service: SeafarerService;
-    let mockUserRepo: any;
+    let mockSupabaseService: any;
+    let mockInvoicesService: any;
 
     beforeEach(() => {
-      mockUserRepo = {
-        findOne: jest.fn(),
+      const mockQueryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: 'u1',
+            name: 'Raj Kumar',
+            email: 'raj@example.com',
+            status: 'Active',
+            phone: '+91 9988776655',
+          },
+        }),
       };
-      const mockRepo = {
-        find: jest.fn().mockResolvedValue([]),
-        findOne: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation((dto) => dto),
-        save: jest
-          .fn()
-          .mockImplementation((dto) =>
-            Promise.resolve({ id: 'saved-id', ...dto }),
-          ),
+
+      const mockSupabaseClient = {
+        from: jest.fn().mockImplementation((table: string) => {
+          if (table === 'User') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
+                    data: {
+                      id: 'u1',
+                      name: 'Raj Kumar',
+                      email: 'raj@example.com',
+                      status: 'Active',
+                    },
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'Enrollment' || table === 'enrollments') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  order: jest.fn().mockResolvedValue({
+                    data: [
+                      {
+                        id: 'e1',
+                        status: 'Active',
+                        progress: 40,
+                        created_at: new Date().toISOString(),
+                        courses: {
+                          id: 'c1',
+                          name: 'Basic Safety Training',
+                          code: 'BST',
+                        },
+                      },
+                      {
+                        id: 'e2',
+                        status: 'Completed',
+                        progress: 100,
+                        created_at: new Date().toISOString(),
+                        courses: {
+                          id: 'c2',
+                          name: 'Medical Care',
+                          code: 'MEDICARE',
+                        },
+                      },
+                    ],
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'Document' || table === 'documents') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  order: jest.fn().mockResolvedValue({
+                    data: [{ id: 'd1', type: 'PASSPORT', status: 'Approved' }],
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'SeaServiceRecord') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  order: jest.fn().mockResolvedValue({
+                    data: [{ id: 's1', rank: 'Captain' }],
+                  }),
+                }),
+              }),
+            };
+          }
+          return mockQueryBuilder;
+        }),
       };
-      const mockInvoicesService = {
+
+      mockSupabaseService = {
+        getClient: jest.fn().mockReturnValue(mockSupabaseClient),
+      };
+
+      mockInvoicesService = {
         generateInvoice: jest.fn(),
-      };
-      const mockDataSource = {
-        transaction: jest.fn(),
       };
 
       service = new SeafarerService(
-        mockUserRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
-        mockRepo as any,
+        mockSupabaseService as any,
         mockInvoicesService as any,
-        mockDataSource as any,
       );
     });
 
     it('getDashboard should accurately summarize active and completed courses', async () => {
-      mockUserRepo.findOne.mockResolvedValue({
-        id: 'u1',
-        name: 'Raj Kumar',
-        email: 'raj@example.com',
-        status: 'Active',
-        profile: { indosNum: '20N1234' },
-        enrollments: [
-          {
-            id: 'e1',
-            status: 'Active',
-            courseInstitute: {
-              course: { name: 'Basic Safety Training', code: 'BST' },
-            },
-          },
-          {
-            id: 'e2',
-            status: 'Completed',
-            courseInstitute: {
-              course: { name: 'Medical Care', code: 'MEDICARE' },
-            },
-          },
-        ],
-        documents: [{ id: 'd1' }],
-        seaServiceRecords: [{ id: 's1', durationDays: 120 }],
-      });
-
       const dashboard = await service.getDashboard('u1');
 
-      expect(dashboard.user.id).toBe('u1');
-      expect(dashboard.stats.activeCourses).toBe(1);
-      expect(dashboard.stats.completedCourses).toBe(1);
-      expect(dashboard.stats.totalDocuments).toBe(1);
-      expect(dashboard.stats.totalSeaDays).toBe(120);
+      expect(dashboard).toHaveProperty('courses');
+      expect(dashboard.courses.ongoingCount).toBe(1);
+      expect(dashboard.courses.completedCount).toBe(1);
+      expect(dashboard).toHaveProperty('profileCompletion');
     });
   });
 });

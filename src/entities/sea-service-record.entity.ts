@@ -1,12 +1,4 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('sea_service_records')
@@ -17,39 +9,31 @@ export class SeaServiceRecord {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
-  @Column({ type: 'varchar', name: 'rpsl_company', length: 255 })
-  rpslCompany: string;
-
-  @Column({ type: 'varchar', name: 'vessel_name', length: 255 })
-  vesselName: string;
-
-  @Column({ type: 'varchar', name: 'vessel_type', length: 100 })
-  vesselType: string;
-
-  @Column({ type: 'varchar', name: 'imo_number', length: 50, nullable: true })
-  imoNumber: string | null;
-
-  @Column({ type: 'varchar', length: 100 })
-  rank: string;
-
-  @Column({ name: 'sign_on_date', type: 'date' })
-  signOnDate: string;
-
-  @Column({ name: 'sign_off_date', type: 'date', nullable: true })
-  signOffDate: string | null;
-
-  @Column({ name: 'duration_days', type: 'integer', nullable: true })
-  durationDays: number | null;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-  @ManyToOne(() => User, (user) => user.seaServiceRecords, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @Column()
+  rpsl: string;
+
+  @Column()
+  vessel: string;
+
+  @Column({ name: 'vessel_type', nullable: true })
+  vesselType: string;
+
+  @Column({ nullable: true })
+  imo: string;
+
+  @Column()
+  rank: string;
+
+  @Column({ name: 'sign_on', type: 'date' })
+  signOn: string;
+
+  @Column({ name: 'sign_off', type: 'date', nullable: true })
+  signOff: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
+  createdAt: Date;
 }

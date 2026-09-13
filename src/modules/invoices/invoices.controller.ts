@@ -7,7 +7,6 @@ import {
   Delete,
   Query,
   Param,
-  Body,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -20,8 +19,8 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 @UseGuards(AuthGuard, RolesGuard)
 @Roles(
   ROLES.MASTER,
-  ROLES.AGENT_ADMIN,
-  ROLES.AGENT,
+  ROLES.PARTNER_ADMIN,
+  ROLES.PARTNER,
   ROLES.COMPANY_ADMIN,
   ROLES.SEAFARER,
 )
@@ -46,14 +45,6 @@ export class InvoicesController {
   @Post('export')
   exportInvoices(@Req() req: any, @Query() query: any) {
     return this.invoicesService.exportInvoices(req.user, query);
-  }
-
-  @Post('generate')
-  generateInvoice(@Req() req: any, @Body() body: any) {
-    return this.invoicesService.generateInvoice({
-      ...body,
-      userId: req.user?.id || body.user_id,
-    });
   }
 
   // --- Immutability Protection Endpoints (Reject Edit/Delete) ---
