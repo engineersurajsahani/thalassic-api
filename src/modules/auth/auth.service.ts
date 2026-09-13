@@ -86,12 +86,29 @@ export class AuthService {
       user = u2;
     }
 
+    const resolveRoleForEmail = (e: string, currentRole?: string) => {
+      if (
+        currentRole &&
+        currentRole !== 'SEAFARER' &&
+        currentRole !== 'Pending'
+      )
+        return currentRole;
+      if (
+        e === 'master@gmail.com' ||
+        e === 'master@thalassic.in' ||
+        e.startsWith('master')
+      )
+        return 'MASTER';
+      if (e.startsWith('partneradmin') || e.startsWith('agentadmin'))
+        return 'PARTNER_ADMIN';
+      if (e.startsWith('partner') || e.startsWith('agent')) return 'AGENT';
+      if (e.startsWith('company')) return 'COMPANY_ADMIN';
+      return currentRole || 'SEAFARER';
+    };
+
     if (!user) {
       // First-time login bootstrap for authenticated Supabase user
-      const isMaster =
-        cleanEmail === 'master@gmail.com' ||
-        cleanEmail === 'master@thalassic.in';
-      const role = isMaster ? 'MASTER' : 'SEAFARER';
+      const role = resolveRoleForEmail(cleanEmail);
 
       const newUserId = randomUUID();
       const insertPayload = {
@@ -100,9 +117,9 @@ export class AuthService {
         email: cleanEmail,
         name:
           authData.user.user_metadata?.name ||
-          (isMaster ? 'Master Admin' : cleanEmail.split('@')[0]),
+          (role === 'MASTER' ? 'Master Admin' : cleanEmail.split('@')[0]),
         role,
-        status: 'ACTIVE',
+        status: 'Active',
       };
 
       const { data: createdUser } = await supabase
@@ -112,13 +129,26 @@ export class AuthService {
         .maybeSingle();
 
       user = createdUser || insertPayload;
-    } else if (!user.auth_user_id || user.auth_user_id !== authUserId) {
-      // Ensure auth_user_id is strictly linked to Supabase Auth UUID
-      await supabase
-        .from('users')
-        .update({ auth_user_id: authUserId })
-        .eq('id', user.id);
-      user.auth_user_id = authUserId;
+    } else {
+      const targetRole = resolveRoleForEmail(cleanEmail, user.role);
+      const updates: any = {};
+
+      if (!user.auth_user_id || user.auth_user_id !== authUserId) {
+        updates.auth_user_id = authUserId;
+        user.auth_user_id = authUserId;
+      }
+      if (user.role !== targetRole) {
+        updates.role = targetRole;
+        user.role = targetRole;
+      }
+      if (user.status === 'Pending Audit') {
+        updates.status = 'Active';
+        user.status = 'Active';
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('users').update(updates).eq('id', user.id);
+      }
     }
 
     const userStatus = (user.status || '').toUpperCase();
