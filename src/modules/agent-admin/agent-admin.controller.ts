@@ -15,7 +15,7 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller(['agent-admin', 'partner-admin'])
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(ROLES.AGENT_ADMIN, ROLES.PARTNER_ADMIN, ROLES.MASTER)
+@Roles(ROLES.PARTNER_ADMIN, ROLES.MASTER)
 export class AgentAdminController {
   constructor(private readonly agentAdminService: AgentAdminService) {}
 

@@ -40,7 +40,7 @@ describe('Seafarer Portal - Chapter 5 PRD Requirements', () => {
               }),
             };
           }
-          if (table === 'Enrollment') {
+          if (table === 'Enrollment' || table === 'enrollments') {
             return {
               select: jest.fn().mockReturnValue({
                 eq: jest.fn().mockReturnValue({
@@ -50,8 +50,8 @@ describe('Seafarer Portal - Chapter 5 PRD Requirements', () => {
                         id: 'e1',
                         status: 'Active',
                         progress: 40,
-                        createdAt: new Date().toISOString(),
-                        Course: {
+                        created_at: new Date().toISOString(),
+                        courses: {
                           id: 'c1',
                           name: 'Basic Safety Training',
                           code: 'BST',
@@ -61,8 +61,8 @@ describe('Seafarer Portal - Chapter 5 PRD Requirements', () => {
                         id: 'e2',
                         status: 'Completed',
                         progress: 100,
-                        createdAt: new Date().toISOString(),
-                        Course: {
+                        created_at: new Date().toISOString(),
+                        courses: {
                           id: 'c2',
                           name: 'Medical Care',
                           code: 'MEDICARE',
@@ -74,7 +74,7 @@ describe('Seafarer Portal - Chapter 5 PRD Requirements', () => {
               }),
             };
           }
-          if (table === 'Document') {
+          if (table === 'Document' || table === 'documents') {
             return {
               select: jest.fn().mockReturnValue({
                 eq: jest.fn().mockReturnValue({

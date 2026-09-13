@@ -22,19 +22,17 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller(['agent', 'partner'])
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(ROLES.AGENT, ROLES.PARTNER, ROLES.MASTER)
+@Roles(ROLES.PARTNER, ROLES.MASTER)
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   private checkRole(req: any) {
     if (
-      req.user?.role !== 'AGENT' &&
       req.user?.role !== 'PARTNER' &&
+      req.user?.role !== 'AGENT' &&
       req.user?.role !== 'MASTER'
     ) {
-      throw new ForbiddenException(
-        'Access restricted to Manning Agents and Partners.',
-      );
+      throw new ForbiddenException('Access restricted to Partners.');
     }
   }
 

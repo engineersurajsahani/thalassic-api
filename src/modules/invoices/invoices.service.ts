@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
@@ -84,7 +89,11 @@ export class InvoicesService {
 
   private saveInvoicesToDisk() {
     try {
-      fs.writeFileSync(this.storageFilePath, JSON.stringify(this.inMemoryInvoices, null, 2), 'utf8');
+      fs.writeFileSync(
+        this.storageFilePath,
+        JSON.stringify(this.inMemoryInvoices, null, 2),
+        'utf8',
+      );
     } catch (e) {
       console.error('Error saving invoices to disk:', e);
     }
@@ -157,9 +166,13 @@ export class InvoicesService {
     } = params;
 
     // 1. Idempotency Check
-    const existingInMem = this.inMemoryInvoices.find(i => i.transaction_id === transactionId);
+    const existingInMem = this.inMemoryInvoices.find(
+      (i) => i.transaction_id === transactionId,
+    );
     if (existingInMem) {
-      console.log(`[Invoice] Duplicate payment callback ignored for transactionId: ${transactionId}`);
+      console.log(
+        `[Invoice] Duplicate payment callback ignored for transactionId: ${transactionId}`,
+      );
       return existingInMem;
     }
 
@@ -170,7 +183,9 @@ export class InvoicesService {
     // 3. Generate Sequential Unique Invoice Number
     const currentYear = new Date().getFullYear();
     const prefix = `${invoiceType}-${currentYear}-`;
-    const count = this.inMemoryInvoices.filter(i => i.invoice_type === invoiceType).length;
+    const count = this.inMemoryInvoices.filter(
+      (i) => i.invoice_type === invoiceType,
+    ).length;
     const seqNum = String(count + 1).padStart(6, '0');
     const invoiceNumber = `${prefix}${seqNum}`;
 
@@ -218,7 +233,7 @@ export class InvoicesService {
       customerName,
       'INVOICE_GENERATED',
       invoiceNumber,
-      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${finalAmount.toLocaleString('en-IN')})`
+      `Generated ${invoiceType} Invoice ${invoiceNumber} for ${courseName} (Amount: ₹${finalAmount.toLocaleString('en-IN')})`,
     );
 
     return invoiceObj;
@@ -232,12 +247,15 @@ export class InvoicesService {
     let invoiceList: any[] = [];
 
     try {
-      let dbQuery = this.db.from('invoices').select('*').order('created_at', { ascending: false });
+      let dbQuery = this.db
+        .from('invoices')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (roleNorm === 'SEAFARER') {
         dbQuery = dbQuery.eq('user_id', user.id);
-      } else if (roleNorm === 'AGENT') {
-        dbQuery = dbQuery.eq('agent_id', user.id);
+      } else if (roleNorm === 'PARTNER' || roleNorm === 'AGENT') {
+        dbQuery = dbQuery.or(`agent_id.eq.${user.id},partner_id.eq.${user.id}`);
       }
 
       if (type && type !== 'all') {
@@ -276,13 +294,14 @@ export class InvoicesService {
           inv.invoice_number?.toLowerCase().includes(q) ||
           inv.customer_name?.toLowerCase().includes(q) ||
           inv.transaction_id?.toLowerCase().includes(q) ||
-          inv.agent_name?.toLowerCase().includes(q)
+          inv.agent_name?.toLowerCase().includes(q) ||
+          inv.partner_name?.toLowerCase().includes(q),
       );
     }
 
-    // Fetch referral leads to match registration/lead converted date for AGENT
+    // Fetch referral leads to match registration/lead converted date for PARTNER
     let leads: any[] = [];
-    if (roleNorm === 'AGENT' && user?.id) {
+    if ((roleNorm === 'PARTNER' || roleNorm === 'AGENT') && user?.id) {
       try {
         const { data } = await this.db
           .from('referral_leads')
@@ -290,7 +309,10 @@ export class InvoicesService {
           .eq('agent_id', user.id);
         if (data) leads = data;
       } catch (e) {
-        console.warn('Failed to fetch leads for invoice converted_at mapping:', e);
+        console.warn(
+          'Failed to fetch leads for invoice converted_at mapping:',
+          e,
+        );
       }
     }
 
@@ -302,11 +324,11 @@ export class InvoicesService {
     });
 
     return invoiceList.map((inv: any) => {
-      const seafarerKey = (inv.customer_name || "").toLowerCase().trim();
+      const seafarerKey = (inv.customer_name || '').toLowerCase().trim();
       const convertedAt = leadsMap.get(seafarerKey) || inv.created_at;
       return {
         ...inv,
-        converted_at: convertedAt
+        converted_at: convertedAt,
       };
     });
   }
@@ -315,13 +337,34 @@ export class InvoicesService {
     const { type, status, course, startDate, endDate } = query;
     const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
 
-    return this.inMemoryInvoices.filter(inv => {
+    return this.inMemoryInvoices.filter((inv) => {
       if (roleNorm === 'SEAFARER' && inv.user_id !== user?.id) return false;
-      if (roleNorm === 'AGENT' && inv.agent_id !== user?.id) return false;
-      if (type && type !== 'all' && inv.invoice_type?.toUpperCase() !== type.toUpperCase()) return false;
-      if (status && status !== 'all' && inv.status?.toLowerCase() !== status.toLowerCase()) return false;
-      if (course && course !== 'all' && !inv.course_name?.toLowerCase().includes(course.toLowerCase())) return false;
-      if (startDate && new Date(inv.created_at) < new Date(startDate)) return false;
+      if (
+        (roleNorm === 'PARTNER' || roleNorm === 'AGENT') &&
+        inv.agent_id !== user?.id &&
+        inv.partner_id !== user?.id
+      )
+        return false;
+      if (
+        type &&
+        type !== 'all' &&
+        inv.invoice_type?.toUpperCase() !== type.toUpperCase()
+      )
+        return false;
+      if (
+        status &&
+        status !== 'all' &&
+        inv.status?.toLowerCase() !== status.toLowerCase()
+      )
+        return false;
+      if (
+        course &&
+        course !== 'all' &&
+        !inv.course_name?.toLowerCase().includes(course.toLowerCase())
+      )
+        return false;
+      if (startDate && new Date(inv.created_at) < new Date(startDate))
+        return false;
       if (endDate && new Date(inv.created_at) > new Date(endDate)) return false;
       return true;
     });
@@ -346,17 +389,27 @@ export class InvoicesService {
     }
 
     if (!invoice) {
-      invoice = this.inMemoryInvoices.find(i => i.id === id || i.invoice_number === id);
+      invoice = this.inMemoryInvoices.find(
+        (i) => i.id === id || i.invoice_number === id,
+      );
     }
 
     if (!invoice) throw new NotFoundException('Invoice not found');
 
     const roleNorm = (user?.role || '').toUpperCase().replace('-', '_');
     if (roleNorm === 'SEAFARER' && invoice.user_id !== user.id) {
-      throw new ForbiddenException('You are not authorized to view this invoice');
+      throw new ForbiddenException(
+        'You are not authorized to view this invoice',
+      );
     }
-    if (roleNorm === 'AGENT' && invoice.agent_id !== user.id) {
-      throw new ForbiddenException('You are not authorized to view this invoice');
+    if (
+      (roleNorm === 'PARTNER' || roleNorm === 'AGENT') &&
+      invoice.agent_id !== user.id &&
+      invoice.partner_id !== user.id
+    ) {
+      throw new ForbiddenException(
+        'You are not authorized to view this invoice',
+      );
     }
 
     let commissionSnapshot = null;
@@ -378,7 +431,7 @@ export class InvoicesService {
       user.name || 'User',
       'INVOICE_VIEWED',
       invoice.invoice_number,
-      `Viewed invoice details for ${invoice.invoice_number}`
+      `Viewed invoice details for ${invoice.invoice_number}`,
     );
 
     return {
@@ -393,7 +446,11 @@ export class InvoicesService {
 
     let settings: any = null;
     try {
-      const { data } = await this.db.from('settings').select('*').limit(1).maybeSingle();
+      const { data } = await this.db
+        .from('settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
       settings = data;
     } catch (e) {
       console.warn('Settings lookup warning:', e);
@@ -404,14 +461,15 @@ export class InvoicesService {
       user.name || 'User',
       'PDF_DOWNLOADED',
       invoiceDetails.invoice_number,
-      `Downloaded PDF for invoice ${invoiceDetails.invoice_number}`
+      `Downloaded PDF for invoice ${invoiceDetails.invoice_number}`,
     );
 
     return {
       invoice: invoiceDetails,
       company: {
         name: 'Hari Om Thalassic Maritime Training Institute',
-        address: 'Suite 404, Marine Trade Tower, Ballard Estate, Mumbai, Maharashtra 400001',
+        address:
+          'Suite 404, Marine Trade Tower, Ballard Estate, Mumbai, Maharashtra 400001',
         email: settings?.system_email || 'support@hariomthalassic.com',
         phone: settings?.contact_phone || '+91 22 12345678',
         dgsAccreditationId: settings?.dgs_accreditation_id || 'DGS-MTI-10294',
@@ -434,7 +492,7 @@ export class InvoicesService {
       user.name || 'User',
       'INVOICE_EXPORTED',
       'EXPORT',
-      `Exported invoice report (${list.length} records)`
+      `Exported invoice report (${list.length} records)`,
     );
 
     return list.map((inv: any) => ({
@@ -448,7 +506,7 @@ export class InvoicesService {
       'Seafarer Phone': inv.customer_phone,
       'Course Name': inv.course_name,
       'Course Fee': `₹${inv.course_fee.toLocaleString('en-IN')}`,
-      'Discount': `₹${inv.discount.toLocaleString('en-IN')}`,
+      Discount: `₹${inv.discount.toLocaleString('en-IN')}`,
       'Final Amount': `₹${inv.final_amount.toLocaleString('en-IN')}`,
       'Payment Gateway': inv.payment_gateway,
       'Transaction ID': inv.transaction_id,
@@ -460,10 +518,14 @@ export class InvoicesService {
 
   // --- 6. Invoice Immutability Protection ---
   async updateInvoice() {
-    throw new BadRequestException('PRD 10.8 Violation: Generated invoices are immutable and cannot be updated.');
+    throw new BadRequestException(
+      'PRD 10.8 Violation: Generated invoices are immutable and cannot be updated.',
+    );
   }
 
   async deleteInvoice() {
-    throw new BadRequestException('PRD 10.8 Violation: Historical invoices cannot be deleted.');
+    throw new BadRequestException(
+      'PRD 10.8 Violation: Historical invoices cannot be deleted.',
+    );
   }
 }

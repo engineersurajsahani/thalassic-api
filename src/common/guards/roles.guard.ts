@@ -3,8 +3,9 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY, ROLES, UserRole } from '../decorators/roles.decorator';
 
 function normalizeRole(role: string): string {
-  if (role === 'PARTNER_ADMIN' || role === 'AGENT_ADMIN') return 'AGENT_ADMIN';
-  if (role === 'PARTNER' || role === 'AGENT') return 'AGENT';
+  if (role === 'PARTNER_ADMIN' || role === 'AGENT_ADMIN')
+    return 'PARTNER_ADMIN';
+  if (role === 'PARTNER' || role === 'AGENT') return 'PARTNER';
   return role;
 }
 
