@@ -1,38 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { SupabaseModule } from '../supabase/supabase.module';
 import { FinanceController } from './finance.controller';
 import { FinanceService } from './finance.service';
 import { FinanceReportsService } from './finance-reports.service';
 import { FinanceAuditService } from './finance-audit.service';
 import { FinanceExportService } from './finance-export.service';
-import {
-  Invoice,
-  Payment,
-  PartnerPayable,
-  Settlement,
-  SettlementItem,
-  AuditLog,
-  Partner,
-  Course,
-  Enrollment,
-  User,
-} from '../../entities';
-import { SupabaseModule } from '../supabase/supabase.module';
+import { MasterFinanceGuard } from './guards/master-finance.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Invoice,
-      Payment,
-      PartnerPayable,
-      Settlement,
-      SettlementItem,
-      AuditLog,
-      Partner,
-      Course,
-      Enrollment,
-      User,
-    ]),
     SupabaseModule,
   ],
   controllers: [FinanceController],
@@ -41,7 +17,13 @@ import { SupabaseModule } from '../supabase/supabase.module';
     FinanceReportsService,
     FinanceAuditService,
     FinanceExportService,
+    MasterFinanceGuard,
   ],
-  exports: [FinanceService, FinanceReportsService, FinanceAuditService],
+  exports: [
+    FinanceService,
+    FinanceReportsService,
+    FinanceAuditService,
+    FinanceExportService,
+  ],
 })
 export class FinanceModule {}
