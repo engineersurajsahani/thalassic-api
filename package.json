@@ -90,10 +90,10 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)sx?$": "ts-jest"
     },
     "moduleNameMapper": {
-      "^@nestjs/typeorm$": "<rootDir>/common/testing/typeorm.mock.ts"
+      "^@nestjs/typeorm$": "<rootDir>/common/testing/nestjs-typeorm.shim.ts"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

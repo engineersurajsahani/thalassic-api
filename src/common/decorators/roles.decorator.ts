@@ -1,16 +1,16 @@
 import { SetMetadata } from '@nestjs/common';
 
-// ISSUE-035: Centralized role constants
 export const ROLES = {
   MASTER: 'MASTER',
-  SEAFARER: 'SEAFARER',
-  AGENT: 'AGENT',
-  AGENT_ADMIN: 'AGENT_ADMIN',
+  PARTNER_ADMIN: 'PARTNER_ADMIN',
   COMPANY_ADMIN: 'COMPANY_ADMIN',
+  SEAFARER: 'SEAFARER',
+  // Backward compatibility aliases
+  AGENT_ADMIN: 'PARTNER_ADMIN',
+  AGENT: 'PARTNER_ADMIN',
 } as const;
 
-export type UserRole = (typeof ROLES)[keyof typeof ROLES];
+export type UserRole = (typeof ROLES)[keyof typeof ROLES] | string;
 
 export const ROLES_KEY = 'roles';
-export const Roles = (...roles: UserRole[]) =>
-  SetMetadata(ROLES_KEY, roles);
+export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
