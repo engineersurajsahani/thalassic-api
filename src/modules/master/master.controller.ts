@@ -128,6 +128,14 @@ export class MasterController {
     return this.masterService.updateAdminProfile(adminId, dto);
   }
 
+  @Post('settings/change-password')
+  changePassword(@Req() req: any, @Body() dto: any) {
+    const adminId = req.user?.id || req.user?.sub;
+    return this.masterService.updateAdminProfile(adminId, {
+      password: dto.newPassword || dto.password,
+    });
+  }
+
   // --- 5. Finance Module APIs (Master Only) ---
   @Get('finance/overview')
   getFinanceOverview() {
