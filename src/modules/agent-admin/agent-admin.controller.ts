@@ -1,12 +1,21 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { AgentAdminService } from './agent-admin.service';
 import { AuthGuard } from '../auth/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
-@Controller('agent-admin')
+@Controller(['agent-admin', 'partner-admin'])
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(ROLES.AGENT_ADMIN, ROLES.MASTER)
+@Roles(ROLES.AGENT_ADMIN, ROLES.PARTNER_ADMIN, ROLES.MASTER)
 export class AgentAdminController {
   constructor(private readonly agentAdminService: AgentAdminService) {}
 
@@ -40,9 +49,18 @@ export class AgentAdminController {
   }
 
   @Patch('agents/:id/status')
-  updateAgentStatus(@Req() req: any, @Param('id') id: string, @Body('status') status: string) {
+  updateAgentStatus(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.updateAgentStatus(id, status, adminId, adminName);
+    return this.agentAdminService.updateAgentStatus(
+      id,
+      status,
+      adminId,
+      adminName,
+    );
   }
 
   @Patch('agents/:id/commission')
@@ -63,9 +81,18 @@ export class AgentAdminController {
   }
 
   @Post('agents/:id/reset-password')
-  resetAgentPassword(@Req() req: any, @Param('id') id: string, @Body() passwordDto: any) {
+  resetAgentPassword(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() passwordDto: any,
+  ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.resetAgentPassword(id, passwordDto, adminId, adminName);
+    return this.agentAdminService.resetAgentPassword(
+      id,
+      passwordDto,
+      adminId,
+      adminName,
+    );
   }
 
   @Get('agents/:id/onboarding')
@@ -105,7 +132,12 @@ export class AgentAdminController {
     @Body() dto: any,
   ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.updateAgentDetails(id, dto, adminId, adminName);
+    return this.agentAdminService.updateAgentDetails(
+      id,
+      dto,
+      adminId,
+      adminName,
+    );
   }
 
   @Patch('agents/:id/verify-document')
@@ -117,7 +149,14 @@ export class AgentAdminController {
     @Body('remarks') remarks: string,
   ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.verifyAgentDocument(id, docId, status, remarks, adminId, adminName);
+    return this.agentAdminService.verifyAgentDocument(
+      id,
+      docId,
+      status,
+      remarks,
+      adminId,
+      adminName,
+    );
   }
 
   @Get('referral-conflicts')
@@ -133,7 +172,13 @@ export class AgentAdminController {
     @Body('remarks') remarks: string,
   ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.resolveConflict(purchaseId, approvedAgentId, remarks, adminId, adminName);
+    return this.agentAdminService.resolveConflict(
+      purchaseId,
+      approvedAgentId,
+      remarks,
+      adminId,
+      adminName,
+    );
   }
 
   // --- Commission Lifecycle & Settlement Endpoints ---
@@ -145,7 +190,13 @@ export class AgentAdminController {
     @Body('reason') reason: string,
   ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.updateCommissionStatus(id, status, reason, adminId, adminName);
+    return this.agentAdminService.updateCommissionStatus(
+      id,
+      status,
+      reason,
+      adminId,
+      adminName,
+    );
   }
 
   @Get('commissions/:id/history')
@@ -156,7 +207,11 @@ export class AgentAdminController {
   @Post('settlements')
   createSettlementBatch(@Req() req: any, @Body() dto: any) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.createSettlementBatch(dto, adminId, adminName);
+    return this.agentAdminService.createSettlementBatch(
+      dto,
+      adminId,
+      adminName,
+    );
   }
 
   @Get('settlements')
@@ -182,7 +237,12 @@ export class AgentAdminController {
     @Body('message') message: string,
   ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.addTicketReply(id, message, adminId, adminName);
+    return this.agentAdminService.addTicketReply(
+      id,
+      message,
+      adminId,
+      adminName,
+    );
   }
 
   @Patch('tickets/:id/status')
@@ -192,6 +252,11 @@ export class AgentAdminController {
     @Body('status') status: string,
   ) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);
-    return this.agentAdminService.updateTicketStatus(id, status, adminId, adminName);
+    return this.agentAdminService.updateTicketStatus(
+      id,
+      status,
+      adminId,
+      adminName,
+    );
   }
 }

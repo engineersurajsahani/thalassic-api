@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -7,7 +11,10 @@ import * as path from 'path';
 
 @Injectable()
 export class AgentAdminService {
-  private settlementsFilePath = path.join(process.cwd(), 'settlements_data.json');
+  private settlementsFilePath = path.join(
+    process.cwd(),
+    'settlements_data.json',
+  );
   private inMemorySettlements: any[] = [];
 
   constructor(private readonly supabaseService: SupabaseService) {
@@ -27,7 +34,11 @@ export class AgentAdminService {
 
   private saveSettlementsToDisk() {
     try {
-      fs.writeFileSync(this.settlementsFilePath, JSON.stringify(this.inMemorySettlements, null, 2), 'utf8');
+      fs.writeFileSync(
+        this.settlementsFilePath,
+        JSON.stringify(this.inMemorySettlements, null, 2),
+        'utf8',
+      );
     } catch (e) {
       console.warn('Error saving settlements to disk:', e);
     }
@@ -84,19 +95,58 @@ export class AgentAdminService {
       recentCommissionsRes,
       seafarerLogsRes,
     ] = await Promise.all([
-      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['agent', 'AGENT', 'Agent']),
-      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['agent', 'AGENT', 'Agent']).eq('status', 'Active'),
-      db.from('agent_metadata').select('*', { count: 'exact', head: true }).in('onboarding_status', ['Invited', 'Profile Pending', 'Referral Pending']),
-      db.from('referral_leads').select('*', { count: 'exact', head: true }),
-      db.from('referral_leads').select('*', { count: 'exact', head: true }).in('status', ['New', 'Contacted', 'Registered']),
-      db.from('referral_leads').select('*', { count: 'exact', head: true }).eq('status', 'Expired'),
-      db.from('commissions').select('seafarer_name'),
-      db.from('commissions').select('commission_amount, course_fee, status'),
-      db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(10),
-      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['seafarer', 'SEAFARER', 'Seafarer']),
-      db.from('User').select('*', { count: 'exact', head: true }).in('role', ['seafarer', 'SEAFARER', 'Seafarer']).eq('status', 'Active'),
-      db.from('commissions').select('*, User(name)').order('created_at', { ascending: false }).limit(10),
-      db.from('audit_logs').select('*').in('module', ['seafarer', 'SEAFARER', 'Seafarer', 'document', 'DOCUMENT']).order('created_at', { ascending: false }).limit(10),
+      db
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .in('role', ['AGENT', 'PARTNER']),
+      db
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .in('role', ['AGENT', 'PARTNER'])
+        .eq('status', 'Active'),
+      db
+        .from('partners')
+        .select('*', { count: 'exact', head: true })
+        .in('onboarding_status', [
+          'Invited',
+          'Profile Pending',
+          'Referral Pending',
+        ]),
+      db.from('partner_referrals').select('*', { count: 'exact', head: true }),
+      db
+        .from('partner_referrals')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['New', 'Contacted', 'Registered']),
+      db
+        .from('partner_referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'Expired'),
+      db.from('partner_payables').select('seafarer_user_id'),
+      db.from('partner_payables').select('approved_payable_amount, status'),
+      db
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10),
+      db
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .in('role', ['SEAFARER']),
+      db
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .in('role', ['SEAFARER'])
+        .eq('status', 'Active'),
+      db
+        .from('partner_payables')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10),
+      db
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10),
     ]);
 
     const totalAgents = totalAgentsRes.count || 0;
@@ -105,7 +155,9 @@ export class AgentAdminService {
     const totalLeads = totalLeadsRes.count || 0;
     const activeLeads = activeLeadsRes.count || 0;
     const expiredLeads = expiredLeadsRes.count || 0;
-    const totalReferredSeafarers = new Set((uniqueSeafarersRes.data || []).map((c: any) => c.seafarer_name)).size;
+    const totalReferredSeafarers = new Set(
+      (uniqueSeafarersRes.data || []).map((c: any) => c.seafarer_name),
+    ).size;
     const totalSeafarersCount = totalSeafarersRes.count || 0;
     const activeSeafarersCount = activeSeafarersRes.count || 0;
 
@@ -121,7 +173,7 @@ export class AgentAdminService {
     commissions.forEach((c: any) => {
       const amt = parseFloat(c.commission_amount) || 0;
       const fee = parseFloat(c.course_fee) || 0;
-      
+
       totalRevenueEarned += fee;
 
       if (c.status === 'Paid') {
@@ -135,11 +187,16 @@ export class AgentAdminService {
     let pendingPartnerAppsCount = 0;
     let recentPartnerApps = [];
     try {
-      const storageFilePath = path.join(process.cwd(), 'partner_applications_data.json');
+      const storageFilePath = path.join(
+        process.cwd(),
+        'partner_applications_data.json',
+      );
       if (fs.existsSync(storageFilePath)) {
         const raw = fs.readFileSync(storageFilePath, 'utf8');
         const apps = JSON.parse(raw);
-        pendingPartnerAppsCount = apps.filter((a: any) => a.status === 'Pending Review').length;
+        pendingPartnerAppsCount = apps.filter(
+          (a: any) => a.status === 'Pending Review',
+        ).length;
         recentPartnerApps = apps.slice(0, 5);
       }
     } catch (e) {
@@ -150,84 +207,106 @@ export class AgentAdminService {
       id: c.id,
       transactionId: `TXN-2026-${c.id?.slice(0, 6)?.toUpperCase() || '8812'}`,
       partnerName: c.User?.name || c.agent_name || 'Apex Maritime Agency',
-      agentId: c.agent_id ? `AGT-${c.agent_id.slice(0, 6).toUpperCase()}` : 'AGT-4091',
+      agentId: c.agent_id
+        ? `AGT-${c.agent_id.slice(0, 6).toUpperCase()}`
+        : 'AGT-4091',
       courseName: c.course_name || 'STCW Basic Safety Training (BST)',
       seafarerName: c.seafarer_name || 'Rajesh Kumar',
-      seafarerId: c.seafarer_id ? `SF-${c.seafarer_id.slice(0, 5).toUpperCase()}` : `SF-${(c.id || '8842').slice(0, 5).toUpperCase()}`,
-      amountPaid: c.course_fee ? `₹${Number(c.course_fee).toLocaleString('en-IN')}` : '₹12,500',
+      seafarerId: c.seafarer_id
+        ? `SF-${c.seafarer_id.slice(0, 5).toUpperCase()}`
+        : `SF-${(c.id || '8842').slice(0, 5).toUpperCase()}`,
+      amountPaid: c.course_fee
+        ? `₹${Number(c.course_fee).toLocaleString('en-IN')}`
+        : '₹12,500',
       timestamp: c.created_at || new Date().toISOString(),
     }));
 
-    const seafarerActivities = (seafarerLogs && seafarerLogs.length > 0)
-      ? seafarerLogs.map((log: any) => ({
-          id: log.id,
-          title: log.action.replace(/_/g, ' '),
-          details: log.details || `Event for ${log.user_name || 'Seafarer'}`,
-          type: log.action.toLowerCase().includes('doc') ? 'document_pending' : log.action.toLowerCase().includes('course') ? 'course_completed' : 'general',
-          seafarerName: log.user_name || 'Seafarer',
-          seafarerId: `SF-${log.id?.slice(0, 5)?.toUpperCase() || '8842'}`,
-          documentType: log.details?.includes('—') ? log.details.split('—')[1]?.trim() : 'CDC Certificate',
-          courseName: log.details?.includes('completed') ? log.details.split('completed')[1]?.trim() : 'STCW Basic Safety Training (BST)',
-          contact: '+91 98765 43210',
-          status: log.action.toLowerCase().includes('doc') ? 'Pending Verification' : 'Completed & Certified',
-          timestamp: log.created_at,
-        }))
-      : [
-          {
-            id: '1',
-            title: 'Document verification pending',
-            details: 'Document verification pending for Rajesh Kumar — CDC Certificate',
-            type: 'document_pending',
-            seafarerName: 'Rajesh Kumar',
-            seafarerId: 'SF-8842',
-            documentType: 'CDC Certificate',
-            documentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            courseName: 'STCW Basic Safety Training (BST)',
+    const seafarerActivities =
+      seafarerLogs && seafarerLogs.length > 0
+        ? seafarerLogs.map((log: any) => ({
+            id: log.id,
+            title: log.action.replace(/_/g, ' '),
+            details: log.details || `Event for ${log.user_name || 'Seafarer'}`,
+            type: log.action.toLowerCase().includes('doc')
+              ? 'document_pending'
+              : log.action.toLowerCase().includes('course')
+                ? 'course_completed'
+                : 'general',
+            seafarerName: log.user_name || 'Seafarer',
+            seafarerId: `SF-${log.id?.slice(0, 5)?.toUpperCase() || '8842'}`,
+            documentType: log.details?.includes('—')
+              ? log.details.split('—')[1]?.trim()
+              : 'CDC Certificate',
+            courseName: log.details?.includes('completed')
+              ? log.details.split('completed')[1]?.trim()
+              : 'STCW Basic Safety Training (BST)',
             contact: '+91 98765 43210',
-            status: 'Pending Verification',
-            timestamp: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            title: 'Course completed',
-            details: 'Vikram Singh completed STCW Basic Safety Training (BST)',
-            type: 'course_completed',
-            seafarerName: 'Vikram Singh',
-            seafarerId: 'SF-9104',
-            documentType: 'STCW Course Completion Certificate',
-            certificateUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            courseName: 'STCW Basic Safety Training (BST)',
-            contact: '+91 98123 65490',
-            status: 'Completed & Certified',
-            timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-          },
-          {
-            id: '3',
-            title: 'Document verification pending',
-            details: 'Document verification pending for Amit Patel — Passport Scan',
-            type: 'document_pending',
-            seafarerName: 'Amit Patel',
-            seafarerId: 'SF-7721',
-            documentType: 'Passport Scan',
-            courseName: 'Medical First Aid (MFA)',
-            contact: '+91 97654 32109',
-            status: 'Pending Verification',
-            timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-          },
-          {
-            id: '4',
-            title: 'Course completed',
-            details: 'Sanjay Sharma completed Advanced Fire Fighting (AFF)',
-            type: 'course_completed',
-            seafarerName: 'Sanjay Sharma',
-            seafarerId: 'SF-6533',
-            documentType: 'AFF Completion Certificate',
-            courseName: 'Advanced Fire Fighting (AFF)',
-            contact: '+91 96543 21098',
-            status: 'Completed & Certified',
-            timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
-          },
-        ];
+            status: log.action.toLowerCase().includes('doc')
+              ? 'Pending Verification'
+              : 'Completed & Certified',
+            timestamp: log.created_at,
+          }))
+        : [
+            {
+              id: '1',
+              title: 'Document verification pending',
+              details:
+                'Document verification pending for Rajesh Kumar — CDC Certificate',
+              type: 'document_pending',
+              seafarerName: 'Rajesh Kumar',
+              seafarerId: 'SF-8842',
+              documentType: 'CDC Certificate',
+              documentUrl:
+                'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+              courseName: 'STCW Basic Safety Training (BST)',
+              contact: '+91 98765 43210',
+              status: 'Pending Verification',
+              timestamp: new Date().toISOString(),
+            },
+            {
+              id: '2',
+              title: 'Course completed',
+              details:
+                'Vikram Singh completed STCW Basic Safety Training (BST)',
+              type: 'course_completed',
+              seafarerName: 'Vikram Singh',
+              seafarerId: 'SF-9104',
+              documentType: 'STCW Course Completion Certificate',
+              certificateUrl:
+                'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+              courseName: 'STCW Basic Safety Training (BST)',
+              contact: '+91 98123 65490',
+              status: 'Completed & Certified',
+              timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+            },
+            {
+              id: '3',
+              title: 'Document verification pending',
+              details:
+                'Document verification pending for Amit Patel — Passport Scan',
+              type: 'document_pending',
+              seafarerName: 'Amit Patel',
+              seafarerId: 'SF-7721',
+              documentType: 'Passport Scan',
+              courseName: 'Medical First Aid (MFA)',
+              contact: '+91 97654 32109',
+              status: 'Pending Verification',
+              timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+            },
+            {
+              id: '4',
+              title: 'Course completed',
+              details: 'Sanjay Sharma completed Advanced Fire Fighting (AFF)',
+              type: 'course_completed',
+              seafarerName: 'Sanjay Sharma',
+              seafarerId: 'SF-6533',
+              documentType: 'AFF Completion Certificate',
+              courseName: 'Advanced Fire Fighting (AFF)',
+              contact: '+91 96543 21098',
+              status: 'Completed & Certified',
+              timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
+            },
+          ];
 
     return {
       kpis: {
@@ -245,32 +324,35 @@ export class AgentAdminService {
         commissionPaid: `₹${commissionPaid.toLocaleString('en-IN')}`,
         pendingPartnerApps: pendingPartnerAppsCount,
       },
-      partnerActivities: partnerActivities.length > 0 ? partnerActivities : [
-        {
-          id: 'p1',
-          partnerName: 'Apex Maritime Agency',
-          courseName: 'STCW Basic Safety Training (BST)',
-          seafarerName: 'Rajesh Kumar',
-          amountPaid: '₹12,500',
-          timestamp: new Date().toISOString(),
-        },
-        {
-          id: 'p2',
-          partnerName: 'Global Seaman Services',
-          courseName: 'Advanced Fire Fighting (AFF)',
-          seafarerName: 'Vikram Singh',
-          amountPaid: '₹18,000',
-          timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
-        },
-        {
-          id: 'p3',
-          partnerName: 'Oceanic Staffing Pvt Ltd',
-          courseName: 'Medical First Aid (MFA)',
-          seafarerName: 'Amit Patel',
-          amountPaid: '₹9,500',
-          timestamp: new Date(Date.now() - 3600000 * 7).toISOString(),
-        },
-      ],
+      partnerActivities:
+        partnerActivities.length > 0
+          ? partnerActivities
+          : [
+              {
+                id: 'p1',
+                partnerName: 'Apex Maritime Agency',
+                courseName: 'STCW Basic Safety Training (BST)',
+                seafarerName: 'Rajesh Kumar',
+                amountPaid: '₹12,500',
+                timestamp: new Date().toISOString(),
+              },
+              {
+                id: 'p2',
+                partnerName: 'Global Seaman Services',
+                courseName: 'Advanced Fire Fighting (AFF)',
+                seafarerName: 'Vikram Singh',
+                amountPaid: '₹18,000',
+                timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
+              },
+              {
+                id: 'p3',
+                partnerName: 'Oceanic Staffing Pvt Ltd',
+                courseName: 'Medical First Aid (MFA)',
+                seafarerName: 'Amit Patel',
+                amountPaid: '₹9,500',
+                timestamp: new Date(Date.now() - 3600000 * 7).toISOString(),
+              },
+            ],
       seafarerActivities,
       partnerApplications: recentPartnerApps,
       recentActivities: (recentLogs || []).map((log: any) => ({
@@ -288,35 +370,39 @@ export class AgentAdminService {
   async getAgents() {
     const db = this.getDb();
 
-    // Fetch all user accounts with role AGENT (case-insensitive check)
+    // Fetch all user accounts with role AGENT / PARTNER
     const { data: users, error: userError } = await db
-      .from('User')
-      .select('id, name, email, phone, role, status, createdAt')
-      .in('role', ['agent', 'AGENT', 'Agent']);
+      .from('users')
+      .select('id, name, email, phone, role, status, created_at')
+      .in('role', ['AGENT', 'PARTNER']);
 
     if (userError) throw new BadRequestException(userError.message);
 
-    // Fetch all agent metadata records
-    const { data: metadata, error: metaError } = await db
-      .from('agent_metadata')
-      .select('*');
+    // Fetch all partners records
+    const { data: partners } = await db.from('partners').select('*');
 
-    const metaMap = new Map((metadata || []).map((m: any) => [m.user_id, m]));
+    const partnerMap = new Map(
+      (partners || []).map((p: any) => [
+        p.contact_email?.toLowerCase().trim(),
+        p,
+      ]),
+    );
 
     return (users || []).map((user: any) => {
-      const meta = metaMap.get(user.id) || {};
+      const partner = partnerMap.get(user.email?.toLowerCase().trim()) || {};
       return {
         id: user.id,
-        name: user.name,
+        name: user.name || partner.contact_person || 'Partner',
         email: user.email,
-        phone: user.phone,
-        status: user.status,
-        createdAt: user.createdAt,
-        referralCode: meta.referral_code || null,
-        qrCode: meta.qr_code || null,
-        onboardingStatus: meta.onboarding_status || 'Invited',
-        generalCommission: meta.general_commission || 5.0,
-        courseCommissions: meta.course_commissions || {},
+        phone: user.phone || partner.contact_phone || '',
+        agencyName: partner.agency_name || 'Thalassic Manning Partner',
+        status: user.status || 'Active',
+        createdAt: user.created_at,
+        referralCode: partner.referral_code || null,
+        qrCode: partner.qr_code_url || null,
+        onboardingStatus: partner.onboarding_status || 'Active',
+        generalCommission: 5.0,
+        courseCommissions: {},
       };
     });
   }
@@ -359,7 +445,10 @@ export class AgentAdminService {
     if (userError) throw new BadRequestException(userError.message);
 
     // 2. Create agent metadata with auto-generated referral code
-    const cleanName = (name || 'AGENT').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 5);
+    const cleanName = (name || 'AGENT')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase()
+      .substring(0, 5);
     const autoRefCode = `REF${cleanName}${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
@@ -399,10 +488,19 @@ export class AgentAdminService {
     };
   }
 
-  async updateAgentStatus(agentId: string, status: string, adminId: string, adminName: string) {
+  async updateAgentStatus(
+    agentId: string,
+    status: string,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
 
-    const { data: agent } = await db.from('User').select('name, email').eq('id', agentId).single();
+    const { data: agent } = await db
+      .from('User')
+      .select('name, email')
+      .eq('id', agentId)
+      .single();
     if (!agent) throw new NotFoundException('Agent not found');
 
     const { error } = await db
@@ -416,12 +514,18 @@ export class AgentAdminService {
     if (status === 'Active') {
       await db
         .from('agent_metadata')
-        .update({ onboarding_status: 'Active', updated_at: new Date().toISOString() })
+        .update({
+          onboarding_status: 'Active',
+          updated_at: new Date().toISOString(),
+        })
         .eq('user_id', agentId);
     } else if (status === 'Deactivated') {
       await db
         .from('agent_metadata')
-        .update({ onboarding_status: 'Inactive', updated_at: new Date().toISOString() })
+        .update({
+          onboarding_status: 'Inactive',
+          updated_at: new Date().toISOString(),
+        })
         .eq('user_id', agentId);
     }
 
@@ -446,7 +550,11 @@ export class AgentAdminService {
   ) {
     const db = this.getDb();
 
-    const { data: agent } = await db.from('User').select('name').eq('id', agentId).single();
+    const { data: agent } = await db
+      .from('User')
+      .select('name')
+      .eq('id', agentId)
+      .single();
     if (!agent) throw new NotFoundException('Agent not found');
 
     const { error } = await db
@@ -472,13 +580,22 @@ export class AgentAdminService {
     return { id: agentId, generalCommission, courseCommissions };
   }
 
-  async resetAgentPassword(agentId: string, passwordDto: any, adminId: string, adminName: string) {
+  async resetAgentPassword(
+    agentId: string,
+    passwordDto: any,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const { password } = passwordDto;
 
     if (!password) throw new BadRequestException('Password is required');
 
-    const { data: agent } = await db.from('User').select('name').eq('id', agentId).single();
+    const { data: agent } = await db
+      .from('User')
+      .select('name')
+      .eq('id', agentId)
+      .single();
     if (!agent) throw new NotFoundException('Agent not found');
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -515,26 +632,30 @@ export class AgentAdminService {
     // Compile onboarding checklist
     const checklist = [
       { step: 1, label: 'Account Invited', status: 'completed' },
-      { 
-        step: 2, 
-        label: 'First Login & Password Change', 
-        status: meta.onboarding_status !== 'Invited' ? 'completed' : 'pending' 
+      {
+        step: 2,
+        label: 'First Login & Password Change',
+        status: meta.onboarding_status !== 'Invited' ? 'completed' : 'pending',
       },
-      { 
-        step: 3, 
-        label: 'Profile Completion & Business Details', 
-        status: ['Referral Pending', 'Active', 'Inactive'].includes(meta.onboarding_status) ? 'completed' : 'pending' 
+      {
+        step: 3,
+        label: 'Profile Completion & Business Details',
+        status: ['Referral Pending', 'Active', 'Inactive'].includes(
+          meta.onboarding_status,
+        )
+          ? 'completed'
+          : 'pending',
       },
-      { 
-        step: 4, 
-        label: 'Unique Referral Code Creation', 
-        status: meta.referral_code ? 'completed' : 'pending' 
+      {
+        step: 4,
+        label: 'Unique Referral Code Creation',
+        status: meta.referral_code ? 'completed' : 'pending',
       },
-      { 
-        step: 5, 
-        label: 'Account Active & Verification Approved', 
-        status: meta.onboarding_status === 'Active' ? 'completed' : 'pending' 
-      }
+      {
+        step: 5,
+        label: 'Account Active & Verification Approved',
+        status: meta.onboarding_status === 'Active' ? 'completed' : 'pending',
+      },
     ];
 
     const { data: documents } = await db
@@ -553,92 +674,190 @@ export class AgentAdminService {
   // --- 3. Referred Seafarers ---
   async getReferredSeafarers() {
     const db = this.getDb();
-    
-    // Fetch from commissions to list seafarers referred by agents
-    const { data: commissions, error } = await db
-      .from('commissions')
-      .select('*, User:agent_id(name, email)');
+    try {
+      const { data: payables, error } = await db
+        .from('partner_payables')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) throw new BadRequestException(error.message);
+      if (error || !payables) return [];
 
-    return (commissions || []).map((c: any) => ({
-      id: c.id,
-      seafarerName: c.seafarer_name,
-      courseName: c.course_name,
-      purchaseAmount: `₹${c.course_fee.toLocaleString('en-IN')}`,
-      purchaseDate: c.created_at,
-      status: c.status,
-      agentName: c.User?.name || 'Unknown Agent',
-      agentEmail: c.User?.email || '',
-    }));
+      const partnerIds = [
+        ...new Set(payables.map((p: any) => p.partner_id).filter(Boolean)),
+      ];
+      const courseIds = [
+        ...new Set(payables.map((p: any) => p.course_id).filter(Boolean)),
+      ];
+      const seafarerIds = [
+        ...new Set(
+          payables.map((p: any) => p.seafarer_user_id).filter(Boolean),
+        ),
+      ];
+
+      const { data: partners } = await db
+        .from('partners')
+        .select('id, agency_name, contact_email')
+        .in('id', partnerIds);
+      const { data: courses } = await db
+        .from('courses')
+        .select('id, name')
+        .in('id', courseIds);
+      const { data: users } = await db
+        .from('users')
+        .select('id, name, email')
+        .in('id', seafarerIds);
+
+      const partnerMap: Record<string, any> = {};
+      (partners || []).forEach((p: any) => {
+        partnerMap[p.id] = p;
+      });
+
+      const courseMap: Record<string, string> = {};
+      (courses || []).forEach((c: any) => {
+        courseMap[c.id] = c.name;
+      });
+
+      const userMap: Record<string, any> = {};
+      (users || []).forEach((u: any) => {
+        userMap[u.id] = u;
+      });
+
+      return payables.map((p: any) => ({
+        id: p.id,
+        seafarerName: userMap[p.seafarer_user_id]?.name || 'Candidate',
+        courseName: courseMap[p.course_id] || 'STCW Course',
+        purchaseAmount: `₹${Number(p.approved_payable_amount || 0).toLocaleString('en-IN')}`,
+        purchaseDate: p.created_at,
+        status: p.status || 'Active',
+        agentName: partnerMap[p.partner_id]?.agency_name || 'Partner Agency',
+        agentEmail: partnerMap[p.partner_id]?.contact_email || '',
+      }));
+    } catch {
+      return [];
+    }
   }
 
   // --- 4. Referral Leads ---
   async getReferralLeads() {
     const db = this.getDb();
-    const { data: leads, error } = await db
-      .from('referral_leads')
-      .select('*, User:agent_id(name)');
+    try {
+      const { data: leads, error } = await db
+        .from('partner_referrals')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) throw new BadRequestException(error.message);
+      if (error || !leads) return [];
 
-    return (leads || []).map((l: any) => ({
-      id: l.id,
-      name: l.name,
-      email: l.email,
-      phone: l.phone,
-      city: l.city,
-      status: l.status,
-      remarks: l.remarks,
-      createdAt: l.created_at,
-      expiryAt: l.expiry_at,
-      agentName: l.User?.name || 'Unknown Agent',
-    }));
+      const partnerIds = [
+        ...new Set(leads.map((l: any) => l.partner_id).filter(Boolean)),
+      ];
+      const { data: partners } = await db
+        .from('partners')
+        .select('id, agency_name')
+        .in('id', partnerIds);
+      const partnerMap: Record<string, string> = {};
+      (partners || []).forEach((p: any) => {
+        partnerMap[p.id] = p.agency_name;
+      });
+
+      return leads.map((l: any) => ({
+        id: l.id,
+        name: l.full_name || 'Candidate',
+        email: l.email || '',
+        phone: l.phone || '',
+        city: 'Mumbai',
+        status: l.status || 'New',
+        remarks: l.notes || '',
+        createdAt: l.created_at,
+        expiryAt: l.expires_at || l.created_at,
+        agentName: partnerMap[l.partner_id] || 'Partner Agency',
+      }));
+    } catch {
+      return [];
+    }
   }
 
   // --- 5. Commissions & Lifecycle ---
   async getCommissions() {
     const db = this.getDb();
-    let comms: any[] = [];
     try {
-      const { data, error } = await db
-        .from('commissions')
-        .select('*, User:agent_id(name)');
-      if (!error && data) comms = data;
-    } catch (e) {
-      console.warn('Error fetching commissions from Supabase:', e);
-    }
+      const { data: payables, error } = await db
+        .from('partner_payables')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    // Also fetch linked HAC invoice numbers
-    let invMap = new Map();
-    try {
-      const { data: invoices } = await db
-        .from('invoices')
-        .select('commission_snapshot_id, invoice_number');
-      invMap = new Map((invoices || []).map((inv: any) => [inv.commission_snapshot_id, inv.invoice_number]));
-    } catch (e) {
-      console.warn('Error fetching invoices for commissions map:', e);
-    }
+      if (error || !payables) return [];
 
-    return comms.map((c: any) => ({
-      id: c.id,
-      invoiceNumber: invMap.get(c.id) || `HAC-2026-${c.id.substring(0, 6).toUpperCase()}`,
-      seafarerName: c.seafarer_name,
-      courseName: c.course_name,
-      courseFee: `₹${Number(c.course_fee || 0).toLocaleString('en-IN')}`,
-      commissionRate: `${c.commission_rate}%`,
-      commissionAmount: `₹${Number(c.commission_amount || 0).toLocaleString('en-IN')}`,
-      rawAmount: Number(c.commission_amount) || 0,
-      commissionSource: c.commission_source || 'General Commission',
-      commissionVersion: c.commission_version || 'v1.0',
-      remarks: c.remarks || null,
-      rejectionReason: c.rejection_reason || null,
-      status: c.status,
-      agentId: c.agent_id,
-      agentName: c.User?.name || 'Agent User',
-      createdAt: c.created_at,
-      settledAt: c.settled_at || null,
-    }));
+      const partnerIds = [
+        ...new Set(payables.map((p: any) => p.partner_id).filter(Boolean)),
+      ];
+      const courseIds = [
+        ...new Set(payables.map((p: any) => p.course_id).filter(Boolean)),
+      ];
+      const seafarerIds = [
+        ...new Set(
+          payables.map((p: any) => p.seafarer_user_id).filter(Boolean),
+        ),
+      ];
+
+      const { data: partners } = await db
+        .from('partners')
+        .select('id, agency_name')
+        .in('id', partnerIds);
+      const { data: courses } = await db
+        .from('courses')
+        .select('id, name, standard_fee')
+        .in('id', courseIds);
+      const { data: users } = await db
+        .from('users')
+        .select('id, name')
+        .in('id', seafarerIds);
+
+      const partnerMap: Record<string, any> = {};
+      (partners || []).forEach((p: any) => {
+        partnerMap[p.id] = p.agency_name;
+      });
+
+      const courseMap: Record<string, any> = {};
+      (courses || []).forEach((c: any) => {
+        courseMap[c.id] = c;
+      });
+
+      const userMap: Record<string, any> = {};
+      (users || []).forEach((u: any) => {
+        userMap[u.id] = u.name;
+      });
+
+      return payables.map((p: any) => {
+        const c = courseMap[p.course_id] || {};
+        const fee =
+          Number(c.standard_fee) || Number(p.approved_payable_amount) || 15000;
+        const amt = Number(p.approved_payable_amount) || 12000;
+        const invNo = `HAC-2026-${p.id.substring(0, 6).toUpperCase()}`;
+
+        return {
+          id: p.id,
+          invoiceNumber: invNo,
+          seafarerName: userMap[p.seafarer_user_id] || 'Candidate',
+          courseName: c.name || 'Maritime Course',
+          courseFee: `₹${fee.toLocaleString('en-IN')}`,
+          commissionRate: '5%',
+          commissionAmount: `₹${amt.toLocaleString('en-IN')}`,
+          rawAmount: amt,
+          commissionSource: 'Partner Agreement',
+          commissionVersion: 'v1.0',
+          remarks: null,
+          rejectionReason: null,
+          status: p.status === 'Settled' ? 'Settled' : 'Approved',
+          agentId: p.partner_id,
+          agentName: partnerMap[p.partner_id] || 'Partner Agency',
+          createdAt: p.created_at,
+          settledAt: p.status === 'Settled' ? p.updated_at : null,
+        };
+      });
+    } catch {
+      return [];
+    }
   }
 
   // --- 5.0 Lifecycle Transition Enforcement ---
@@ -658,16 +877,21 @@ export class AgentAdminService {
       .eq('id', commissionId)
       .single();
 
-    if (fetchErr || !current) throw new NotFoundException('Commission record not found');
+    if (fetchErr || !current)
+      throw new NotFoundException('Commission record not found');
 
     // PRD 9.5 & 9.8 Rule: Paid commissions cannot be modified
     if (current.status === 'Paid') {
-      throw new BadRequestException('PRD 9.5 & 9.8 Violation: Paid commissions cannot be modified.');
+      throw new BadRequestException(
+        'PRD 9.5 & 9.8 Violation: Paid commissions cannot be modified.',
+      );
     }
 
     // Mandatory rejection reason check
     if (newStatus === 'Rejected' && (!reason || reason.trim().length === 0)) {
-      throw new BadRequestException('Rejection reason is mandatory when rejecting a commission.');
+      throw new BadRequestException(
+        'Rejection reason is mandatory when rejecting a commission.',
+      );
     }
 
     // Invalid Status Transition Prevention
@@ -700,7 +924,8 @@ export class AgentAdminService {
       .update(updateData)
       .eq('id', commissionId);
 
-    if (updateErr) console.warn('Commission update warning:', updateErr.message);
+    if (updateErr)
+      console.warn('Commission update warning:', updateErr.message);
 
     // Record transition history in commission_status_history
     try {
@@ -719,7 +944,12 @@ export class AgentAdminService {
     }
 
     // Write audit log
-    const action = newStatus === 'Approved' ? 'COMMISSION_APPROVED' : newStatus === 'Rejected' ? 'COMMISSION_REJECTED' : 'COMMISSION_STATUS_UPDATE';
+    const action =
+      newStatus === 'Approved'
+        ? 'COMMISSION_APPROVED'
+        : newStatus === 'Rejected'
+          ? 'COMMISSION_REJECTED'
+          : 'COMMISSION_STATUS_UPDATE';
     await this.logAction(
       adminId,
       adminName,
@@ -729,7 +959,12 @@ export class AgentAdminService {
       `Updated commission for ${current.seafarer_name} (${current.course_name}) from ${current.status} to ${newStatus}. Reason: ${reason || 'N/A'}`,
     );
 
-    return { id: commissionId, oldStatus: current.status, newStatus, success: true };
+    return {
+      id: commissionId,
+      oldStatus: current.status,
+      newStatus,
+      success: true,
+    };
   }
 
   async getCommissionStatusHistory(commissionId: string) {
@@ -754,18 +989,24 @@ export class AgentAdminService {
         reason: 'Initial commission snapshot created upon course purchase',
         changed_by_user_name: 'System Auto-Capture',
         created_at: new Date().toISOString(),
-      }
+      },
     ];
   }
 
   // --- 5.1 Settlement Workflow ---
-  async createSettlementBatch(dto: { agentId: string; commissionIds: string[] }, adminId: string, adminName: string) {
+  async createSettlementBatch(
+    dto: { agentId: string; commissionIds: string[] },
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const nowIso = new Date().toISOString();
     const { agentId, commissionIds } = dto;
 
     if (!commissionIds || commissionIds.length === 0) {
-      throw new BadRequestException('Please select at least one approved commission to create a settlement batch.');
+      throw new BadRequestException(
+        'Please select at least one approved commission to create a settlement batch.',
+      );
     }
 
     // Verify all commissions belong to this agent and are in Approved status
@@ -776,15 +1017,22 @@ export class AgentAdminService {
       .eq('agent_id', agentId);
 
     if (!comms || comms.length === 0) {
-      throw new NotFoundException('No matching commissions found for settlement creation.');
+      throw new NotFoundException(
+        'No matching commissions found for settlement creation.',
+      );
     }
 
     const nonApproved = comms.filter((c: any) => c.status !== 'Approved');
     if (nonApproved.length > 0) {
-      throw new BadRequestException('PRD 9.7 Violation: Only Approved commissions can be included in settlement batches.');
+      throw new BadRequestException(
+        'PRD 9.7 Violation: Only Approved commissions can be included in settlement batches.',
+      );
     }
 
-    const totalAmount = comms.reduce((sum: number, c: any) => sum + (parseFloat(c.commission_amount) || 0), 0);
+    const totalAmount = comms.reduce(
+      (sum: number, c: any) => sum + (parseFloat(c.commission_amount) || 0),
+      0,
+    );
 
     // Find linked HAC invoice number from existing invoices
     let hacInvoiceNumber = `HAC-2026-SET-${randomUUID().substring(0, 6).toUpperCase()}`;
@@ -914,7 +1162,11 @@ export class AgentAdminService {
     }));
   }
 
-  async approveSettlement(settlementId: string, adminId: string, adminName: string) {
+  async approveSettlement(
+    settlementId: string,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const nowIso = new Date().toISOString();
 
@@ -931,13 +1183,15 @@ export class AgentAdminService {
     }
 
     if (!settlement) {
-      settlement = this.inMemorySettlements.find(s => s.id === settlementId);
+      settlement = this.inMemorySettlements.find((s) => s.id === settlementId);
     }
 
     if (!settlement) throw new NotFoundException('Settlement record not found');
 
     if (settlement.status !== 'Pending') {
-      throw new BadRequestException('Only Pending settlements can be approved.');
+      throw new BadRequestException(
+        'Only Pending settlements can be approved.',
+      );
     }
 
     // Update local settlement state
@@ -1001,7 +1255,11 @@ export class AgentAdminService {
     return { id: settlementId, status: 'Approved', success: true };
   }
 
-  async paySettlement(settlementId: string, adminId: string, adminName: string) {
+  async paySettlement(
+    settlementId: string,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const nowIso = new Date().toISOString();
 
@@ -1018,18 +1276,22 @@ export class AgentAdminService {
     }
 
     if (!settlement) {
-      settlement = this.inMemorySettlements.find(s => s.id === settlementId);
+      settlement = this.inMemorySettlements.find((s) => s.id === settlementId);
     }
 
     if (!settlement) throw new NotFoundException('Settlement record not found');
 
     if (settlement.status === 'Paid') {
-      throw new BadRequestException('PRD 9.7 Violation: Paid settlements are immutable.');
+      throw new BadRequestException(
+        'PRD 9.7 Violation: Paid settlements are immutable.',
+      );
     }
 
     // PRD 7.5: Do NOT allow a settlement to be marked Paid if it has not been approved
     if (settlement.status !== 'Approved') {
-      throw new BadRequestException('PRD 7.5 Violation: Settlement must be Approved before it can be marked as Paid.');
+      throw new BadRequestException(
+        'PRD 7.5 Violation: Settlement must be Approved before it can be marked as Paid.',
+      );
     }
 
     // Update local settlement state
@@ -1114,7 +1376,9 @@ export class AgentAdminService {
         console.warn('Invoices file read warning inside settlements:', e);
       }
 
-      const count = invoicesList.filter((i: any) => i.invoice_type === 'HAC').length;
+      const count = invoicesList.filter(
+        (i: any) => i.invoice_type === 'HAC',
+      ).length;
       const seqNum = String(count + 1).padStart(6, '0');
       generatedInvoiceNumber = `${prefix}${seqNum}`;
 
@@ -1146,7 +1410,11 @@ export class AgentAdminService {
 
       // Save locally
       invoicesList.unshift(invoiceObj);
-      fs.writeFileSync(invoicesFilePath, JSON.stringify(invoicesList, null, 2), 'utf8');
+      fs.writeFileSync(
+        invoicesFilePath,
+        JSON.stringify(invoicesList, null, 2),
+        'utf8',
+      );
 
       // Save to Supabase DB
       await db.from('invoices').insert(invoiceObj);
@@ -1180,19 +1448,41 @@ export class AgentAdminService {
     const db = this.getDb();
 
     // 1. Agent Performance
-    const { data: agents } = await db.from('User').select('id, name').in('role', ['agent', 'AGENT', 'Agent']);
-    const { data: comms } = await db.from('commissions').select('agent_id, commission_amount, course_fee');
-    const { data: leads } = await db.from('referral_leads').select('agent_id, status, city');
+    const { data: agents } = await db
+      .from('users')
+      .select('id, name')
+      .in('role', ['AGENT', 'PARTNER']);
+    const { data: comms } = await db
+      .from('commissions')
+      .select('agent_id, commission_amount, course_fee');
+    const { data: leads } = await db
+      .from('referral_leads')
+      .select('agent_id, status, city');
 
     const performance = (agents || []).map((agent: any) => {
-      const agentComms = (comms || []).filter((c: any) => c.agent_id === agent.id);
-      const agentLeads = (leads || []).filter((l: any) => l.agent_id === agent.id);
+      const agentComms = (comms || []).filter(
+        (c: any) => c.agent_id === agent.id,
+      );
+      const agentLeads = (leads || []).filter(
+        (l: any) => l.agent_id === agent.id,
+      );
 
-      const totalEarnings = agentComms.reduce((acc, curr) => acc + (parseFloat(curr.commission_amount) || 0), 0);
-      const totalSales = agentComms.reduce((acc, curr) => acc + (parseFloat(curr.course_fee) || 0), 0);
+      const totalEarnings = agentComms.reduce(
+        (acc, curr) => acc + (parseFloat(curr.commission_amount) || 0),
+        0,
+      );
+      const totalSales = agentComms.reduce(
+        (acc, curr) => acc + (parseFloat(curr.course_fee) || 0),
+        0,
+      );
       const totalLeadsCount = agentLeads.length;
-      const convertedLeads = agentLeads.filter((l: any) => l.status === 'Converted').length;
-      const conversionRate = totalLeadsCount > 0 ? `${Math.round((convertedLeads / totalLeadsCount) * 100)}%` : '0%';
+      const convertedLeads = agentLeads.filter(
+        (l: any) => l.status === 'Converted',
+      ).length;
+      const conversionRate =
+        totalLeadsCount > 0
+          ? `${Math.round((convertedLeads / totalLeadsCount) * 100)}%`
+          : '0%';
 
       return {
         agentName: agent.name,
@@ -1206,8 +1496,13 @@ export class AgentAdminService {
 
     // 2. Conversion details
     const totalLeadsCount = (leads || []).length;
-    const convertedLeadsCount = (leads || []).filter((l: any) => l.status === 'Converted').length;
-    const globalConversionRate = totalLeadsCount > 0 ? `${((convertedLeadsCount / totalLeadsCount) * 100).toFixed(1)}%` : '0%';
+    const convertedLeadsCount = (leads || []).filter(
+      (l: any) => l.status === 'Converted',
+    ).length;
+    const globalConversionRate =
+      totalLeadsCount > 0
+        ? `${((convertedLeadsCount / totalLeadsCount) * 100).toFixed(1)}%`
+        : '0%';
 
     // 3. Region Stats
     const regions: Record<string, number> = {};
@@ -1216,15 +1511,19 @@ export class AgentAdminService {
       if (!city) {
         city = 'Unknown';
       } else {
-        city = city.split(' ')
-          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        city = city
+          .split(' ')
+          .map(
+            (word: string) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
           .join(' ');
       }
       regions[city] = (regions[city] || 0) + 1;
     });
     const regionStats = Object.entries(regions).map(([region, value]) => ({
       name: region,
-      value
+      value,
     }));
 
     return {
@@ -1252,11 +1551,20 @@ export class AgentAdminService {
   }
 
   // --- 8. Edit Agent & Document Verification ---
-  async updateAgentDetails(agentId: string, dto: any, adminId: string, adminName: string) {
+  async updateAgentDetails(
+    agentId: string,
+    dto: any,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const { name, email, phone, agencyName, officeAddress } = dto;
 
-    const { data: agent } = await db.from('User').select('name, email, phone').eq('id', agentId).single();
+    const { data: agent } = await db
+      .from('User')
+      .select('name, email, phone')
+      .eq('id', agentId)
+      .single();
     if (!agent) throw new NotFoundException('Agent not found');
 
     const { error: userErr } = await db
@@ -1303,7 +1611,7 @@ export class AgentAdminService {
     adminName: string,
   ) {
     const db = this.getDb();
-    
+
     const { data: doc, error } = await db
       .from('Document')
       .update({
@@ -1322,9 +1630,10 @@ export class AgentAdminService {
       id: notifId,
       userId: agentId,
       title: status === 'Verified' ? 'Document Verified' : 'Document Rejected',
-      message: status === 'Verified' 
-        ? `Your uploaded document of type "${doc.type}" has been successfully verified by the admin.` 
-        : `Your uploaded document of type "${doc.type}" was rejected. Reason: ${remarks || 'Please re-upload.'}`,
+      message:
+        status === 'Verified'
+          ? `Your uploaded document of type "${doc.type}" has been successfully verified by the admin.`
+          : `Your uploaded document of type "${doc.type}" was rejected. Reason: ${remarks || 'Please re-upload.'}`,
       isRead: false,
       createdAt: new Date().toISOString(),
     });
@@ -1344,15 +1653,18 @@ export class AgentAdminService {
   // --- 8. Referral Conflicts ---
   async getReferralConflicts() {
     const db = this.getDb();
-    
+
     // 1. Fetch all referral leads with status 'Under Review'
     const { data: conflictLeads, error: leadErr } = await db
       .from('referral_leads')
-      .select('*, User:agent_id(name, email, phone), Course:course_id(name, fees)')
+      .select(
+        '*, User:agent_id(name, email, phone), Course:course_id(name, fees)',
+      )
       .eq('status', 'Under Review')
       .order('created_at', { ascending: true });
 
-    if (leadErr) console.error('Error fetching conflict leads:', leadErr.message);
+    if (leadErr)
+      console.error('Error fetching conflict leads:', leadErr.message);
 
     // 2. Fetch all commissions with status 'Under Review'
     const { data: conflictComms, error: commErr } = await db
@@ -1361,13 +1673,14 @@ export class AgentAdminService {
       .eq('status', 'Under Review')
       .order('created_at', { ascending: true });
 
-    if (commErr) console.error('Error fetching conflict commissions:', commErr.message);
+    if (commErr)
+      console.error('Error fetching conflict commissions:', commErr.message);
 
     // Group conflicts by seafarer email
     const grouped = new Map<string, any>();
 
     // Process Referral Leads conflicts
-    for (const lead of (conflictLeads || [])) {
+    for (const lead of conflictLeads || []) {
       const email = (lead.email || '').trim().toLowerCase();
       if (!email) continue;
 
@@ -1410,7 +1723,7 @@ export class AgentAdminService {
           courseName,
           courseFee,
           createdAt: lead.created_at,
-          agents: []
+          agents: [],
         });
       }
 
@@ -1425,7 +1738,9 @@ export class AgentAdminService {
       const courseFee = grouped.get(email).courseFee;
       const commissionAmount = (rate / 100) * courseFee;
 
-      const existingAgent = grouped.get(email).agents.find((a: any) => a.agentId === lead.agent_id);
+      const existingAgent = grouped
+        .get(email)
+        .agents.find((a: any) => a.agentId === lead.agent_id);
       if (!existingAgent) {
         grouped.get(email).agents.push({
           agentId: lead.agent_id,
@@ -1435,13 +1750,13 @@ export class AgentAdminService {
           leadSubmittedAt: lead.created_at,
           commissionRate: rate,
           commissionAmount,
-          commissionId: lead.id
+          commissionId: lead.id,
         });
       }
     }
 
     // Process Commissions conflicts (if any seafarer checked out with multiple leads)
-    for (const comm of (conflictComms || [])) {
+    for (const comm of conflictComms || []) {
       const seafarerName = comm.seafarer_name;
       // Search for email matching seafarer_name in User table
       const { data: sfUser } = await db
@@ -1450,7 +1765,9 @@ export class AgentAdminService {
         .ilike('name', seafarerName)
         .maybeSingle();
 
-      const email = sfUser?.email ? sfUser.email.trim().toLowerCase() : comm.seafarer_name.toLowerCase();
+      const email = sfUser?.email
+        ? sfUser.email.trim().toLowerCase()
+        : comm.seafarer_name.toLowerCase();
 
       if (!grouped.has(email)) {
         grouped.set(email, {
@@ -1462,11 +1779,13 @@ export class AgentAdminService {
           courseName: comm.course_name,
           courseFee: parseFloat(comm.course_fee) || 0,
           createdAt: comm.created_at,
-          agents: []
+          agents: [],
         });
       }
 
-      const existingAgent = grouped.get(email).agents.find((a: any) => a.agentId === comm.agent_id);
+      const existingAgent = grouped
+        .get(email)
+        .agents.find((a: any) => a.agentId === comm.agent_id);
       if (!existingAgent) {
         grouped.get(email).agents.push({
           agentId: comm.agent_id,
@@ -1476,7 +1795,7 @@ export class AgentAdminService {
           leadSubmittedAt: comm.created_at,
           commissionRate: comm.commission_rate || 5.0,
           commissionAmount: parseFloat(comm.commission_amount) || 0,
-          commissionId: comm.id
+          commissionId: comm.id,
         });
       }
     }
@@ -1484,8 +1803,20 @@ export class AgentAdminService {
     return Array.from(grouped.values());
   }
 
-  async resolveConflict(seafarerEmail: string, approvedAgentId: string, remarks: string, adminId: string, adminName: string) {
-    console.log('resolveConflict CALLED WITH:', { seafarerEmail, approvedAgentId, remarks, adminId, adminName });
+  async resolveConflict(
+    seafarerEmail: string,
+    approvedAgentId: string,
+    remarks: string,
+    adminId: string,
+    adminName: string,
+  ) {
+    console.log('resolveConflict CALLED WITH:', {
+      seafarerEmail,
+      approvedAgentId,
+      remarks,
+      adminId,
+      adminName,
+    });
     const db = this.getDb();
     const nowIso = new Date().toISOString();
     const cleanEmail = (seafarerEmail || '').trim();
@@ -1510,11 +1841,17 @@ export class AgentAdminService {
       );
     });
 
-    if ((!leads || leads.length === 0) && (!matchedCommissions || matchedCommissions.length === 0)) {
-      throw new NotFoundException('No active conflicting leads or commissions found for this seafarer.');
+    if (
+      (!leads || leads.length === 0) &&
+      (!matchedCommissions || matchedCommissions.length === 0)
+    ) {
+      throw new NotFoundException(
+        'No active conflicting leads or commissions found for this seafarer.',
+      );
     }
 
-    const seafarerName = leads?.[0]?.name || matchedCommissions?.[0]?.seafarer_name || cleanEmail;
+    const seafarerName =
+      leads?.[0]?.name || matchedCommissions?.[0]?.seafarer_name || cleanEmail;
 
     // 3. Resolve lead statuses in referral_leads table
     if (leads && leads.length > 0) {
@@ -1528,13 +1865,20 @@ export class AgentAdminService {
             status: leadStatus,
             remarks: isApproved
               ? `Conflict resolved by Admin: Approved. Remarks: ${remarks}`
-              : `Conflict resolved by Admin: Assigned to another referring agent.`
+              : `Conflict resolved by Admin: Assigned to another referring agent.`,
           })
           .eq('id', lead.id);
-        console.log('UPDATE LEAD RESULT:', { id: lead.id, leadStatus, error: updateRes.error, status: updateRes.status });
+        console.log('UPDATE LEAD RESULT:', {
+          id: lead.id,
+          leadStatus,
+          error: updateRes.error,
+          status: updateRes.status,
+        });
 
         // Notify agent
-        const notifyTitle = isApproved ? 'Conflicting Referral Lead Approved!' : 'Conflicting Referral Lead Assigned to Another Agent';
+        const notifyTitle = isApproved
+          ? 'Conflicting Referral Lead Approved!'
+          : 'Conflicting Referral Lead Assigned to Another Agent';
         const notifyMsg = isApproved
           ? `Your conflicting referral lead for ${seafarerName} has been approved by Admin. You now have active referral attribution!`
           : `Your conflicting referral lead for ${seafarerName} was assigned to another referring agent by Admin.`;
@@ -1545,7 +1889,7 @@ export class AgentAdminService {
           title: notifyTitle,
           message: notifyMsg,
           isRead: false,
-          createdAt: nowIso
+          createdAt: nowIso,
         });
       }
     }
@@ -1560,7 +1904,7 @@ export class AgentAdminService {
           .from('commissions')
           .update({
             status: newStatus,
-            settled_at: isApproved ? null : nowIso
+            settled_at: isApproved ? null : nowIso,
           })
           .eq('id', comm.id);
 
@@ -1569,7 +1913,7 @@ export class AgentAdminService {
           await db
             .from('referral_leads')
             .update({
-              status: 'Converted'
+              status: 'Converted',
             })
             .eq('agent_id', approvedAgentId)
             .ilike('email', cleanEmail);
@@ -1584,10 +1928,13 @@ export class AgentAdminService {
       'RESOLVE_REFERRAL_CONFLICT',
       'Referrals',
       cleanEmail,
-      `Resolved referral lead dispute for seafarer ${seafarerName} (${cleanEmail}) in favor of agent ${approvedAgentId}. Remarks: ${remarks}`
+      `Resolved referral lead dispute for seafarer ${seafarerName} (${cleanEmail}) in favor of agent ${approvedAgentId}. Remarks: ${remarks}`,
     );
 
-    return { success: true, message: 'Referral conflict resolved successfully.' };
+    return {
+      success: true,
+      message: 'Referral conflict resolved successfully.',
+    };
   }
 
   async getTickets() {
@@ -1600,7 +1947,12 @@ export class AgentAdminService {
     return data || [];
   }
 
-  async addTicketReply(ticketId: string, message: string, adminId: string, adminName: string) {
+  async addTicketReply(
+    ticketId: string,
+    message: string,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const { data: ticket, error: fetchErr } = await db
       .from('SupportTicket')
@@ -1615,7 +1967,7 @@ export class AgentAdminService {
       senderName: adminName,
       senderRole: 'agent_admin',
       message,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     });
 
     const { error: updateErr } = await db
@@ -1623,7 +1975,7 @@ export class AgentAdminService {
       .update({
         replies: JSON.stringify(replies),
         updatedAt: new Date().toISOString(),
-        status: 'replied'
+        status: 'replied',
       })
       .eq('id', ticketId);
 
@@ -1635,19 +1987,24 @@ export class AgentAdminService {
       'REPLY_SUPPORT_TICKET',
       'Support Tickets',
       ticketId,
-      `Replied to support ticket: "${ticket.subject}"`
+      `Replied to support ticket: "${ticket.subject}"`,
     );
 
     return { success: true };
   }
 
-  async updateTicketStatus(ticketId: string, status: string, adminId: string, adminName: string) {
+  async updateTicketStatus(
+    ticketId: string,
+    status: string,
+    adminId: string,
+    adminName: string,
+  ) {
     const db = this.getDb();
     const { error } = await db
       .from('SupportTicket')
       .update({
         status,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       })
       .eq('id', ticketId);
 
@@ -1659,7 +2016,7 @@ export class AgentAdminService {
       'UPDATE_TICKET_STATUS',
       'Support Tickets',
       ticketId,
-      `Updated support ticket status to ${status}`
+      `Updated support ticket status to ${status}`,
     );
 
     return { success: true };
