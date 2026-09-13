@@ -12,10 +12,34 @@ import { RegisterDto } from './dto/register.dto';
 import { SupabaseService } from '../supabase/supabase.service';
 
 // Mock Supabase client
+const mockSupabaseAuth = {
+  signInWithPassword: jest.fn().mockResolvedValue({
+    data: {
+      user: { id: 'auth-user-1', email: 'test@example.com', user_metadata: {} },
+      session: { access_token: 'mock-supabase-token' },
+    },
+    error: null,
+  }),
+  signUp: jest.fn().mockResolvedValue({
+    data: { user: { id: 'auth-user-new' } },
+    error: null,
+  }),
+  getUser: jest.fn().mockResolvedValue({
+    data: { user: { id: 'auth-user-1', email: 'test@example.com' } },
+    error: null,
+  }),
+  resetPasswordForEmail: jest.fn().mockResolvedValue({ data: {}, error: null }),
+  admin: {
+    updateUserById: jest.fn().mockResolvedValue({ data: {}, error: null }),
+  },
+};
+
 const mockSupabaseClient = {
+  auth: mockSupabaseAuth,
   from: jest.fn().mockReturnThis(),
   select: jest.fn().mockReturnThis(),
   eq: jest.fn().mockReturnThis(),
+  or: jest.fn().mockReturnThis(),
   ilike: jest.fn().mockReturnThis(),
   single: jest.fn(),
   insert: jest.fn().mockReturnThis(),
@@ -31,13 +55,11 @@ const mockSupabaseService = {
 // Mock JwtService
 const mockJwtService = {
   sign: jest.fn().mockReturnValue('mock-jwt-token'),
-  verify: jest
-    .fn()
-    .mockReturnValue({
-      sub: 'test-id',
-      email: 'test@example.com',
-      role: 'SEAFARER',
-    }),
+  verify: jest.fn().mockReturnValue({
+    sub: 'test-id',
+    email: 'test@example.com',
+    role: 'SEAFARER',
+  }),
 };
 
 // Mock ConfigService
@@ -52,6 +74,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   User,
   UserRole,
+  UserStatus,
   SeafarerProfile,
   Partner,
   PartnerReferral,
@@ -130,16 +153,52 @@ describe('AuthService', () => {
       expect(result.user).toHaveProperty('role', UserRole.SEAFARER);
     });
 
-    it('should bootstrap user if user not in db', async () => {
-      userRepoMock.findOne.mockResolvedValue(null);
+    it('should throw UnauthorizedException when Supabase Auth rejects credentials', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Invalid login credentials' },
+      });
 
-      const result = await service.login({
-        email: 'newseafarer@example.com',
-        password: 'password',
-      } as LoginDto);
+      await expect(
+        service.login({
+          email: 'master@gmail.com',
+          password: 'WrongPassword123',
+        } as LoginDto),
+      ).rejects.toThrow(UnauthorizedException);
+    });
 
-      expect(result).toHaveProperty('token');
-      expect(result.user).toHaveProperty('email', 'newseafarer@example.com');
+    it('should throw BadRequestException when email or password is empty', async () => {
+      await expect(
+        service.login({
+          email: '',
+          password: 'password',
+        } as LoginDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw UnauthorizedException when user is deactivated', async () => {
+      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: {
+          user: { id: 'auth-deactivated-1', email: 'deactivated@example.com' },
+          session: { access_token: 'mock-token' },
+        },
+        error: null,
+      });
+
+      userRepoMock.findOne.mockResolvedValue({
+        id: 'user-deactivated',
+        authUserId: 'auth-deactivated-1',
+        email: 'deactivated@example.com',
+        role: UserRole.SEAFARER,
+        status: UserStatus.DEACTIVATED,
+      });
+
+      await expect(
+        service.login({
+          email: 'deactivated@example.com',
+          password: 'password',
+        } as LoginDto),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

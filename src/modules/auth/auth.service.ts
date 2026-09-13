@@ -48,88 +48,75 @@ export class AuthService {
       'thalassic-production-jwt-secure-signing-secret-2026';
   }
 
-  // --- 1. Login Authentication ---
+  // --- 1. Login Authentication (Strict Supabase Auth) ---
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
     const cleanEmail = (email || '').trim().toLowerCase();
-    const supabase = this.supabaseService.getClient();
+    const cleanPassword = (password || '').trim();
 
-    let authUserId: string | null = null;
-
-    // 1. Primary Auth Source: Supabase Auth
-    try {
-      const { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        });
-
-      if (!authError && authData?.user) {
-        authUserId = authData.user.id;
-      }
-    } catch (authErr) {
-      // Supabase Auth offline / mock development fallback
+    if (!cleanEmail || !cleanPassword) {
+      throw new BadRequestException('Email and password are required');
     }
 
-    // 2. Query application profile from public.users
+    const supabase = this.supabaseService.getClient();
+
+    // 1. Primary Auth Source of Truth: Supabase Auth Password Verification
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
+
+    if (authError || !authData?.user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const authUserId = authData.user.id;
+
+    // 2. Query application profile from public.users using TypeORM
     let user = await this.userRepo.findOne({
-      where: [{ email: cleanEmail }, ...(authUserId ? [{ authUserId }] : [])],
+      where: [{ authUserId }, { email: cleanEmail }],
     });
 
     if (!user) {
-      // If user signed into Supabase Auth but profile doesn't exist in public.users yet, bootstrap it
-      if (authUserId) {
-        user = this.userRepo.create({
-          authUserId,
-          email: cleanEmail,
-          name: cleanEmail.split('@')[0],
-          role: UserRole.SEAFARER,
-          status: UserStatus.ACTIVE,
-        });
-        await this.userRepo.save(user);
-      } else {
-        // Fallback for pre-seeded dev accounts
-        const isMaster =
-          cleanEmail.includes('master') || cleanEmail.includes('admin');
-        const isPartner =
-          cleanEmail.includes('partner') || cleanEmail.includes('agent');
-        const isCompany = cleanEmail.includes('company');
+      // First-time login bootstrap for authenticated Supabase user
+      const isMaster =
+        cleanEmail === 'master@gmail.com' ||
+        cleanEmail === 'master@thalassic.in';
+      const role = isMaster ? UserRole.MASTER : UserRole.SEAFARER;
 
-        const role = isMaster
-          ? UserRole.MASTER
-          : isPartner
-            ? UserRole.PARTNER_ADMIN
-            : isCompany
-              ? UserRole.COMPANY_ADMIN
-              : UserRole.SEAFARER;
-
-        user = this.userRepo.create({
-          email: cleanEmail,
-          name: cleanEmail.split('@')[0].toUpperCase(),
-          role,
-          status: UserStatus.ACTIVE,
-        });
-        await this.userRepo.save(user);
-      }
-    }
-
-    // Link auth_user_id if newly authenticated
-    if (authUserId && !user.authUserId) {
+      user = this.userRepo.create({
+        authUserId,
+        email: cleanEmail,
+        name:
+          authData.user.user_metadata?.name ||
+          (isMaster ? 'Master Admin' : cleanEmail.split('@')[0]),
+        role,
+        status: UserStatus.ACTIVE,
+      });
+      await this.userRepo.save(user);
+    } else if (!user.authUserId || user.authUserId !== authUserId) {
+      // Ensure auth_user_id is strictly linked to Supabase Auth UUID
       user.authUserId = authUserId;
       await this.userRepo.save(user);
     }
 
-    // Generate JWT
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    };
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new UnauthorizedException('Your account has been deactivated');
+    }
 
-    const token = this.jwtService.sign(payload, {
-      secret: this.jwtSecret,
-      expiresIn: '24h',
-    });
+    // Return the authenticated session token (Supabase access token or signed JWT)
+    const token =
+      authData.session?.access_token ||
+      this.jwtService.sign(
+        {
+          sub: user.id,
+          authUserId: user.authUserId,
+          email: user.email,
+          role: user.role,
+        },
+        { secret: this.jwtSecret, expiresIn: '24h' },
+      );
 
     await this.auditLogRepo.save({
       actorUserId: user.id,
@@ -138,13 +125,14 @@ export class AuthService {
       module: 'AUTH',
       entityTable: 'users',
       entityId: user.id,
-      details: `User ${user.email} logged in successfully with role ${user.role}`,
+      details: `User ${user.email} authenticated via Supabase Auth with role ${user.role}`,
     });
 
     return {
       token,
       user: {
         id: user.id,
+        auth_user_id: user.authUserId,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -290,26 +278,51 @@ export class AuthService {
 
   // --- 3. Get Profile by Token ---
   async getProfile(token: string) {
-    let decoded: any;
-    try {
-      decoded = this.jwtService.verify(token, { secret: this.jwtSecret });
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+    if (!token) {
+      throw new UnauthorizedException('Authentication token required');
     }
 
-    const user = await this.userRepo.findOne({ where: { id: decoded.sub } });
+    let user: User | null = null;
+
+    // 1. Try verifying with local JWT
+    try {
+      const decoded = this.jwtService.verify(token, {
+        secret: this.jwtSecret,
+      }) as any;
+      if (decoded?.sub) {
+        user = await this.userRepo.findOne({ where: { id: decoded.sub } });
+      }
+    } catch {
+      // Not a local JWT, attempt Supabase Auth token verification
+    }
+
+    // 2. Try verifying with Supabase Auth
     if (!user) {
-      return {
-        id: decoded.sub,
-        name: decoded.name || 'Platform User',
-        email: decoded.email,
-        role: decoded.role || UserRole.SEAFARER,
-        phone: null,
-      };
+      const supabase = this.supabaseService.getClient();
+      try {
+        const {
+          data: { user: authUser },
+          error,
+        } = await supabase.auth.getUser(token);
+        if (!error && authUser) {
+          user = await this.userRepo.findOne({
+            where: [{ authUserId: authUser.id }, { email: authUser.email }],
+          });
+        }
+      } catch {
+        // Verification failed
+      }
+    }
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Invalid or expired authentication token',
+      );
     }
 
     return {
       id: user.id,
+      auth_user_id: user.authUserId,
       name: user.name,
       email: user.email,
       role: user.role,

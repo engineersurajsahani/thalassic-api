@@ -64,31 +64,32 @@ export class AuthGuard implements CanActivate {
 
       const { data: dbUser } = await supabase
         .from('users')
-        .select('id, email, name, role, status')
-        .eq('email', user.email)
+        .select('id, auth_user_id, email, name, role, status')
+        .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
         .maybeSingle();
 
-      if (!dbUser) {
-        request.user = {
-          id: user.id,
-          sub: user.id,
-          email: user.email,
-          role: ROLES.SEAFARER,
-          status: 'Active',
-        };
-        return true;
-      }
+      const isMaster =
+        user.email === 'master@gmail.com' ||
+        user.email === 'master@thalassic.in';
+      const role = (
+        dbUser?.role || (isMaster ? ROLES.MASTER : ROLES.SEAFARER)
+      ).toUpperCase();
 
       request.user = {
-        id: dbUser.id,
-        sub: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.name,
-        role: dbUser.role,
-        status: dbUser.status,
+        id: dbUser?.id || user.id,
+        sub: dbUser?.id || user.id,
+        authUserId: user.id,
+        email: user.email,
+        name:
+          dbUser?.name ||
+          user.user_metadata?.name ||
+          (isMaster ? 'Master Admin' : 'User'),
+        role,
+        status: dbUser?.status || 'Active',
       };
       return true;
     } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException(
         'Invalid or expired authentication session',
       );

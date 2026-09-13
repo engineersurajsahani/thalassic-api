@@ -97,6 +97,42 @@ export class SeafarerService {
       (e) => e.status === EnrollmentStatus.COMPLETED,
     );
 
+    const docs = user.documents || [];
+    const docStatus = (type: string) => {
+      const doc = docs.find((d) =>
+        d.type?.toLowerCase().includes(type.toLowerCase()),
+      );
+      if (!doc) return 'missing';
+      return doc.status?.toLowerCase() === 'verified' ? 'verified' : 'pending';
+    };
+
+    const firstActive = activeEnrollments[0];
+    const activeCourseData = firstActive
+      ? {
+          name: firstActive.courseInstitute?.course?.name,
+          code: firstActive.courseInstitute?.course?.code,
+          status: firstActive.status,
+          progress: firstActive.progressPercent || 35,
+          trainingType: 'Physical / Offline Training',
+          institute:
+            firstActive.courseInstitute?.institute?.name ||
+            'Maritime Institute',
+          batchSchedule: firstActive.batchStartDate
+            ? `${firstActive.batchStartDate} - ${firstActive.batchEndDate || ''}`
+            : 'Scheduled Batch',
+        }
+      : null;
+
+    const fields = [
+      user.profile?.indosNum,
+      user.profile?.cdcNum,
+      user.profile?.passportNum,
+      docs.length > 0,
+    ];
+    const profileCompletion = Math.round(
+      (fields.filter(Boolean).length / fields.length) * 100,
+    );
+
     return {
       user: {
         id: user.id,
@@ -106,10 +142,23 @@ export class SeafarerService {
         status: user.status,
       },
       profile: user.profile || null,
+      profileCompletion: profileCompletion || 25,
+      courses: {
+        active: activeCourseData,
+        ongoingCount: activeEnrollments.length,
+        completedCount: completedCourses.length,
+      },
+      certificates: {
+        passport: docStatus('passport'),
+        cdc: docStatus('cdc'),
+        medical: docStatus('medical'),
+        stcw: completedCourses.length > 0 ? 'verified' : docStatus('stcw'),
+      },
+      notifications: [],
       stats: {
         activeCourses: activeEnrollments.length,
         completedCourses: completedCourses.length,
-        totalDocuments: (user.documents || []).length,
+        totalDocuments: docs.length,
         totalSeaDays: (user.seaServiceRecords || []).reduce(
           (s, r) => s + (r.durationDays || 0),
           0,
