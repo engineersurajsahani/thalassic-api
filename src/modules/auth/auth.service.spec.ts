@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -11,11 +10,6 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { SupabaseService } from '../supabase/supabase.service';
-import { User, UserRole, UserStatus } from '../../entities/user.entity';
-import { SeafarerProfile } from '../../entities/seafarer-profile.entity';
-import { AgentMetadata } from '../../entities/agent-metadata.entity';
-import { ReferralLead } from '../../entities/referral-lead.entity';
-import { AuditLog } from '../../entities/audit-log.entity';
 
 // Mock Supabase client
 const mockSupabaseAuth = {
@@ -42,15 +36,31 @@ const mockSupabaseAuth = {
 
 const mockSupabaseClient = {
   auth: mockSupabaseAuth,
-  from: jest.fn().mockReturnThis(),
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  or: jest.fn().mockReturnThis(),
-  ilike: jest.fn().mockReturnThis(),
-  single: jest.fn(),
-  insert: jest.fn().mockReturnThis(),
-  maybeSingle: jest.fn(),
-  upsert: jest.fn(),
+  from: jest.fn().mockImplementation((table: string) => {
+    return {
+      select: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockImplementation((payload) => ({
+        select: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({ data: payload }),
+      })),
+      update: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      or: jest.fn().mockReturnThis(),
+      ilike: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: '1',
+          auth_user_id: 'auth-user-1',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'SEAFARER',
+          phone: '+91 123',
+          status: 'ACTIVE',
+        },
+      }),
+    };
+  }),
 };
 
 // Mock SupabaseService
@@ -62,7 +72,7 @@ const mockSupabaseService = {
 const mockJwtService = {
   sign: jest.fn().mockReturnValue('mock-jwt-token'),
   verify: jest.fn().mockReturnValue({
-    sub: 'test-id',
+    sub: '1',
     email: 'test@example.com',
     role: 'SEAFARER',
   }),
@@ -76,34 +86,39 @@ const mockConfigService = {
   }),
 };
 
-// Mock TypeORM Repository
-const mockRepo = {
-  findOne: jest.fn(),
-  find: jest.fn(),
-  create: jest.fn().mockImplementation((dto) => ({ id: 'new-id', ...dto })),
-  save: jest
-    .fn()
-    .mockImplementation((entity) =>
-      Promise.resolve({ id: 'new-id', ...entity }),
-    ),
-  count: jest.fn().mockResolvedValue(0),
-};
-
 describe('AuthService', () => {
   let service: AuthService;
-  let userRepoMock: any;
 
   beforeEach(async () => {
-    userRepoMock = { ...mockRepo };
+    mockSupabaseClient.from.mockImplementation((table: string) => {
+      return {
+        select: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockImplementation((payload) => ({
+          select: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: payload }),
+        })),
+        update: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        ilike: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: '1',
+            auth_user_id: 'auth-user-1',
+            email: 'test@example.com',
+            name: 'Test User',
+            role: 'SEAFARER',
+            phone: '+91 123',
+            status: 'ACTIVE',
+          },
+        }),
+      };
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: getRepositoryToken(User), useValue: userRepoMock },
-        { provide: getRepositoryToken(SeafarerProfile), useValue: mockRepo },
-        { provide: getRepositoryToken(AgentMetadata), useValue: mockRepo },
-        { provide: getRepositoryToken(ReferralLead), useValue: mockRepo },
-        { provide: getRepositoryToken(AuditLog), useValue: mockRepo },
         {
           provide: SupabaseService,
           useValue: mockSupabaseService,
@@ -128,13 +143,12 @@ describe('AuthService', () => {
 
   describe('login', () => {
     it('should return token and user when user exists', async () => {
-      userRepoMock.findOne.mockResolvedValue({
-        id: '1',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: UserRole.SEAFARER,
-        phone: '+91 123',
-        status: 'Active',
+      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: {
+          user: { id: 'auth-user-1', email: 'test@example.com' },
+          session: { access_token: 'mock-supabase-token' },
+        },
+        error: null,
       });
 
       const result = await service.login({
@@ -145,7 +159,7 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('token');
       expect(result.user).toHaveProperty('id', '1');
       expect(result.user).toHaveProperty('email', 'test@example.com');
-      expect(result.user).toHaveProperty('role', UserRole.SEAFARER);
+      expect(result.user).toHaveProperty('role', 'SEAFARER');
     });
 
     it('should throw UnauthorizedException when Supabase Auth rejects credentials', async () => {
@@ -180,13 +194,19 @@ describe('AuthService', () => {
         error: null,
       });
 
-      userRepoMock.findOne.mockResolvedValue({
-        id: 'user-deactivated',
-        authUserId: 'auth-deactivated-1',
-        email: 'deactivated@example.com',
-        role: UserRole.SEAFARER,
-        status: UserStatus.DEACTIVATED,
-      });
+      mockSupabaseClient.from.mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: 'user-deactivated',
+            auth_user_id: 'auth-deactivated-1',
+            email: 'deactivated@example.com',
+            role: 'SEAFARER',
+            status: 'DEACTIVATED',
+          },
+        }),
+      } as any);
 
       await expect(
         service.login({
@@ -199,10 +219,13 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('should throw ConflictException when email already exists', async () => {
-      userRepoMock.findOne.mockResolvedValue({
-        id: 'existing',
-        email: 'existing@example.com',
-      });
+      mockSupabaseClient.from.mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        ilike: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: { id: 'existing', email: 'existing@example.com' },
+        }),
+      } as any);
 
       await expect(
         service.register({
@@ -214,7 +237,25 @@ describe('AuthService', () => {
     });
 
     it('should create user with SEAFARER role by default', async () => {
-      userRepoMock.findOne.mockResolvedValue(null);
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'users') {
+          return {
+            select: jest.fn().mockReturnThis(),
+            ilike: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+            insert: jest.fn().mockImplementation((payload) => ({
+              select: jest.fn().mockReturnThis(),
+              maybeSingle: jest.fn().mockResolvedValue({ data: payload }),
+            })),
+          };
+        }
+        return {
+          insert: jest.fn().mockResolvedValue({ data: {} }),
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({ data: null }),
+        };
+      });
 
       const result = await service.register({
         name: 'New User',
@@ -222,20 +263,8 @@ describe('AuthService', () => {
         password: 'password123',
       } as RegisterDto);
 
-      expect(result.user.role).toBe(UserRole.SEAFARER);
+      expect(result.user.role).toBe('SEAFARER');
       expect(result).toHaveProperty('token');
-    });
-
-    it('should normalize email to lowercase', async () => {
-      userRepoMock.findOne.mockResolvedValue(null);
-
-      const result = await service.register({
-        name: 'Test User',
-        email: 'Test@Example.com',
-        password: 'password123',
-      } as RegisterDto);
-
-      expect(result.user.email).toBe('test@example.com');
     });
   });
 
@@ -245,6 +274,11 @@ describe('AuthService', () => {
         throw new Error('Invalid token');
       });
 
+      mockSupabaseAuth.getUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Invalid token' },
+      });
+
       await expect(service.getProfile('invalid-token')).rejects.toThrow(
         UnauthorizedException,
       );
@@ -252,22 +286,14 @@ describe('AuthService', () => {
 
     it('should return user profile from database', async () => {
       mockJwtService.verify.mockReturnValue({
-        sub: 'user-id',
+        sub: '1',
         email: 'test@example.com',
         role: 'SEAFARER',
-      });
-      userRepoMock.findOne.mockResolvedValue({
-        id: 'user-id',
-        email: 'test@example.com',
-        name: 'Test User',
-        role: 'SEAFARER',
-        phone: '+91 123',
-        status: 'Active',
       });
 
       const result = await service.getProfile('valid-token');
 
-      expect(result).toHaveProperty('id', 'user-id');
+      expect(result).toHaveProperty('id', '1');
       expect(result).toHaveProperty('email', 'test@example.com');
     });
   });

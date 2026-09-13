@@ -1,27 +1,12 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import {
-  User,
-  SeafarerProfile,
-  AgentMetadata,
-  ReferralLead,
-  AuditLog,
-} from '../../entities';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      User,
-      SeafarerProfile,
-      AgentMetadata,
-      ReferralLead,
-      AuditLog,
-    ]),
     SupabaseModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => {
