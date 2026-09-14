@@ -149,18 +149,16 @@ export class AuthService {
       throw new UnauthorizedException('Your account has been deactivated');
     }
 
-    // Return the authenticated session token (Supabase access token or signed JWT)
-    const token =
-      authData.session?.access_token ||
-      this.jwtService.sign(
-        {
-          sub: user.id,
-          authUserId: user.auth_user_id,
-          email: user.email,
-          role: (user.role || 'SEAFARER').toUpperCase(),
-        },
-        { secret: this.jwtSecret, expiresIn: '24h' },
-      );
+    // Return standard signed JWT for fast, reliable backend verification across all endpoints
+    const token = this.jwtService.sign(
+      {
+        sub: user.id,
+        authUserId: user.auth_user_id,
+        email: user.email,
+        role: (user.role || 'SEAFARER').toUpperCase(),
+      },
+      { secret: this.jwtSecret, expiresIn: '24h' },
+    );
 
     try {
       await supabase.from('audit_logs').insert({
