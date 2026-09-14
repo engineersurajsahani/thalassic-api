@@ -31,32 +31,11 @@ export class SupabaseService implements OnModuleInit {
   async onModuleInit() {
     // ISSUE-019: Only seed in development environment — never in production
     if (process.env.NODE_ENV !== 'development') {
-      console.log(
-        'Skipping agent user seeding in non-development environment.',
-      );
       return;
     }
 
     try {
       const supabase = this.client;
-
-      // Auto-migration: Add 'remarks' column to Document table if missing
-      try {
-        const { error: migrationError } = await supabase.rpc('exec_sql', {
-          query: `ALTER TABLE public."Document" ADD COLUMN IF NOT EXISTS remarks TEXT;`,
-        });
-        if (migrationError) {
-          console.warn(
-            'Could not run remarks migration via rpc:',
-            migrationError.message,
-          );
-        }
-      } catch (migErr) {
-        console.warn(
-          'Remarks column migration skipped:',
-          (migErr as any)?.message,
-        );
-      }
 
       // Ensure 'seafarer-documents' bucket exists in Supabase Storage
       try {
@@ -68,16 +47,11 @@ export class SupabaseService implements OnModuleInit {
           await supabase.storage.createBucket('seafarer-documents', {
             public: true,
           });
-          console.log("Bucket 'seafarer-documents' ensured.");
         }
-      } catch (bucketErr) {
-        console.warn('Bucket check skipped:', (bucketErr as any)?.message);
+      } catch {
+        // Handled
       }
 
-      // ISSUE-019: Use a secure randomly generated password for seeded users, not 'password123'
-      // In development only — production users should be created through proper admin flows
-      const randomPassword = crypto.randomBytes(12).toString('hex');
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
       const now = new Date();
 
       // Seed/Activate Agent: agent@thalassic.in (DEV ONLY)
@@ -90,31 +64,24 @@ export class SupabaseService implements OnModuleInit {
       let agentId = existingAgent?.id;
 
       if (!existingAgent && !agentCheckError) {
-        console.log('[DEV] Seeding Partner User...');
         agentId = crypto.randomUUID();
         const { error } = await supabase.from('users').insert([
           {
             id: agentId,
             email: 'agent@thalassic.in',
-            password: hashedPassword,
             name: 'Partner User',
             phone: '+91 99999 88888',
             role: ROLES.PARTNER,
           },
         ]);
         if (error) {
-          console.error('[DEV] Error seeding partner user:', error);
+          console.warn('[DEV] Partner user seed check:', error.message);
           agentId = null;
-        } else {
-          // ISSUE-032: Do NOT log the password in plain text
-          console.log(
-            '[DEV] Partner user seeded: agent@thalassic.in (password stored in secure location)',
-          );
         }
       }
 
       if (agentId) {
-        const { error: metaErr } = await supabase.from('agent_metadata').upsert(
+        await supabase.from('agent_metadata').upsert(
           {
             user_id: agentId,
             referral_code: 'REFAGENT123',
@@ -124,10 +91,6 @@ export class SupabaseService implements OnModuleInit {
           },
           { onConflict: 'user_id' },
         );
-
-        if (metaErr) {
-          console.error('[DEV] Error upserting partner metadata:', metaErr);
-        }
       }
 
       // Seed Partner Admin: admin@thalassic.in (DEV ONLY)
@@ -138,29 +101,19 @@ export class SupabaseService implements OnModuleInit {
         .maybeSingle();
 
       if (!existingAdmin && !adminCheckError) {
-        console.log('[DEV] Seeding Partner Admin User...');
         const adminId = crypto.randomUUID();
-        const { error } = await supabase.from('users').insert([
+        await supabase.from('users').insert([
           {
             id: adminId,
             email: 'admin@thalassic.in',
-            password: hashedPassword,
             name: 'Partner Admin',
             phone: '+91 88888 77777',
             role: ROLES.PARTNER_ADMIN,
           },
         ]);
-        if (error) {
-          console.error('[DEV] Error seeding partner admin user:', error);
-        } else {
-          // ISSUE-032: Do NOT log the password in plain text
-          console.log(
-            '[DEV] Partner admin user seeded: admin@thalassic.in (password stored in secure location)',
-          );
-        }
       }
-    } catch (e) {
-      console.error('[DEV] Failed to run DB seed check for agents:', e);
+    } catch {
+      // Non-blocking
     }
   }
 }
