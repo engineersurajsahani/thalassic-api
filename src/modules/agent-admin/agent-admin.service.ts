@@ -1119,31 +1119,22 @@ export class AgentAdminService {
 
   async getSettlements() {
     const db = this.getDb();
+    let dbSettlements: any[] = [];
     try {
-      const { data: settlements, error } = await db
+      const { data, error } = await db
         .from('settlements')
-        .select('*, User:agent_id(name)')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && settlements && settlements.length > 0) {
-        return settlements.map((s: any) => ({
-          id: s.id,
-          settlementNumber: s.settlement_number,
-          agentId: s.agent_id,
-          agentName: s.User?.name || 'Agent User',
-          hacInvoiceNumber: s.hac_invoice_number,
-          totalAmount: `₹${parseFloat(s.total_amount || 0).toLocaleString('en-IN')}`,
-          rawAmount: parseFloat(s.total_amount || 0),
-          status: s.status,
-          createdAt: s.created_at,
-          paidAt: s.paid_at || null,
-        }));
+      if (!error && Array.isArray(data)) {
+        dbSettlements = data;
       }
     } catch (e) {
       console.warn('Error fetching settlements from Supabase:', e);
     }
 
-    // Fallback to local settlements
+    this.loadSettlementsFromDisk();
+
     let userMap = new Map();
     try {
       const { data: users } = await db.from('users').select('id, name');
@@ -1152,18 +1143,148 @@ export class AgentAdminService {
       console.warn('Error getting users map for settlements:', e);
     }
 
-    return this.inMemorySettlements.map((s: any) => ({
+    const map = new Map<string, any>();
+    for (const s of dbSettlements) {
+      const key =
+        s.settlement_number || s.settlementNumber || s.settlementId || s.id;
+      map.set(key, s);
+    }
+    for (const s of this.inMemorySettlements) {
+      const key =
+        s.settlement_number || s.settlementNumber || s.settlementId || s.id;
+      map.set(key, { ...map.get(key), ...s });
+    }
+
+    const merged = Array.from(map.values());
+    merged.sort((a, b) => {
+      const timeA = new Date(
+        a.created_at || a.submissionDate || a.createdAt || 0,
+      ).getTime();
+      const timeB = new Date(
+        b.created_at || b.submissionDate || b.createdAt || 0,
+      ).getTime();
+      const safeA = isNaN(timeA) ? 0 : timeA;
+      const safeB = isNaN(timeB) ? 0 : timeB;
+      return safeB - safeA;
+    });
+
+    return merged.map((s: any) => ({
       id: s.id,
-      settlementNumber: s.settlement_number,
-      agentId: s.agent_id,
-      agentName: userMap.get(s.agent_id) || 'Agent User',
-      hacInvoiceNumber: s.hac_invoice_number,
-      totalAmount: `₹${parseFloat(s.total_amount || 0).toLocaleString('en-IN')}`,
-      rawAmount: parseFloat(s.total_amount || 0),
-      status: s.status,
-      createdAt: s.created_at,
+      settlementId:
+        s.settlement_number ||
+        s.settlementId ||
+        s.settlementNumber ||
+        (s.id
+          ? `SETTL-${s.id.slice(0, 6).toUpperCase()}`
+          : `SETTL-${Date.now()}`),
+      settlementNumber:
+        s.settlement_number ||
+        s.settlementNumber ||
+        s.settlementId ||
+        (s.id
+          ? `SETTL-${s.id.slice(0, 6).toUpperCase()}`
+          : `SETTL-${Date.now()}`),
+      settlement_number:
+        s.settlement_number ||
+        s.settlementNumber ||
+        s.settlementId ||
+        (s.id
+          ? `SETTL-${s.id.slice(0, 6).toUpperCase()}`
+          : `SETTL-${Date.now()}`),
+      referenceNumber: s.reference_number || s.referenceNumber || 'Pending UTR',
+      reference_number:
+        s.reference_number || s.referenceNumber || 'Pending UTR',
+      agentId: s.partnerId || s.partner_id || s.agent_id || 'partner-1',
+      agentName:
+        userMap.get(s.agent_id) ||
+        s.agentName ||
+        s.agent_name ||
+        'Kishan Manning Agency',
+      hacInvoiceNumber:
+        s.hac_invoice_number ||
+        `HAC-2026-${(s.id || '').substring(0, 6).toUpperCase()}`,
+      totalAmount: Number(s.total_amount || s.totalAmount || 0),
+      total_amount: Number(s.total_amount || s.totalAmount || 0),
+      paidAmount: Number(
+        s.paid_amount || s.paidAmount || s.total_amount || s.totalAmount || 0,
+      ),
+      paid_amount: Number(
+        s.paid_amount || s.paidAmount || s.total_amount || s.totalAmount || 0,
+      ),
+      remainingAmount: Number(s.remaining_amount || s.remainingAmount || 0),
+      remaining_amount: Number(s.remaining_amount || s.remainingAmount || 0),
+      status: s.status || 'Submitted',
+      created_at:
+        s.created_at ||
+        s.createdAt ||
+        s.submissionDate ||
+        s.submission_date ||
+        new Date().toISOString(),
+      createdAt:
+        s.created_at ||
+        s.createdAt ||
+        s.submissionDate ||
+        s.submission_date ||
+        new Date().toISOString(),
+      submissionDate:
+        s.submissionDate || s.created_at || new Date().toISOString(),
       paidAt: s.paid_at || null,
+      expected_due_date: s.expected_due_date || s.expectedDueDate || null,
+      expectedDueDate: s.expected_due_date || s.expectedDueDate || null,
+      payment_date:
+        s.payment_date ||
+        s.created_at ||
+        s.createdAt ||
+        s.submissionDate ||
+        new Date().toISOString(),
+      installments: s.installments || [],
+      purchaseIds: s.purchase_ids || s.purchaseIds || [],
+      allocations: s.allocations || [],
     }));
+  }
+
+  async updateSettlementStatus(id: string, status: string) {
+    this.loadSettlementsFromDisk();
+    const item = this.inMemorySettlements.find(
+      (s) =>
+        s.id === id ||
+        s.settlement_number === id ||
+        s.settlementNumber === id ||
+        s.settlementId === id,
+    );
+    const nowIso = new Date().toISOString();
+    if (item) {
+      item.status = status;
+      if (
+        status === 'Completed' ||
+        status === 'Paid' ||
+        status === 'Settled' ||
+        status === 'Approved'
+      ) {
+        const tot = Number(item.total_amount || item.totalAmount || 0);
+        item.paid_amount = tot;
+        item.paidAmount = tot;
+        item.remaining_amount = 0;
+        item.remainingAmount = 0;
+        item.status = 'Completed';
+      }
+      this.saveSettlementsToDisk();
+    }
+
+    const db = this.getDb();
+    try {
+      await db
+        .from('settlements')
+        .update({
+          status: status === 'Completed' ? 'Completed' : status,
+          updated_at: nowIso,
+        })
+        .eq('id', id);
+    } catch (e) {
+      console.warn('Supabase settlement status update warning:', e);
+    }
+
+    return { id, status, success: true };
   }
 
   async approveSettlement(

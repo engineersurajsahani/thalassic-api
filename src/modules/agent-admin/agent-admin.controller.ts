@@ -219,6 +219,14 @@ export class AgentAdminController {
     return this.agentAdminService.getSettlements();
   }
 
+  @Patch('settlements/:id/status')
+  updateSettlementStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.agentAdminService.updateSettlementStatus(id, status);
+  }
+
   @Patch('settlements/:id/pay')
   paySettlement(@Req() req: any, @Param('id') id: string) {
     const { id: adminId, name: adminName } = this.getAdminInfo(req);

@@ -8,6 +8,8 @@ import {
 import { SupabaseService } from '../supabase/supabase.service';
 import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class AgentService {
@@ -1328,45 +1330,100 @@ export class AgentService {
 
   async getSettlements(agentId: string) {
     const db = this.getDb();
+    let dbSettlements: any[] = [];
     try {
-      const { data: user } = await db
-        .from('users')
-        .select('email')
-        .eq('id', agentId)
-        .maybeSingle();
-      const { data: partner } = user?.email
-        ? await db
-            .from('partners')
-            .select('id')
-            .eq('contact_email', user.email)
-            .maybeSingle()
-        : { data: null };
-
-      if (!partner?.id) return [];
-
       const { data, error } = await db
         .from('settlements')
         .select('*')
-        .eq('partner_id', partner.id)
         .order('created_at', { ascending: false });
 
-      if (error || !data) return [];
-      return data.map((s: any) => ({
-        id: s.id,
-        settlementId: s.reference_number || s.id,
-        partnerId: s.partner_id,
-        submissionDate: s.created_at,
-        purchaseIds: [],
-        totalAmount: Number(s.total_amount) || 0,
-        paidAmount: Number(s.paid_amount) || 0,
-        remainingAmount: Number(s.remaining_amount) || 0,
-        paymentMode: s.payment_mode || 'NEFT/RTGS',
-        referenceNumber: s.reference_number || `REF-${s.id.slice(0, 6)}`,
-        status: s.status || 'Pending',
-      }));
+      if (!error && Array.isArray(data)) {
+        dbSettlements = data;
+      }
     } catch {
-      return [];
+      dbSettlements = [];
     }
+
+    let fileSettlements: any[] = [];
+    try {
+      const settlPath = path.join(process.cwd(), 'settlements_data.json');
+      if (fs.existsSync(settlPath)) {
+        fileSettlements = JSON.parse(fs.readFileSync(settlPath, 'utf8'));
+      }
+    } catch {}
+
+    const map = new Map<string, any>();
+    for (const s of fileSettlements) {
+      const key =
+        s.settlement_number || s.settlementNumber || s.settlementId || s.id;
+      map.set(key, s);
+    }
+    for (const s of dbSettlements) {
+      const key =
+        s.settlement_number || s.settlementNumber || s.settlementId || s.id;
+      map.set(key, { ...map.get(key), ...s });
+    }
+
+    const merged = Array.from(map.values());
+    merged.sort((a, b) => {
+      const timeA = new Date(a.created_at || a.submissionDate || 0).getTime();
+      const timeB = new Date(b.created_at || b.submissionDate || 0).getTime();
+      const safeA = isNaN(timeA) ? 0 : timeA;
+      const safeB = isNaN(timeB) ? 0 : timeB;
+      return safeB - safeA;
+    });
+
+    return merged.map((s: any) => ({
+      id: s.id,
+      settlementId:
+        s.settlement_number ||
+        s.settlementNumber ||
+        s.settlementId ||
+        (s.id
+          ? `SETTL-${s.id.slice(0, 6).toUpperCase()}`
+          : `SETTL-${Date.now()}`),
+      settlementNumber:
+        s.settlement_number ||
+        s.settlementNumber ||
+        s.settlementId ||
+        (s.id
+          ? `SETTL-${s.id.slice(0, 6).toUpperCase()}`
+          : `SETTL-${Date.now()}`),
+      settlement_number:
+        s.settlement_number ||
+        s.settlementNumber ||
+        s.settlementId ||
+        (s.id
+          ? `SETTL-${s.id.slice(0, 6).toUpperCase()}`
+          : `SETTL-${Date.now()}`),
+      partnerId: s.partner_id || s.partnerId || 'partner-1',
+      submissionDate:
+        s.created_at || s.submissionDate || new Date().toISOString(),
+      purchaseIds: s.purchase_ids || s.purchaseIds || [],
+      allocations: s.allocations || [],
+      totalAmount: Number(s.total_amount || s.totalAmount || 0),
+      paidAmount: Number(s.paid_amount || s.paidAmount || 0),
+      remainingAmount: Number(s.remaining_amount || s.remainingAmount || 0),
+      paymentMode: s.payment_mode || s.paymentMode || 'NEFT/RTGS',
+      referenceNumber:
+        s.reference_number ||
+        s.referenceNumber ||
+        `UTR-${(s.id || '').slice(0, 8)}`,
+      reference_number:
+        s.reference_number ||
+        s.referenceNumber ||
+        `UTR-${(s.id || '').slice(0, 8)}`,
+      status: s.status || 'Submitted',
+      expected_due_date: s.expected_due_date || s.expectedDueDate || null,
+      expectedDueDate: s.expected_due_date || s.expectedDueDate || null,
+      payment_date:
+        s.payment_date ||
+        s.created_at ||
+        s.createdAt ||
+        s.submissionDate ||
+        new Date().toISOString(),
+      installments: s.installments || [],
+    }));
   }
 
   async submitSettlement(agentId: string, dto: any) {
@@ -1385,41 +1442,239 @@ export class AgentService {
             .maybeSingle()
         : { data: null };
 
+      const settlPath = path.join(process.cwd(), 'settlements_data.json');
+      let currentList: any[] = [];
+      if (fs.existsSync(settlPath)) {
+        try {
+          currentList = JSON.parse(fs.readFileSync(settlPath, 'utf8'));
+        } catch {}
+      }
+
+      const targetRef =
+        dto.targetSettlementRef ||
+        dto.settlementRef ||
+        dto.allocations?.find((a: any) => a.settlementRef)?.settlementRef;
+
+      const existingIndex = targetRef
+        ? currentList.findIndex(
+            (s: any) =>
+              s.settlement_number === targetRef ||
+              s.settlementNumber === targetRef ||
+              s.settlementId === targetRef ||
+              s.id === targetRef,
+          )
+        : -1;
+
+      if (existingIndex !== -1) {
+        const existing = currentList[existingIndex];
+        const totAmt = Number(
+          existing.total_amount || existing.totalAmount || 0,
+        );
+        const prevPaid = Number(
+          existing.paid_amount || existing.paidAmount || 0,
+        );
+        const newPaid = Math.min(
+          totAmt,
+          prevPaid + Number(dto.paidAmount || 0),
+        );
+        const newRemaining = Math.max(0, totAmt - newPaid);
+
+        const getOrdinal = (n: number) =>
+          n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+        const existingInstallments = Array.isArray(existing.installments)
+          ? existing.installments
+          : [];
+        const paidItems = existingInstallments.filter(
+          (inst: any) => inst.status === 'Paid',
+        );
+
+        const newPaidInstNumber = paidItems.length + 1;
+        const newPaidInst = {
+          name: `${getOrdinal(newPaidInstNumber)} Installment`,
+          date: new Date().toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          }),
+          amount: Number(dto.paidAmount || 0),
+          utr: dto.referenceNumber || `UTR-${Date.now().toString().slice(-6)}`,
+          status: 'Paid',
+        };
+
+        const updatedInstallments = [...paidItems, newPaidInst];
+
+        if (newRemaining > 0) {
+          const pendingInstNumber = newPaidInstNumber + 1;
+          updatedInstallments.push({
+            name: `${getOrdinal(pendingInstNumber)} Installment`,
+            date: dto.expectedDueDate
+              ? new Date(dto.expectedDueDate).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : '24 Sept 2026',
+            amount: newRemaining,
+            utr: '—',
+            status: 'Pending',
+          });
+        }
+
+        const updatedAllocations = (existing.allocations || []).map(
+          (alloc: any) => ({
+            ...alloc,
+            paidNow:
+              newRemaining === 0
+                ? Number(alloc.payableAmount || alloc.paidNow || 0)
+                : Math.min(
+                    Number(alloc.payableAmount || 0),
+                    Number(alloc.paidNow || 0) + Number(dto.paidAmount || 0),
+                  ),
+            remainingDue:
+              newRemaining === 0
+                ? 0
+                : Math.max(
+                    0,
+                    Number(alloc.payableAmount || 0) -
+                      (Number(alloc.paidNow || 0) +
+                        Number(dto.paidAmount || 0)),
+                  ),
+          }),
+        );
+
+        const updatedSettlement = {
+          ...existing,
+          paid_amount: newPaid,
+          paidAmount: newPaid,
+          remaining_amount: newRemaining,
+          remainingAmount: newRemaining,
+          installments: updatedInstallments,
+          status: 'Submitted',
+          updated_at: new Date().toISOString(),
+          allocations:
+            updatedAllocations.length > 0
+              ? updatedAllocations
+              : existing.allocations,
+        };
+
+        currentList[existingIndex] = updatedSettlement;
+        fs.writeFileSync(
+          settlPath,
+          JSON.stringify(currentList, null, 2),
+          'utf8',
+        );
+        return updatedSettlement;
+      }
+
       const settlementId = randomUUID();
+      const setNo = `SETTL-${Math.floor(100000 + Math.random() * 900000)}`;
       const referenceNum =
-        dto.referenceNumber || `SETT-${Date.now().toString().slice(-6)}`;
+        dto.referenceNumber || `UTR-${Date.now().toString().slice(-6)}`;
+
+      const isPartialMode =
+        dto.paymentMode === 'partial' || Number(dto.remainingAmount || 0) > 0;
+      const initialInstallments = isPartialMode
+        ? [
+            {
+              name: '1st Installment',
+              date: dto.paymentDate
+                ? new Date(dto.paymentDate).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : new Date().toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  }),
+              amount: Number(dto.paidAmount || dto.totalAmount || 0),
+              utr: referenceNum,
+              status: 'Paid',
+            },
+            ...(Number(dto.remainingAmount || 0) > 0
+              ? [
+                  {
+                    name: '2nd Installment',
+                    date: dto.expectedDueDate
+                      ? new Date(dto.expectedDueDate).toLocaleDateString(
+                          'en-IN',
+                          { day: '2-digit', month: 'short', year: 'numeric' },
+                        )
+                      : '24 Sept 2026',
+                    amount: Number(dto.remainingAmount || 0),
+                    utr: '—',
+                    status: 'Pending',
+                  },
+                ]
+              : []),
+          ]
+        : [];
       const { data, error } = await db
         .from('settlements')
         .insert({
           id: settlementId,
           partner_id: partner?.id || '40000000-0000-0000-0000-000000000004',
-          total_amount: dto.totalAmount || 0,
+          settlement_number: setNo,
+          total_amount: dto.totalAmount || dto.paidAmount || 0,
           paid_amount: dto.paidAmount || dto.totalAmount || 0,
           remaining_amount: dto.remainingAmount || 0,
           payment_mode: dto.paymentMode || 'NEFT/RTGS',
           reference_number: referenceNum,
-          status: 'Pending',
+          purchase_ids: dto.purchaseIds || [],
+          allocations: dto.allocations || [],
+          status: 'Submitted',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-      if (error) {
-        return {
-          id: settlementId,
-          settlementId: referenceNum,
-          status: 'Pending',
-          referenceNumber: referenceNum,
-          totalAmount: dto.totalAmount || 0,
-        };
+      const createdObj = {
+        id: settlementId,
+        settlement_number: setNo,
+        settlementNumber: setNo,
+        settlementId: setNo,
+        reference_number: referenceNum,
+        referenceNumber: referenceNum,
+        agent_id: partner?.id || '32d3e6e6-8cf6-49f2-8b4a-13882f7651df',
+        partnerId: partner?.id || 'partner-1',
+        hac_invoice_number: `HAC-2026-${setNo}`,
+        total_amount: Number(dto.totalAmount || dto.paidAmount || 0),
+        totalAmount: Number(dto.totalAmount || dto.paidAmount || 0),
+        paid_amount: Number(dto.paidAmount || dto.totalAmount || 0),
+        paidAmount: Number(dto.paidAmount || dto.totalAmount || 0),
+        remaining_amount: Number(dto.remainingAmount || 0),
+        remainingAmount: Number(dto.remainingAmount || 0),
+        status: 'Submitted',
+        payment_mode: dto.paymentMode || 'full',
+        paymentMode: dto.paymentMode || 'full',
+        created_at: new Date().toISOString(),
+        submissionDate: new Date().toISOString(),
+        installments: initialInstallments,
+        allocations: dto.allocations || [],
+        purchase_ids: dto.purchaseIds || [],
+        purchaseIds: dto.purchaseIds || [],
+      };
+
+      try {
+        currentList.unshift(createdObj);
+        fs.writeFileSync(
+          settlPath,
+          JSON.stringify(currentList, null, 2),
+          'utf8',
+        );
+      } catch (e) {
+        console.warn('Failed to append settlement to disk:', e);
       }
-      return data;
+
+      return createdObj;
     } catch {
       return {
         id: randomUUID(),
-        status: 'Pending',
-        referenceNumber: dto.referenceNumber || 'SETT-001',
+        settlementId: `SETTL-${Date.now().toString().slice(-6)}`,
+        status: 'Submitted',
+        referenceNumber: dto.referenceNumber || 'UTR-001',
         totalAmount: dto.totalAmount || 0,
       };
     }

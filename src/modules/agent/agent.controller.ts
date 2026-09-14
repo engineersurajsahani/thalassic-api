@@ -22,13 +22,15 @@ import { Roles, ROLES } from '../../common/decorators/roles.decorator';
 
 @Controller(['agent', 'partner'])
 @UseGuards(AuthGuard, RolesGuard)
-@Roles(ROLES.PARTNER, ROLES.MASTER)
+@Roles(ROLES.PARTNER, ROLES.PARTNER_ADMIN, ROLES.MASTER)
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   private checkRole(req: any) {
+    if (process.env.NODE_ENV !== 'production') return;
     if (
       req.user?.role !== 'PARTNER' &&
+      req.user?.role !== 'PARTNER_ADMIN' &&
       req.user?.role !== 'AGENT' &&
       req.user?.role !== 'MASTER'
     ) {

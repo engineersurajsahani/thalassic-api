@@ -1,5 +1,938 @@
 [
   {
+    "id": "f11b3803-a56b-4dfc-b578-62d49d36db26",
+    "settlement_number": "SETTL-152737",
+    "settlementNumber": "SETTL-152737",
+    "settlementId": "SETTL-152737",
+    "reference_number": "1234567",
+    "referenceNumber": "1234567",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-152737",
+    "total_amount": 6175,
+    "totalAmount": 6175,
+    "paid_amount": 6175,
+    "paidAmount": 6175,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "partial",
+    "paymentMode": "partial",
+    "created_at": "2026-09-14T09:23:29.006Z",
+    "submissionDate": "2026-09-14T09:23:29.006Z",
+    "expected_due_date": "2026-09-24T00:00:00.000Z",
+    "expectedDueDate": "2026-09-24T00:00:00.000Z",
+    "installments": [
+      {
+        "name": "1st Installment",
+        "date": "14 Sept 2026",
+        "amount": 2000,
+        "utr": "1234567",
+        "status": "Paid"
+      },
+      {
+        "name": "2nd Installment",
+        "date": "14 Sept 2026",
+        "amount": 2000,
+        "utr": "1234567-2",
+        "status": "Paid"
+      },
+      {
+        "name": "3rd Installment",
+        "date": "24 Sept 2026",
+        "amount": 2175,
+        "utr": "—",
+        "status": "Pending"
+      }
+    ],
+    "allocations": [
+      {
+        "purchaseId": "db20d75a-1ad8-45f3-bc73-2c584480a7a5",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Medical First Aid",
+        "payableAmount": 6175,
+        "paidNow": 6175,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": ["db20d75a-1ad8-45f3-bc73-2c584480a7a5"],
+    "purchaseIds": ["db20d75a-1ad8-45f3-bc73-2c584480a7a5"],
+    "updated_at": "2026-09-14T09:24:41.574Z"
+  },
+  {
+    "id": "65a25ff4-691c-40e0-b3a5-c8f866e3b70f",
+    "settlement_number": "SETTL-433607",
+    "settlementNumber": "SETTL-433607",
+    "settlementId": "SETTL-433607",
+    "reference_number": "1234",
+    "referenceNumber": "1234",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-433607",
+    "total_amount": 8550,
+    "totalAmount": 8550,
+    "paid_amount": 4000,
+    "paidAmount": 4000,
+    "remaining_amount": 4550,
+    "remainingAmount": 4550,
+    "status": "Submitted",
+    "payment_mode": "partial",
+    "paymentMode": "partial",
+    "created_at": "2026-09-14T09:19:22.073Z",
+    "submissionDate": "2026-09-14T09:19:22.073Z",
+    "expected_due_date": "2026-09-24T00:00:00.000Z",
+    "expectedDueDate": "2026-09-24T00:00:00.000Z",
+    "installments": [
+      {
+        "name": "1st Installment",
+        "date": "10 Sept 2026",
+        "amount": 2000,
+        "utr": "1234",
+        "status": "Paid"
+      },
+      {
+        "name": "2nd Installment",
+        "date": "14 Sept 2026",
+        "amount": 2000,
+        "utr": "1234-2",
+        "status": "Paid"
+      },
+      {
+        "name": "3rd Installment",
+        "date": "24 Sept 2026",
+        "amount": 4550,
+        "utr": "—",
+        "status": "Pending"
+      }
+    ],
+    "allocations": [
+      {
+        "purchaseId": "45c7c27d-6c1d-498c-ad3d-bcb532806a2e",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 4000,
+        "remainingDue": 4550
+      }
+    ],
+    "purchase_ids": ["45c7c27d-6c1d-498c-ad3d-bcb532806a2e"],
+    "purchaseIds": ["45c7c27d-6c1d-498c-ad3d-bcb532806a2e"],
+    "updated_at": "2026-09-14T09:21:18.324Z"
+  },
+  {
+    "id": "43e70660-3cf0-49cc-84bb-38861803525d",
+    "settlement_number": "SETTL-204055",
+    "settlementNumber": "SETTL-204055",
+    "settlementId": "SETTL-204055",
+    "reference_number": "1234568",
+    "referenceNumber": "1234568",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-204055",
+    "total_amount": 34200,
+    "totalAmount": 34200,
+    "paid_amount": 34200,
+    "paidAmount": 34200,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "partial",
+    "paymentMode": "partial",
+    "created_at": "2026-09-14T08:59:26.182Z",
+    "submissionDate": "2026-09-14T08:59:26.182Z",
+    "allocations": [
+      {
+        "purchaseId": "738de52d-f9a9-42e0-bce0-f312da9942f4",
+        "seafarerName": "siya jadhav ",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "26f1c342-5311-4e5a-a5a0-1928f0feaef7",
+        "seafarerName": "ankit ",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 11400,
+        "paidNow": 11400,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "640cab13-60d2-4662-b2a9-599ec0cbd23c",
+        "seafarerName": "kk ",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": [
+      "738de52d-f9a9-42e0-bce0-f312da9942f4",
+      "26f1c342-5311-4e5a-a5a0-1928f0feaef7",
+      "640cab13-60d2-4662-b2a9-599ec0cbd23c"
+    ],
+    "purchaseIds": [
+      "738de52d-f9a9-42e0-bce0-f312da9942f4",
+      "26f1c342-5311-4e5a-a5a0-1928f0feaef7",
+      "640cab13-60d2-4662-b2a9-599ec0cbd23c"
+    ],
+    "updated_at": "2026-09-14T09:09:39.743Z"
+  },
+  {
+    "id": "216f110a-a32b-4964-beff-e982a5f7392c",
+    "settlement_number": "SETTL-420874",
+    "settlementNumber": "SETTL-420874",
+    "settlementId": "SETTL-420874",
+    "reference_number": "123456789",
+    "referenceNumber": "123456789",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-420874",
+    "total_amount": 130649,
+    "totalAmount": 130649,
+    "paid_amount": 130649,
+    "paidAmount": 130649,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "full",
+    "paymentMode": "full",
+    "created_at": "2026-09-14T08:53:38.469Z",
+    "submissionDate": "2026-09-14T08:53:38.469Z",
+    "allocations": [
+      {
+        "purchaseId": "5195f877-a314-4273-a6c0-a3dd01d27135",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14200,
+        "paidNow": 14200,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "73bdacb6-486f-417a-ad1f-fcf175354099",
+        "seafarerName": "Sameer Kulkarni",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 2249,
+        "paidNow": 2249,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 11400,
+        "paidNow": 11400,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000001",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 8000,
+        "paidNow": 8000,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000002",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Medical First Aid",
+        "payableAmount": 4500,
+        "paidNow": 4500,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000003",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 3800,
+        "paidNow": 3800,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000005",
+        "seafarerName": "Joseph Mathew",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 10500,
+        "paidNow": 10500,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000004",
+        "seafarerName": "Manish Kapoor",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 3800,
+        "paidNow": 3800,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Medical First Aid",
+        "payableAmount": 6175,
+        "paidNow": 6175,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "730d1db4-eaac-404c-aded-5923a9095831",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "93c9c18d-d6fe-41b8-a973-d6320a3a7c82",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Medical First Aid",
+        "payableAmount": 6175,
+        "paidNow": 6175,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": [
+      "5195f877-a314-4273-a6c0-a3dd01d27135",
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+      "73bdacb6-486f-417a-ad1f-fcf175354099",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+      "92000000-0000-0000-0000-000000000001",
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000003",
+      "92000000-0000-0000-0000-000000000005",
+      "92000000-0000-0000-0000-000000000004",
+      "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+      "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+      "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+      "730d1db4-eaac-404c-aded-5923a9095831",
+      "93c9c18d-d6fe-41b8-a973-d6320a3a7c82"
+    ],
+    "purchaseIds": [
+      "5195f877-a314-4273-a6c0-a3dd01d27135",
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+      "73bdacb6-486f-417a-ad1f-fcf175354099",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+      "92000000-0000-0000-0000-000000000001",
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000003",
+      "92000000-0000-0000-0000-000000000005",
+      "92000000-0000-0000-0000-000000000004",
+      "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+      "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+      "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+      "730d1db4-eaac-404c-aded-5923a9095831",
+      "93c9c18d-d6fe-41b8-a973-d6320a3a7c82"
+    ]
+  },
+  {
+    "id": "7af8c873-457c-438c-98e6-7aa9629757a9",
+    "settlement_number": "SETTL-479031",
+    "settlementNumber": "SETTL-479031",
+    "settlementId": "SETTL-479031",
+    "reference_number": "12345678",
+    "referenceNumber": "12345678",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-479031",
+    "total_amount": 415139,
+    "totalAmount": 415139,
+    "paid_amount": 415139,
+    "paidAmount": 415139,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "full",
+    "paymentMode": "full",
+    "created_at": "2026-09-14T08:49:00.315Z",
+    "submissionDate": "2026-09-14T08:49:00.315Z",
+    "allocations": [
+      {
+        "purchaseId": "5195f877-a314-4273-a6c0-a3dd01d27135",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14200,
+        "paidNow": 14200,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "73bdacb6-486f-417a-ad1f-fcf175354099",
+        "seafarerName": "Sameer Kulkarni",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 2249,
+        "paidNow": 2249,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 11400,
+        "paidNow": 11400,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000001",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000002",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Medical First Aid",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000003",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000005",
+        "seafarerName": "Joseph Mathew",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000004",
+        "seafarerName": "Manish Kapoor",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Medical First Aid",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "730d1db4-eaac-404c-aded-5923a9095831",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "93c9c18d-d6fe-41b8-a973-d6320a3a7c82",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Medical First Aid",
+        "payableAmount": 36449,
+        "paidNow": 36449,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": [
+      "5195f877-a314-4273-a6c0-a3dd01d27135",
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+      "73bdacb6-486f-417a-ad1f-fcf175354099",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+      "92000000-0000-0000-0000-000000000001",
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000003",
+      "92000000-0000-0000-0000-000000000005",
+      "92000000-0000-0000-0000-000000000004",
+      "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+      "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+      "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+      "730d1db4-eaac-404c-aded-5923a9095831",
+      "93c9c18d-d6fe-41b8-a973-d6320a3a7c82"
+    ],
+    "purchaseIds": [
+      "5195f877-a314-4273-a6c0-a3dd01d27135",
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+      "73bdacb6-486f-417a-ad1f-fcf175354099",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+      "92000000-0000-0000-0000-000000000001",
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000003",
+      "92000000-0000-0000-0000-000000000005",
+      "92000000-0000-0000-0000-000000000004",
+      "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+      "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+      "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+      "730d1db4-eaac-404c-aded-5923a9095831",
+      "93c9c18d-d6fe-41b8-a973-d6320a3a7c82"
+    ]
+  },
+  {
+    "id": "99817c68-b66c-4dde-8e8e-806d762266a3",
+    "settlement_number": "SETTL-210505",
+    "settlementNumber": "SETTL-210505",
+    "settlementId": "SETTL-210505",
+    "reference_number": "123456789",
+    "referenceNumber": "123456789",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-210505",
+    "total_amount": 136950,
+    "totalAmount": 136950,
+    "paid_amount": 136950,
+    "paidAmount": 136950,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "partial",
+    "paymentMode": "partial",
+    "created_at": "2026-09-14T08:48:11.803Z",
+    "submissionDate": "2026-09-14T08:48:11.803Z",
+    "allocations": [
+      {
+        "purchaseId": "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14200,
+        "paidNow": 14200,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000001",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 8000,
+        "paidNow": 8000,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000002",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Medical First Aid",
+        "payableAmount": 4500,
+        "paidNow": 4500,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000003",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 3800,
+        "paidNow": 3800,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000005",
+        "seafarerName": "Joseph Mathew",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 10500,
+        "paidNow": 10500,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000004",
+        "seafarerName": "Manish Kapoor",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 3800,
+        "paidNow": 3800,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Medical First Aid",
+        "payableAmount": 6175,
+        "paidNow": 6175,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "730d1db4-eaac-404c-aded-5923a9095831",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "93c9c18d-d6fe-41b8-a973-d6320a3a7c82",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Medical First Aid",
+        "payableAmount": 6175,
+        "paidNow": 6175,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "73bdacb6-486f-417a-ad1f-fcf175354099",
+        "seafarerName": "Sameer Kulkarni",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "5195f877-a314-4273-a6c0-a3dd01d27135",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 11400,
+        "paidNow": 11400,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": [
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+      "92000000-0000-0000-0000-000000000001",
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000003",
+      "92000000-0000-0000-0000-000000000005",
+      "92000000-0000-0000-0000-000000000004",
+      "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+      "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+      "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+      "730d1db4-eaac-404c-aded-5923a9095831",
+      "93c9c18d-d6fe-41b8-a973-d6320a3a7c82",
+      "73bdacb6-486f-417a-ad1f-fcf175354099",
+      "5195f877-a314-4273-a6c0-a3dd01d27135",
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f"
+    ],
+    "purchaseIds": [
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+      "92000000-0000-0000-0000-000000000001",
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000003",
+      "92000000-0000-0000-0000-000000000005",
+      "92000000-0000-0000-0000-000000000004",
+      "d7ce06b5-865a-480e-b6e2-b8d5b4c90300",
+      "0bdae85b-0093-4ed5-bce1-087e3c919c3f",
+      "6d0bfacd-8c4f-466e-bef7-0613d73f335b",
+      "730d1db4-eaac-404c-aded-5923a9095831",
+      "93c9c18d-d6fe-41b8-a973-d6320a3a7c82",
+      "73bdacb6-486f-417a-ad1f-fcf175354099",
+      "5195f877-a314-4273-a6c0-a3dd01d27135",
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f"
+    ],
+    "updated_at": "2026-09-14T09:15:25.909Z"
+  },
+  {
+    "id": "30b3fa7a-51d2-421b-a43b-f1aec478ca0e",
+    "settlement_number": "SETTL-989914",
+    "settlementNumber": "SETTL-989914",
+    "settlementId": "SETTL-989914",
+    "reference_number": "123456789",
+    "referenceNumber": "123456789",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-989914",
+    "total_amount": 34200,
+    "totalAmount": 34200,
+    "paid_amount": 34200,
+    "paidAmount": 34200,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Submitted",
+    "payment_mode": "partial",
+    "paymentMode": "partial",
+    "created_at": "2026-09-14T08:33:32.109Z",
+    "submissionDate": "2026-09-14T08:33:32.109Z",
+    "allocations": [
+      {
+        "purchaseId": "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+        "seafarerName": "Vikram Singh",
+        "courseName": "Basic Safety Training",
+        "payableAmount": 11400,
+        "paidNow": 11400,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": [
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee"
+    ],
+    "purchaseIds": [
+      "7fab78ae-3f4e-48fd-be1b-e23275cd9b5e",
+      "a39ee001-ad5e-4525-86d0-bd669ce02d9f",
+      "6c0a9aeb-2a15-43e4-96d7-7c964c3733ee"
+    ],
+    "updated_at": "2026-09-14T09:16:04.563Z"
+  },
+  {
+    "id": "fdecb1d4-021b-4130-afd0-3791d2eeeb7b",
+    "settlement_number": "SETTL-624529",
+    "settlementNumber": "SETTL-624529",
+    "settlementId": "SETTL-624529",
+    "reference_number": "12345678",
+    "referenceNumber": "12345678",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-624529",
+    "total_amount": 22550,
+    "totalAmount": 22550,
+    "paid_amount": 22550,
+    "paidAmount": 22550,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "full",
+    "paymentMode": "full",
+    "created_at": "2026-09-14T08:13:44.526Z",
+    "submissionDate": "2026-09-14T08:13:44.526Z",
+    "allocations": [
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000002",
+        "seafarerName": "Rohit Patel",
+        "courseName": "Medical First Aid",
+        "payableAmount": 4500,
+        "paidNow": 4500,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "92000000-0000-0000-0000-000000000004",
+        "seafarerName": "Manish Kapoor",
+        "courseName": "Security Awareness Training",
+        "payableAmount": 3800,
+        "paidNow": 3800,
+        "remainingDue": 0
+      },
+      {
+        "purchaseId": "5195f877-a314-4273-a6c0-a3dd01d27135",
+        "seafarerName": "Aditya Menon",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": [
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000004",
+      "5195f877-a314-4273-a6c0-a3dd01d27135"
+    ],
+    "purchaseIds": [
+      "92000000-0000-0000-0000-000000000002",
+      "92000000-0000-0000-0000-000000000004",
+      "5195f877-a314-4273-a6c0-a3dd01d27135"
+    ]
+  },
+  {
+    "id": "settl-206783-0000-0000-000000000001",
+    "settlement_number": "SETTL-206783",
+    "settlementNumber": "SETTL-206783",
+    "settlementId": "SETTL-206783",
+    "reference_number": "123456",
+    "referenceNumber": "123456",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-206783",
+    "total_amount": 8550,
+    "totalAmount": 8550,
+    "paid_amount": 8550,
+    "paidAmount": 8550,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Completed",
+    "payment_mode": "full",
+    "paymentMode": "full",
+    "created_at": "2026-09-14T07:30:00.000Z",
+    "submissionDate": "2026-09-14T07:30:00.000Z",
+    "allocations": [
+      {
+        "purchaseId": "pur-73bdacb6-486f-417a-ad1f-fcf175354099",
+        "seafarerName": "Sameer Kulkarni",
+        "courseName": "Advanced Fire Fighting",
+        "payableAmount": 8550,
+        "paidNow": 8550,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": ["pur-73bdacb6-486f-417a-ad1f-fcf175354099"],
+    "purchaseIds": ["pur-73bdacb6-486f-417a-ad1f-fcf175354099"]
+  },
+  {
+    "id": "settl-945379-0000-0000-000000000002",
+    "settlement_number": "SETTL-945379",
+    "settlementNumber": "SETTL-945379",
+    "settlementId": "SETTL-945379",
+    "reference_number": "12345678",
+    "referenceNumber": "12345678",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-945379",
+    "total_amount": 6175,
+    "totalAmount": 6175,
+    "paid_amount": 6175,
+    "paidAmount": 6175,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Submitted",
+    "payment_mode": "full",
+    "paymentMode": "full",
+    "created_at": "2026-09-14T07:15:00.000Z",
+    "submissionDate": "2026-09-14T07:15:00.000Z",
+    "allocations": [
+      {
+        "purchaseId": "pur-945379-alloc-1",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 6175,
+        "paidNow": 6175,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": ["pur-945379-alloc-1"],
+    "purchaseIds": ["pur-945379-alloc-1"]
+  },
+  {
+    "id": "settl-790553-0000-0000-000000000003",
+    "settlement_number": "SETTL-790553",
+    "settlementNumber": "SETTL-790553",
+    "settlementId": "SETTL-790553",
+    "reference_number": "23456",
+    "referenceNumber": "23456",
+    "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
+    "partnerId": "partner-1",
+    "hac_invoice_number": "HAC-2026-SETTL-790553",
+    "total_amount": 14250,
+    "totalAmount": 14250,
+    "paid_amount": 14250,
+    "paidAmount": 14250,
+    "remaining_amount": 0,
+    "remainingAmount": 0,
+    "status": "Submitted",
+    "payment_mode": "full",
+    "paymentMode": "full",
+    "created_at": "2026-09-14T07:00:00.000Z",
+    "submissionDate": "2026-09-14T07:00:00.000Z",
+    "allocations": [
+      {
+        "purchaseId": "pur-790553-alloc-1",
+        "seafarerName": "Arjun Nair",
+        "courseName": "Electronic Chart Display and Information System",
+        "payableAmount": 14250,
+        "paidNow": 14250,
+        "remainingDue": 0
+      }
+    ],
+    "purchase_ids": ["pur-790553-alloc-1"],
+    "purchaseIds": ["pur-790553-alloc-1"]
+  },
+  {
     "id": "13b9c0fb-41c8-4b9f-b2fe-c8bd21edbd86",
     "settlement_number": "SET-2026-1A8607",
     "agent_id": "32d3e6e6-8cf6-49f2-8b4a-13882f7651df",
@@ -18,35 +951,5 @@
     "status": "Paid",
     "created_at": "2026-08-08T14:47:33.085Z",
     "paid_at": "2026-08-08T14:48:01.671Z"
-  },
-  {
-    "id": "5138f5e9-603c-4561-9d77-16c2d83a199e",
-    "settlement_number": "SET-2026-A3C4BB",
-    "agent_id": "71486c19-c1f0-49b2-994e-f917400625a0",
-    "hac_invoice_number": "HAC-2026-SET-BE810B",
-    "total_amount": 1250,
-    "status": "Paid",
-    "created_at": "2026-08-08T09:49:52.736Z",
-    "paid_at": "2026-08-08T09:50:08.686Z"
-  },
-  {
-    "id": "f5619f36-6a03-4269-9cac-0c0302d41f6a",
-    "settlement_number": "SET-2026-53642E",
-    "agent_id": "71486c19-c1f0-49b2-994e-f917400625a0",
-    "hac_invoice_number": "HAC-2026-SET-A3464C",
-    "total_amount": 225,
-    "status": "Paid",
-    "created_at": "2026-08-08T09:21:56.869Z",
-    "paid_at": "2026-08-08T09:22:04.619Z"
-  },
-  {
-    "id": "7e0150ce-0984-4eae-ae5c-e52586f240ab",
-    "settlement_number": "SET-2026-A9DB00",
-    "agent_id": "b3d123c2-d8b0-45fc-8308-749901bcb20b",
-    "hac_invoice_number": "HAC-2026-SET-6013BF",
-    "total_amount": 750,
-    "status": "Paid",
-    "created_at": "2026-08-08T09:21:27.144Z",
-    "paid_at": "2026-08-08T09:21:37.712Z"
   }
 ]
